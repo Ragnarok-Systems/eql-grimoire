@@ -40,31 +40,29 @@ use super::Refusal;
 /// They are in the source in the clear, they are meant to be, and the same note applies here as
 /// to `secret::ENTROPY`: calling a public key a secret would be security theatre.
 ///
-/// # THE ENTRY BELOW IS A DEVELOPMENT ANCHOR AND MUST BE REPLACED BEFORE ONE BINARY SHIPS
+/// # THE ONE ENTRY IS THE RELEASE KEY
 ///
-/// It is a real minisign key, generated unencrypted (the `minisign -G -W` shape) on 2026-09-11,
-/// and its secret half was written OUTSIDE this repository and has never been in it. It exists so
-/// that this module's tests verify against the same kind of thing production does and so that a
-/// human can sign a manifest by hand today. It is NOT the release key: section 0 of the decision
-/// spec says a human generates that one, pastes it here, and only then does a release go out. A
-/// binary shipped on this key would be auto-updatable by whoever holds the development secret.
+/// Generated 2026-09-12 with `minisign -G -W`, which is the no-password shape; its secret half was
+/// never in this repository and never will be. The development anchor is gone from here on
+/// purpose: a binary that trusts it is auto-updatable by whoever holds the development secret.
+/// [`DEV_ANCHOR`] names that string so it can be refused by machine: a release-profile build that
+/// still carries it fails to COMPILE (see the `const _` below), the release workflow refuses to run
+/// on it by name, and [`trust_root_is_development`] puts it on the Settings screen if it is ever
+/// true again.
 ///
-/// THAT RULE IS NO LONGER ONLY THIS COMMENT. [`DEV_ANCHOR`] names the string, a release-profile
-/// build that still carries it fails to COMPILE (see the `const _` below), the release workflow
-/// refuses to run on it by name, and [`trust_root_is_development`] puts it on the Settings screen
-/// so the fact is visible while it is true. A comment saying so is a comment; four mechanical
-/// guards are not.
-/// THE RELEASE KEY. Generated 2026-09-12 with `minisign -G -W`, which is the no-password shape;
-/// its secret half was never in this repository and never will be.
+/// Adding a second entry is how a key is ROTATED: ship a build trusting both, wait for it to reach
+/// people, then drop the old one. Dropping one before that strands every copy still trusting only
+/// it.
 ///
-/// FIRST IN THE LIST AND ALONE IN IT. The development anchor is gone from here on purpose: a
-/// binary that trusts it is auto-updatable by whoever holds the development secret, and the
-/// `const _` guard below refuses a release-profile build that still carries it. Adding a second
-/// entry here is how a key is ROTATED: ship a build trusting both, wait for it to reach people,
-/// then drop the old one. Dropping one before that strands every copy still trusting only it.
-pub const RELEASE_KEY: &str = "RWQBQa0Zx48DlWupSZ95woah8ZkvQg1zOSTZbXJMXqOo4X1t+XPB0TXU";
-
-pub const KEYS: &[&str] = &[RELEASE_KEY];
+/// # EVERY ENTRY IS SPELLED OUT AS A LITERAL, NEVER THE NAME OF ANOTHER CONSTANT
+///
+/// The release workflow cannot run Rust before it has built anything, so it reads this declaration
+/// BY SHAPE: it takes the text between `&[` and `];` and looks for minisign keys spelled out inside
+/// it. A name there reads as no key at all. That is exactly how the first release cut by the
+/// pipeline, `v0.1.2-beta.1` on 2026-09-12, stopped at its key-agreement guard: this list said
+/// `&[RELEASE_KEY]`, which is correct Rust and the same key at runtime, and the workflow found
+/// nothing. `the_keys_declaration_spells_out_every_key_the_workflow_must_find` holds the shape.
+pub const KEYS: &[&str] = &["RWQBQa0Zx48DlWupSZ95woah8ZkvQg1zOSTZbXJMXqOo4X1t+XPB0TXU"];
 
 /// THE DEVELOPMENT ANCHOR, NAMED SO IT CAN BE REFUSED BY MACHINE.
 ///
@@ -707,6 +705,72 @@ mod tests {
         assert!(
             yml.contains("RELEASING.md") && yml.contains("section 0"),
             "the release guard does not tell whoever hits it which step they skipped"
+        );
+    }
+
+    /// DEFECT THIS PREVENTS: A RELEASE THAT STOPS AT ITS KEY GUARD BECAUSE `KEYS` NAMES A CONSTANT.
+    ///
+    /// `release.yml` has to know the trust root before it has built anything, so it reads it out of
+    /// this file's TEXT: it takes the `KEYS` declaration by one pattern and looks for keys spelled
+    /// out inside it by another. On 2026-09-12 the declaration was `&[RELEASE_KEY]`, which is
+    /// correct Rust and the same key at runtime, and the first release cut by the pipeline
+    /// (`v0.1.2-beta.1`) died with "contains no minisign public key". Every test was green, because
+    /// none of them read the declaration the way the workflow does.
+    ///
+    /// SO THIS READS IT THE WAY THE WORKFLOW DOES, WITH THE WORKFLOW'S OWN TWO PATTERNS, and first
+    /// asserts that release.yml still uses exactly those patterns, so the two readings cannot drift
+    /// apart.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: write an entry of `KEYS` as the name of another `const`; build
+    /// an entry with `concat!`; or change either pattern in release.yml.
+    #[test]
+    fn the_keys_declaration_spells_out_every_key_the_workflow_must_find() {
+        const DECLARATION: &str = r"(?s)pub const KEYS\s*:\s*&\[&str\]\s*=\s*&\[(.*?)\]\s*;";
+        const KEY: &str = r"RW[A-Za-z0-9+/]{54}";
+
+        let crate_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let workflow = crate_dir
+            .join("..")
+            .join("..")
+            .join(".github")
+            .join("workflows")
+            .join("release.yml");
+        let yml = std::fs::read_to_string(&workflow)
+            .unwrap_or_else(|e| panic!("{} could not be read ({e})", workflow.display()));
+        assert!(
+            yml.contains(DECLARATION) && yml.contains(KEY),
+            "release.yml no longer reads KEYS with the patterns this test uses, so this test no \
+             longer proves the workflow will find a key"
+        );
+
+        let here = std::fs::read_to_string(crate_dir.join("src").join("updater").join("verify.rs"))
+            .expect("this module's own source");
+        let declared = regex::Regex::new(DECLARATION)
+            .expect("the workflow's declaration pattern")
+            .captures(&here)
+            .and_then(|c| c.get(1))
+            .map(|m| m.as_str())
+            .expect("verify.rs has no KEYS declaration of the shape release.yml reads");
+
+        let mut spelled: Vec<&str> = regex::Regex::new(KEY)
+            .expect("the workflow's key pattern")
+            .find_iter(declared)
+            .map(|m| m.as_str())
+            .collect();
+        spelled.sort_unstable();
+        spelled.dedup();
+        let mut trusted: Vec<&str> = KEYS.to_vec();
+        trusted.sort_unstable();
+        trusted.dedup();
+
+        assert!(
+            !spelled.is_empty(),
+            "the KEYS declaration spells out no key ({declared:?}), so release.yml finds none and \
+             refuses to cut a release"
+        );
+        assert_eq!(
+            spelled, trusted,
+            "the keys release.yml reads out of the source are not the keys this binary trusts"
         );
     }
 
