@@ -1516,7 +1516,6 @@ mod tests {
     }
 }
 
-
 #[cfg(test)]
 mod updater_agreement {
     /// DEFECT: THE APP LOOKING SOMEWHERE THE UPDATER NEVER WRITES.

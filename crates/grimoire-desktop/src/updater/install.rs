@@ -213,10 +213,7 @@ pub const LOCK_PATIENCE: std::time::Duration = std::time::Duration::from_secs(5)
 /// for, which is the whole of what a lock needs. The lock is released by deleting it, including on
 /// the error path, which is what the guard struct below is for: an early `?` inside `f` must not
 /// leave a lock behind.
-pub fn with_lock<T>(
-    path: &Path,
-    f: impl FnOnce() -> Result<T, Refusal>,
-) -> Result<T, Refusal> {
+pub fn with_lock<T>(path: &Path, f: impl FnOnce() -> Result<T, Refusal>) -> Result<T, Refusal> {
     let lock = {
         let mut s = path.as_os_str().to_owned();
         s.push(".lock");
@@ -1175,7 +1172,12 @@ mod tests {
             .iter()
             .find(|n| n.ends_with(".part"))
             .cloned()
-            .unwrap_or_else(|| panic!("no partial file was on disk while it was being written: {:?}", seen.borrow()));
+            .unwrap_or_else(|| {
+                panic!(
+                    "no partial file was on disk while it was being written: {:?}",
+                    seen.borrow()
+                )
+            });
         assert!(
             partial.contains(&std::process::id().to_string()),
             "the partial file is named {partial:?}, which every copy of this app would open and \
@@ -1532,15 +1534,8 @@ mod tests {
         std::fs::write(&staged, b"MZ a program nobody signed").expect("the swap");
 
         let ran = Arc::new(AtomicUsize::new(0));
-        let no = install_app(
-            &l,
-            &ver,
-            &art,
-            &keys,
-            &Counted(ran.clone()),
-            Pulse::Closed,
-        )
-        .expect_err("a swapped staging file was installed");
+        let no = install_app(&l, &ver, &art, &keys, &Counted(ran.clone()), Pulse::Closed)
+            .expect_err("a swapped staging file was installed");
         assert_eq!(
             ran.load(Ordering::SeqCst),
             0,

@@ -1448,7 +1448,11 @@ impl Worker {
                  * and over, and a different version is a different thing; a client that had backed
                  * off to an hour on a broken 0.2.0 must not make the reader wait that hour for the
                  * 0.2.1 that fixes it. */
-                if !self.pending.as_ref().is_some_and(|p| p.version == o.version) {
+                if !self
+                    .pending
+                    .as_ref()
+                    .is_some_and(|p| p.version == o.version)
+                {
                     self.download_failures = 0;
                     self.last_download = None;
                 }
@@ -1549,7 +1553,8 @@ impl Worker {
                  * that question. */
                 self.download_failures = 0;
                 lock(&self.shared).retry_available = false;
-                self.persisted.forgive(&p.version.to_string(), &p.app.sha256);
+                self.persisted
+                    .forgive(&p.version.to_string(), &p.app.sha256);
                 self.persisted.staged = Some(StagedOffer {
                     version: p.version.to_string(),
                     notes_url: p.notes_url.clone(),
@@ -2611,14 +2616,7 @@ mod tests {
             &signed_release(&signer, "0.2.0", "2026-09-14T18:02:11Z", &payload),
             Err("the object is not there (404)".to_owned()),
         );
-        let u = Updater::spawn(
-            Layout::at(&d),
-            Box::new(wire),
-            keys,
-            None,
-            &s,
-            CHECK_EVERY,
-        );
+        let u = Updater::spawn(Layout::at(&d), Box::new(wire), keys, None, &s, CHECK_EVERY);
 
         /* The first attempt happens at once, which is what `download_is_due` answers for a
          * failure count of zero and is the behaviour a reader wants from the first try. */
@@ -2920,7 +2918,8 @@ mod tests {
 
         /* COPY B: accepts a manifest that withdraws 0.2.0. */
         let mut b = read_state(&l);
-        b.accepted.insert("stable".into(), when("2026-09-20T00:00:00Z"));
+        b.accepted
+            .insert("stable".into(), when("2026-09-20T00:00:00Z"));
         b.yanked = vec!["0.2.0".into()];
         b.touch();
         b.refuse("0.9.9", "bb", &Refusal::ArtifactBadSignature("x".into()));
@@ -3124,7 +3123,10 @@ mod tests {
         /* THE SHIPPED DEFAULTS, DELIBERATELY, because what is being measured is what happens to
          * somebody who changed nothing. */
         let s = UpdaterSettings::default();
-        assert!(s.auto_install, "the shipped default must install without being asked");
+        assert!(
+            s.auto_install,
+            "the shipped default must install without being asked"
+        );
         let manifest = signed_release(
             &signer,
             "0.2.0",
@@ -3161,7 +3163,6 @@ mod tests {
             ),
             ref other => panic!("staging led somewhere that is not the install path: {other:?}"),
         }
-
     }
 
     /// DEFECT THIS PREVENTS: A SIGNED `size` OF TEN TERABYTES WRITING 128 MiB TO THE DISK ON EVERY
@@ -3201,14 +3202,7 @@ mod tests {
         let body = signer.envelope(&mprobe::manifest_text(&doc));
 
         let (wire, asked) = Fake::new(&body, Ok(vec![0u8; 64]));
-        let u = Updater::spawn(
-            Layout::at(&d),
-            Box::new(wire),
-            keys,
-            None,
-            &s,
-            CHECK_EVERY,
-        );
+        let u = Updater::spawn(Layout::at(&d), Box::new(wire), keys, None, &s, CHECK_EVERY);
         assert!(
             until(|| {
                 u.pump(Pulse::Closed, true, &s);

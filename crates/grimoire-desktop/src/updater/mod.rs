@@ -800,10 +800,7 @@ mod tests {
                 url: "https://evil.example/app.exe".into(),
                 expected: "https://updates.ragnarok.systems/".into(),
             },
-            Refusal::ArtifactTooLarge {
-                said: 3,
-                cap: 2,
-            },
+            Refusal::ArtifactTooLarge { said: 3, cap: 2 },
             Refusal::ArtifactSizeMismatch { said: 2, got: 1 },
             Refusal::ArtifactHashMismatch {
                 said: "a".into(),

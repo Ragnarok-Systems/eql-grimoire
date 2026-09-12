@@ -231,7 +231,10 @@ fn trampoline() {
                 if let Err(e) =
                     grimoire_desktop::updater::run::note_rolled_back(&layout, &back.away_from)
                 {
-                    log::warn!("could not record the rollback away from {}: {e}", back.away_from);
+                    log::warn!(
+                        "could not record the rollback away from {}: {e}",
+                        back.away_from
+                    );
                 }
                 current = Some(back.now);
             }
@@ -5064,7 +5067,10 @@ mod tests {
             "the smoke switch is read after the guard that tests it"
         );
 
-        let heartbeat = body_of("fn heartbeat(&mut self, ctx: &egui::Context) {", "\n    fn ");
+        let heartbeat = body_of(
+            "fn heartbeat(&mut self, ctx: &egui::Context) {",
+            "\n    fn ",
+        );
         assert!(
             heartbeat.contains("note_first_frame"),
             "nothing clears the failed-launch count, so every machine that takes an update rolls \
@@ -5123,7 +5129,10 @@ mod tests {
             .find("fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {")
             .expect("the no-draw callback is gone from this file");
         let rest = &src[at..];
-        let logic = &rest[..rest[1..].find("\n    fn ").map(|i| i + 1).unwrap_or(rest.len())];
+        let logic = &rest[..rest[1..]
+            .find("\n    fn ")
+            .map(|i| i + 1)
+            .unwrap_or(rest.len())];
         assert!(
             logic.contains("self.smoke(ctx)"),
             "the smoke clock runs only while the window is visible, so a preflight launched over a \

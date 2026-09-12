@@ -317,8 +317,12 @@ fn payload_is_signed(c: &Current, keys: &[&str]) -> Result<(), String> {
         );
     };
     let sig_path = super::install::sig_of(&c.exe);
-    let signature = std::fs::read_to_string(&sig_path)
-        .map_err(|e| format!("its signature at {} could not be read: {e}", sig_path.display()))?;
+    let signature = std::fs::read_to_string(&sig_path).map_err(|e| {
+        format!(
+            "its signature at {} could not be read: {e}",
+            sig_path.display()
+        )
+    })?;
     super::verify::check_file(
         &c.exe,
         super::verify::Seal {

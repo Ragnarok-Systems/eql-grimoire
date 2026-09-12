@@ -539,8 +539,15 @@ fn the_module_floor_can_tell_a_caller_from_a_comment_and_a_prefix() {
 #[test]
 fn the_source_this_suite_reads_is_checked_out_with_lf_endings() {
     let mut files = Vec::new();
-    rs_files(&Path::new(env!("CARGO_MANIFEST_DIR")).join("src"), &mut files);
-    assert!(files.len() > 20, "the walk found only {} files", files.len());
+    rs_files(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
+        &mut files,
+    );
+    assert!(
+        files.len() > 20,
+        "the walk found only {} files",
+        files.len()
+    );
     let crlf: Vec<String> = files
         .iter()
         .filter(|p| fs::read(p).is_ok_and(|b| b.contains(&b'\r')))
