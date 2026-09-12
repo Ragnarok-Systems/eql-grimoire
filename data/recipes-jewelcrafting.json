@@ -1,0 +1,3809 @@
+[
+  {
+    "id": 1,
+    "product": 0,
+    "product_name": "Silver Malachite Ring",
+    "skill": "Jewelry Making",
+    "trivial": 17,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Malachite",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 50
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "product": 0,
+    "product_name": "Silver Lapis Lazuli Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 21,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Lapis Lazuli",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 90
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "product": 0,
+    "product_name": "Silver Turquoise Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 18,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Turquoise",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 110
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "product": 0,
+    "product_name": "Silver Hematite Ring",
+    "skill": "Jewelry Making",
+    "trivial": 21,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Hematite",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 151
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "product": 0,
+    "product_name": "Silver Cat Eye Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 24,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Cat's Eye Agate",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 201
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "product": 0,
+    "product_name": "Silver Bloodstone Earring",
+    "skill": "Jewelry Making",
+    "trivial": 26,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Bloodstone",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "product": 0,
+    "product_name": "Silver Onyx Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 28,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Onyx",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 655
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "product": 0,
+    "product_name": "Silver Jasper Ring",
+    "skill": "Jewelry Making",
+    "trivial": 30,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Jasper",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 755
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "product": 0,
+    "product_name": "Silver Carnelian Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 32,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Carnelian",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 856
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "product": 0,
+    "product_name": "Silver Rose Engagement Ring",
+    "skill": "Jewelry Making",
+    "trivial": 34,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Star Rose Quartz",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 1007
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "product": 0,
+    "product_name": "Silver Amber Ring",
+    "skill": "Jewelry Making",
+    "trivial": 36,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Amber",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "product": 0,
+    "product_name": "Silver Wolf's Eye Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 38,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Wolf's Eye Agate",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 3225
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "product": 0,
+    "product_name": "Jaded Silver Ring",
+    "skill": "Jewelry Making",
+    "trivial": 40,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Jade",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 3527
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "product": 0,
+    "product_name": "Silvered Pearl Ring",
+    "skill": "Jewelry Making",
+    "trivial": 42,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Pearl",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 4535
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "product": 0,
+    "product_name": "Topaz Silver Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 44,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Topaz",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 5039
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "product": 0,
+    "product_name": "Silvered Peridot Ring",
+    "skill": "Jewelry Making",
+    "trivial": 46,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Peridot",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "product": 0,
+    "product_name": "Silver Emerald Ring",
+    "skill": "Jewelry Making",
+    "trivial": 48,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Emerald",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 13103
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "product": 0,
+    "product_name": "Silver Opal Engagement Ring",
+    "skill": "Jewelry Making",
+    "trivial": 50,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Opal",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 17135
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "product": 0,
+    "product_name": "Blackened Pearl Silver Ring",
+    "skill": "Jewelry Making",
+    "trivial": 52,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Black Pearl",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 20159
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "product": 0,
+    "product_name": "Silver Fire Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 54,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Fire Opal",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 55000
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "product": 0,
+    "product_name": "Silvered Star Ruby Veil",
+    "skill": "Jewelry Making",
+    "trivial": 56,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Star Ruby",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 65519
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "product": 0,
+    "product_name": "Silvered Fire Emerald Ring",
+    "skill": "Jewelry Making",
+    "trivial": 58,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Fire Emerald",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 85679
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "product": 0,
+    "product_name": "Silvered Sapphire Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 60,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Sapphire",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "product": 0,
+    "product_name": "Silver Ruby Veil",
+    "skill": "Jewelry Making",
+    "trivial": 63,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Ruby",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 132298
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "product": 0,
+    "product_name": "Silver Jacinth Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 66,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Jacinth",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 200000
+      }
+    ]
+  },
+  {
+    "id": 26,
+    "product": 0,
+    "product_name": "Black Sapphire Silvered Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 68,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Black Sapphire",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 254921
+      }
+    ]
+  },
+  {
+    "id": 27,
+    "product": 0,
+    "product_name": "Silver Diamond Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 71,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Diamond",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 225000
+      }
+    ]
+  },
+  {
+    "id": 28,
+    "product": 0,
+    "product_name": "Silver Blue Diamond Ring",
+    "skill": "Jewelry Making",
+    "trivial": 75,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Silver Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      },
+      {
+        "item": 0,
+        "name": "Blue Diamond",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 282481
+      }
+    ]
+  },
+  {
+    "id": 29,
+    "product": 0,
+    "product_name": "Electrum Malachite Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 74,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Malachite",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 50
+      }
+    ]
+  },
+  {
+    "id": 30,
+    "product": 0,
+    "product_name": "Electrum Lapis Lazuli Earring",
+    "skill": "Jewelry Making",
+    "trivial": 76,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Lapis Lazuli",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 90
+      }
+    ]
+  },
+  {
+    "id": 31,
+    "product": 0,
+    "product_name": "Electrum Turquoise Engagement Ring",
+    "skill": "Jewelry Making",
+    "trivial": 79,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Turquoise",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 110
+      }
+    ]
+  },
+  {
+    "id": 32,
+    "product": 0,
+    "product_name": "Electrum Hematite Choker",
+    "skill": "Jewelry Making",
+    "trivial": 82,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Hematite",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 151
+      }
+    ]
+  },
+  {
+    "id": 33,
+    "product": 0,
+    "product_name": "Electrum Cat Eye Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 84,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Cat's Eye Agate",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 201
+      }
+    ]
+  },
+  {
+    "id": 34,
+    "product": 0,
+    "product_name": "Electrum Bloodstone Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 87,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Bloodstone",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      }
+    ]
+  },
+  {
+    "id": 35,
+    "product": 0,
+    "product_name": "Electrum Onyx Pendant",
+    "skill": "Jewelry Making",
+    "trivial": 90,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Onyx",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 655
+      }
+    ]
+  },
+  {
+    "id": 36,
+    "product": 0,
+    "product_name": "Electrum Jasper Earring",
+    "skill": "Jewelry Making",
+    "trivial": 92,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Jasper",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 755
+      }
+    ]
+  },
+  {
+    "id": 37,
+    "product": 0,
+    "product_name": "Electrum Carnelian Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 95,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Carnelian",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 856
+      }
+    ]
+  },
+  {
+    "id": 38,
+    "product": 0,
+    "product_name": "Electrum Star Amulet",
+    "skill": "Jewelry Making",
+    "trivial": 98,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Star Rose Quartz",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 1007
+      }
+    ]
+  },
+  {
+    "id": 39,
+    "product": 0,
+    "product_name": "Electrum Amber Earring",
+    "skill": "Jewelry Making",
+    "trivial": 100,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Amber",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      }
+    ]
+  },
+  {
+    "id": 40,
+    "product": 0,
+    "product_name": "Wolf's Eye Electrum Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 103,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Wolf's Eye Agate",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 3225
+      }
+    ]
+  },
+  {
+    "id": 41,
+    "product": 0,
+    "product_name": "Jaded Electrum Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 106,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Jade",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 3527
+      }
+    ]
+  },
+  {
+    "id": 42,
+    "product": 0,
+    "product_name": "Electrum Pearl Choker",
+    "skill": "Jewelry Making",
+    "trivial": 108,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Pearl",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 4535
+      }
+    ]
+  },
+  {
+    "id": 43,
+    "product": 0,
+    "product_name": "Topaz Electrum Earring",
+    "skill": "Jewelry Making",
+    "trivial": 111,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Topaz",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 5039
+      }
+    ]
+  },
+  {
+    "id": 44,
+    "product": 0,
+    "product_name": "Electrum Peridot Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 114,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Peridot",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      }
+    ]
+  },
+  {
+    "id": 45,
+    "product": 0,
+    "product_name": "Emerald Electrum Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 116,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Emerald",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 13103
+      }
+    ]
+  },
+  {
+    "id": 46,
+    "product": 0,
+    "product_name": "Electrum Opal Amulet",
+    "skill": "Jewelry Making",
+    "trivial": 119,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Opal",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 17135
+      }
+    ]
+  },
+  {
+    "id": 47,
+    "product": 0,
+    "product_name": "Black Pearl Electrum Choker",
+    "skill": "Jewelry Making",
+    "trivial": 122,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Black Pearl",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 20159
+      }
+    ]
+  },
+  {
+    "id": 48,
+    "product": 0,
+    "product_name": "Electrum Fire Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 124,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Fire Opal",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 55000
+      }
+    ]
+  },
+  {
+    "id": 49,
+    "product": 0,
+    "product_name": "Electrum Star Ruby Ring",
+    "skill": "Jewelry Making",
+    "trivial": 127,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Star Ruby",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 65519
+      }
+    ]
+  },
+  {
+    "id": 50,
+    "product": 0,
+    "product_name": "Fire Emerald Electrum Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 130,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Fire Emerald",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 85679
+      }
+    ]
+  },
+  {
+    "id": 51,
+    "product": 0,
+    "product_name": "Sapphire Electrum Earring",
+    "skill": "Jewelry Making",
+    "trivial": 132,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Sapphire",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      }
+    ]
+  },
+  {
+    "id": 52,
+    "product": 0,
+    "product_name": "Ruby Electrum Ring",
+    "skill": "Jewelry Making",
+    "trivial": 135,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Ruby",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 132298
+      }
+    ]
+  },
+  {
+    "id": 53,
+    "product": 0,
+    "product_name": "Jacinth Electrum Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 138,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Jacinth",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 200000
+      }
+    ]
+  },
+  {
+    "id": 54,
+    "product": 0,
+    "product_name": "Black Sapphire Electrum Earring",
+    "skill": "Jewelry Making",
+    "trivial": 140,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Black Sapphire",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 254921
+      }
+    ]
+  },
+  {
+    "id": 55,
+    "product": 0,
+    "product_name": "Diamond Electrum Mask",
+    "skill": "Jewelry Making",
+    "trivial": 143,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Diamond",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 225000
+      }
+    ]
+  },
+  {
+    "id": 56,
+    "product": 0,
+    "product_name": "Blue Diamond Electrum Earring",
+    "skill": "Jewelry Making",
+    "trivial": 148,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Electrum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      },
+      {
+        "item": 0,
+        "name": "Blue Diamond",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 282481
+      }
+    ]
+  },
+  {
+    "id": 57,
+    "product": 0,
+    "product_name": "Gold Malachite Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 146,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Malachite",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 50
+      }
+    ]
+  },
+  {
+    "id": 58,
+    "product": 0,
+    "product_name": "Gold Lapis Lazuli Earring",
+    "skill": "Jewelry Making",
+    "trivial": 148,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Lapis Lazuli",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 90
+      }
+    ]
+  },
+  {
+    "id": 59,
+    "product": 0,
+    "product_name": "Gold Turquoise Engagement Ring",
+    "skill": "Jewelry Making",
+    "trivial": 151,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Turquoise",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 110
+      }
+    ]
+  },
+  {
+    "id": 60,
+    "product": 0,
+    "product_name": "Golden Hematite Choker",
+    "skill": "Jewelry Making",
+    "trivial": 154,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Hematite",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 151
+      }
+    ]
+  },
+  {
+    "id": 61,
+    "product": 0,
+    "product_name": "Golden Cat Eye Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 156,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Cat's Eye Agate",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 201
+      }
+    ]
+  },
+  {
+    "id": 62,
+    "product": 0,
+    "product_name": "Gold Bloodstone Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 159,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Bloodstone",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      }
+    ]
+  },
+  {
+    "id": 63,
+    "product": 0,
+    "product_name": "Gold Onyx Pendant",
+    "skill": "Jewelry Making",
+    "trivial": 162,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Onyx",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 655
+      }
+    ]
+  },
+  {
+    "id": 64,
+    "product": 0,
+    "product_name": "Jasper Gold Earring",
+    "skill": "Jewelry Making",
+    "trivial": 164,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Jasper",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 755
+      }
+    ]
+  },
+  {
+    "id": 65,
+    "product": 0,
+    "product_name": "Gold Carnelian Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 167,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Carnelian",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 856
+      }
+    ]
+  },
+  {
+    "id": 66,
+    "product": 0,
+    "product_name": "Golden Star Amulet",
+    "skill": "Jewelry Making",
+    "trivial": 170,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Star Rose Quartz",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 1007
+      }
+    ]
+  },
+  {
+    "id": 67,
+    "product": 0,
+    "product_name": "Golden Amber Earring",
+    "skill": "Jewelry Making",
+    "trivial": 172,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Amber",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      }
+    ]
+  },
+  {
+    "id": 68,
+    "product": 0,
+    "product_name": "Wolf's Eye Golden Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 175,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Wolf's Eye Agate",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 3225
+      }
+    ]
+  },
+  {
+    "id": 69,
+    "product": 0,
+    "product_name": "Golden Jaded Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 178,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Jade",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 3527
+      }
+    ]
+  },
+  {
+    "id": 70,
+    "product": 0,
+    "product_name": "Golden Pearl Choker",
+    "skill": "Jewelry Making",
+    "trivial": 180,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Pearl",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 4535
+      }
+    ]
+  },
+  {
+    "id": 71,
+    "product": 0,
+    "product_name": "Golden Topaz Earring",
+    "skill": "Jewelry Making",
+    "trivial": 183,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Topaz",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 5039
+      }
+    ]
+  },
+  {
+    "id": 72,
+    "product": 0,
+    "product_name": "Golden Peridot Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 186,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Peridot",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      }
+    ]
+  },
+  {
+    "id": 73,
+    "product": 0,
+    "product_name": "Golden Emerald Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 188,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Emerald",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 13103
+      }
+    ]
+  },
+  {
+    "id": 74,
+    "product": 0,
+    "product_name": "Golden Opal Amulet",
+    "skill": "Jewelry Making",
+    "trivial": 191,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Opal",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 17135
+      }
+    ]
+  },
+  {
+    "id": 75,
+    "product": 0,
+    "product_name": "Golden Black Pearl Choker",
+    "skill": "Jewelry Making",
+    "trivial": 194,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Black Pearl",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 20159
+      }
+    ]
+  },
+  {
+    "id": 76,
+    "product": 0,
+    "product_name": "Golden Fire Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 196,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Fire Opal",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 55000
+      }
+    ]
+  },
+  {
+    "id": 77,
+    "product": 0,
+    "product_name": "Golden Star Ruby Ring",
+    "skill": "Jewelry Making",
+    "trivial": 199,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Star Ruby",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 65519
+      }
+    ]
+  },
+  {
+    "id": 78,
+    "product": 0,
+    "product_name": "Fire Emerald Golden Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 202,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Fire Emerald",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 85679
+      }
+    ]
+  },
+  {
+    "id": 79,
+    "product": 0,
+    "product_name": "Golden Sapphire Earring",
+    "skill": "Jewelry Making",
+    "trivial": 204,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Sapphire",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      }
+    ]
+  },
+  {
+    "id": 80,
+    "product": 0,
+    "product_name": "Golden Ruby Ring",
+    "skill": "Jewelry Making",
+    "trivial": 207,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Ruby",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 132298
+      }
+    ]
+  },
+  {
+    "id": 81,
+    "product": 0,
+    "product_name": "Golden Jacinth Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 210,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Jacinth",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 200000
+      }
+    ]
+  },
+  {
+    "id": 82,
+    "product": 0,
+    "product_name": "Golden Black Sapphire Earring",
+    "skill": "Jewelry Making",
+    "trivial": 212,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Black Sapphire",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 254921
+      }
+    ]
+  },
+  {
+    "id": 83,
+    "product": 0,
+    "product_name": "Golden Diamond Mask",
+    "skill": "Jewelry Making",
+    "trivial": 215,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Diamond",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 225000
+      }
+    ]
+  },
+  {
+    "id": 84,
+    "product": 0,
+    "product_name": "Golden Blue Diamond Pendant",
+    "skill": "Jewelry Making",
+    "trivial": 228,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Gold Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      },
+      {
+        "item": 0,
+        "name": "Blue Diamond",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 282481
+      }
+    ]
+  },
+  {
+    "id": 85,
+    "product": 0,
+    "product_name": "Platinum Malachite Ring",
+    "skill": "Jewelry Making",
+    "trivial": 218,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Malachite",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 50
+      }
+    ]
+  },
+  {
+    "id": 86,
+    "product": 0,
+    "product_name": "Platinum Lapis Lazuli Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 220,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Lapis Lazuli",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 90
+      }
+    ]
+  },
+  {
+    "id": 87,
+    "product": 0,
+    "product_name": "Platinum Turquoise Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 223,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Turquoise",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 110
+      }
+    ]
+  },
+  {
+    "id": 88,
+    "product": 0,
+    "product_name": "Platinum Hematite Ring",
+    "skill": "Jewelry Making",
+    "trivial": 226,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Hematite",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 151
+      }
+    ]
+  },
+  {
+    "id": 89,
+    "product": 0,
+    "product_name": "Cat Eye Platinum Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 228,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Cat's Eye Agate",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 201
+      }
+    ]
+  },
+  {
+    "id": 90,
+    "product": 0,
+    "product_name": "Platinum Bloodstone Earring",
+    "skill": "Jewelry Making",
+    "trivial": 231,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Bloodstone",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      }
+    ]
+  },
+  {
+    "id": 91,
+    "product": 0,
+    "product_name": "Platinum Onyx Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 234,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Onyx",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 655
+      }
+    ]
+  },
+  {
+    "id": 92,
+    "product": 0,
+    "product_name": "Platinum Jasper Ring",
+    "skill": "Jewelry Making",
+    "trivial": 236,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Jasper",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 755
+      }
+    ]
+  },
+  {
+    "id": 93,
+    "product": 0,
+    "product_name": "Platinum Carnelian Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 239,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Carnelian",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 856
+      }
+    ]
+  },
+  {
+    "id": 94,
+    "product": 0,
+    "product_name": "Rose Platinum Engagement Ring",
+    "skill": "Jewelry Making",
+    "trivial": 242,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Star Rose Quartz",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 1007
+      }
+    ]
+  },
+  {
+    "id": 95,
+    "product": 0,
+    "product_name": "Platinum Amber Ring",
+    "skill": "Jewelry Making",
+    "trivial": 244,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Amber",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      }
+    ]
+  },
+  {
+    "id": 96,
+    "product": 0,
+    "product_name": "Wolf's Eye Platinum Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 247,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Wolf's Eye Agate",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 3225
+      }
+    ]
+  },
+  {
+    "id": 97,
+    "product": 0,
+    "product_name": "Jaded Platinum Ring",
+    "skill": "Jewelry Making",
+    "trivial": 250,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Jade",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 3527
+      }
+    ]
+  },
+  {
+    "id": 98,
+    "product": 0,
+    "product_name": "Platinum Pearl Ring",
+    "skill": "Jewelry Making",
+    "trivial": 252,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Pearl",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 4535
+      }
+    ]
+  },
+  {
+    "id": 99,
+    "product": 0,
+    "product_name": "Platinum Topaz Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 255,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Topaz",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 5039
+      }
+    ]
+  },
+  {
+    "id": 100,
+    "product": 0,
+    "product_name": "Platinum Peridot Ring",
+    "skill": "Jewelry Making",
+    "trivial": 258,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Peridot",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      }
+    ]
+  },
+  {
+    "id": 101,
+    "product": 0,
+    "product_name": "Platinum Emerald Ring",
+    "skill": "Jewelry Making",
+    "trivial": 260,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Emerald",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 13103
+      }
+    ]
+  },
+  {
+    "id": 102,
+    "product": 0,
+    "product_name": "Platinum Opal Engagement Ring",
+    "skill": "Jewelry Making",
+    "trivial": 263,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Opal",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 17135
+      }
+    ]
+  },
+  {
+    "id": 103,
+    "product": 0,
+    "product_name": "Black Pearl Platinum Ring",
+    "skill": "Jewelry Making",
+    "trivial": 266,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Black Pearl",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 20159
+      }
+    ]
+  },
+  {
+    "id": 104,
+    "product": 0,
+    "product_name": "Platinum Fire Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 268,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Fire Opal",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 55000
+      }
+    ]
+  },
+  {
+    "id": 105,
+    "product": 0,
+    "product_name": "Platinum Star Ruby Veil",
+    "skill": "Jewelry Making",
+    "trivial": 271,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Star Ruby",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 65519
+      }
+    ]
+  },
+  {
+    "id": 106,
+    "product": 0,
+    "product_name": "Fire Emerald Platinum Ring",
+    "skill": "Jewelry Making",
+    "trivial": 274,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Fire Emerald",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 85679
+      }
+    ]
+  },
+  {
+    "id": 107,
+    "product": 0,
+    "product_name": "Sapphire Platinum Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 276,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Sapphire",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      }
+    ]
+  },
+  {
+    "id": 108,
+    "product": 0,
+    "product_name": "Platinum Ruby Veil",
+    "skill": "Jewelry Making",
+    "trivial": 279,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Ruby",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 132298
+      }
+    ]
+  },
+  {
+    "id": 109,
+    "product": 0,
+    "product_name": "Platinum Jacinth Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 282,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Jacinth",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 200000
+      }
+    ]
+  },
+  {
+    "id": 110,
+    "product": 0,
+    "product_name": "Black Sapphire Platinum Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 284,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Black Sapphire",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 254921
+      }
+    ]
+  },
+  {
+    "id": 111,
+    "product": 0,
+    "product_name": "Platinum Diamond Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 287,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Diamond",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 225000
+      }
+    ]
+  },
+  {
+    "id": 112,
+    "product": 0,
+    "product_name": "Platinum Blue Diamond Tiara",
+    "skill": "Jewelry Making",
+    "trivial": 295,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Platinum Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      },
+      {
+        "item": 0,
+        "name": "Blue Diamond",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 282481
+      }
+    ]
+  },
+  {
+    "id": 113,
+    "product": 0,
+    "product_name": "Velium Malachite Ring",
+    "skill": "Jewelry Making",
+    "trivial": 220,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Malachite",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 50
+      }
+    ]
+  },
+  {
+    "id": 114,
+    "product": 0,
+    "product_name": "Velium Lapis Lazuli Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 223,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Lapis Lazuli",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 90
+      }
+    ]
+  },
+  {
+    "id": 115,
+    "product": 0,
+    "product_name": "Velium Turquoise Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 226,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Turquoise",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 110
+      }
+    ]
+  },
+  {
+    "id": 116,
+    "product": 0,
+    "product_name": "Velium Hematite Ring",
+    "skill": "Jewelry Making",
+    "trivial": 228,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Hematite",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 151
+      }
+    ]
+  },
+  {
+    "id": 117,
+    "product": 0,
+    "product_name": "Cat Eye Velium Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 231,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Cat's Eye Agate",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 201
+      }
+    ]
+  },
+  {
+    "id": 118,
+    "product": 0,
+    "product_name": "Velium Bloodstone Earring",
+    "skill": "Jewelry Making",
+    "trivial": 234,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Bloodstone",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 503
+      }
+    ]
+  },
+  {
+    "id": 119,
+    "product": 0,
+    "product_name": "Velium Onyx Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 236,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Onyx",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 655
+      }
+    ]
+  },
+  {
+    "id": 120,
+    "product": 0,
+    "product_name": "Velium Jasper Ring",
+    "skill": "Jewelry Making",
+    "trivial": 239,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Jasper",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 755
+      }
+    ]
+  },
+  {
+    "id": 121,
+    "product": 0,
+    "product_name": "Velium Carnelian Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 242,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Carnelian",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 856
+      }
+    ]
+  },
+  {
+    "id": 122,
+    "product": 0,
+    "product_name": "Velium Rose Engagement Ring",
+    "skill": "Jewelry Making",
+    "trivial": 244,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Star Rose Quartz",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 1007
+      }
+    ]
+  },
+  {
+    "id": 123,
+    "product": 0,
+    "product_name": "Velium Amber Ring",
+    "skill": "Jewelry Making",
+    "trivial": 247,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Amber",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 2519
+      }
+    ]
+  },
+  {
+    "id": 124,
+    "product": 0,
+    "product_name": "Velium Wolf's Eye Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 250,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Wolf's Eye Agate",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 3225
+      }
+    ]
+  },
+  {
+    "id": 125,
+    "product": 0,
+    "product_name": "Jaded Velium Ring",
+    "skill": "Jewelry Making",
+    "trivial": 250,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Jade",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 3527
+      }
+    ]
+  },
+  {
+    "id": 126,
+    "product": 0,
+    "product_name": "Velium Pearl Ring",
+    "skill": "Jewelry Making",
+    "trivial": 255,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Pearl",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 4535
+      }
+    ]
+  },
+  {
+    "id": 127,
+    "product": 0,
+    "product_name": "Topaz Velium Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 258,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Topaz",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 5039
+      }
+    ]
+  },
+  {
+    "id": 128,
+    "product": 0,
+    "product_name": "Velium Peridot Ring",
+    "skill": "Jewelry Making",
+    "trivial": 260,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Peridot",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 10079
+      }
+    ]
+  },
+  {
+    "id": 129,
+    "product": 0,
+    "product_name": "Velium Emerald Ring",
+    "skill": "Jewelry Making",
+    "trivial": 263,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Emerald",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 13103
+      }
+    ]
+  },
+  {
+    "id": 130,
+    "product": 0,
+    "product_name": "Velium Opal Engagement Ring",
+    "skill": "Jewelry Making",
+    "trivial": 266,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Opal",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 17135
+      }
+    ]
+  },
+  {
+    "id": 131,
+    "product": 0,
+    "product_name": "Blackened Pearl Velium Ring",
+    "skill": "Jewelry Making",
+    "trivial": 268,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Black Pearl",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 20159
+      }
+    ]
+  },
+  {
+    "id": 132,
+    "product": 0,
+    "product_name": "Velium Fire Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 271,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Fire Opal",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 55000
+      }
+    ]
+  },
+  {
+    "id": 133,
+    "product": 0,
+    "product_name": "Velium Star Ruby Veil",
+    "skill": "Jewelry Making",
+    "trivial": 274,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Star Ruby",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 65519
+      }
+    ]
+  },
+  {
+    "id": 134,
+    "product": 0,
+    "product_name": "Velium Fire Emerald Ring",
+    "skill": "Jewelry Making",
+    "trivial": 276,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Fire Emerald",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 85679
+      }
+    ]
+  },
+  {
+    "id": 135,
+    "product": 0,
+    "product_name": "Sapphire Velium Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 279,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Sapphire",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 100799
+      }
+    ]
+  },
+  {
+    "id": 136,
+    "product": 0,
+    "product_name": "Velium Ruby Veil",
+    "skill": "Jewelry Making",
+    "trivial": 282,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Ruby",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 132298
+      }
+    ]
+  },
+  {
+    "id": 137,
+    "product": 0,
+    "product_name": "Velium Jacinth Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 284,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Jacinth",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 200000
+      }
+    ]
+  },
+  {
+    "id": 138,
+    "product": 0,
+    "product_name": "Black Sapphire Velium Necklace",
+    "skill": "Jewelry Making",
+    "trivial": 287,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Black Sapphire",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 254921
+      }
+    ]
+  },
+  {
+    "id": 139,
+    "product": 0,
+    "product_name": "Velium Diamond Wedding Ring",
+    "skill": "Jewelry Making",
+    "trivial": 290,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Diamond",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 225000
+      }
+    ]
+  },
+  {
+    "id": 140,
+    "product": 0,
+    "product_name": "Velium Blue Diamond Bracelet",
+    "skill": "Jewelry Making",
+    "trivial": 302,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Velium Bar",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 251999
+      },
+      {
+        "item": 0,
+        "name": "Blue Diamond",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Vendor",
+        "unit_price": 282481
+      }
+    ]
+  },
+  {
+    "id": 143,
+    "product": 0,
+    "product_name": "Imbued Golden Plains Earring",
+    "skill": "Jewelry Making",
+    "trivial": 167,
+    "yields": 1,
+    "no_fail": false,
+    "components": [
+      {
+        "item": 0,
+        "name": "Imbued Plains Pebble",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Unknown",
+        "unit_price": 0
+      },
+      {
+        "item": 0,
+        "name": "Karana",
+        "qty": 1,
+        "disposition": "PerAttempt",
+        "source": "Unknown",
+        "unit_price": 0
+      }
+    ]
+  }
+]

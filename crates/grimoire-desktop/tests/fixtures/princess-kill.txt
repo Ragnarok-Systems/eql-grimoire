@@ -1,0 +1,249 @@
+[Sun Sep 06 00:07:52 2026] You try to punch a thunder spirit princess, but a thunder spirit princess parries!
+[Sun Sep 06 00:07:52 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:52 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:53 2026] You hurt yourself for 3 points.
+[Sun Sep 06 00:07:53 2026] You kick a thunder spirit princess for 51 points of damage.
+[Sun Sep 06 00:07:53 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:53 2026] You punch a thunder spirit princess for 71 points of damage.
+[Sun Sep 06 00:07:53 2026] You try to punch a thunder spirit princess, but a thunder spirit princess parries!
+[Sun Sep 06 00:07:53 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:53 2026] You hurt yourself for 4 points.
+[Sun Sep 06 00:07:53 2026] You frenzy on a thunder spirit princess for 68 points of damage.
+[Sun Sep 06 00:07:53 2026] You try to frenzy on a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:53 2026] You punch a thunder spirit princess for 53 points of damage.
+[Sun Sep 06 00:07:53 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:53 2026] You punch a thunder spirit princess for 60 points of damage.
+[Sun Sep 06 00:07:53 2026] A thunder spirit princess is pierced by YOUR thorns for 3 points of non-melee damage.
+[Sun Sep 06 00:07:53 2026] A thunder spirit princess hits YOU for 70 points of damage.
+[Sun Sep 06 00:07:53 2026] a thunder spirit princess hit you for 20 points of magic damage by Choking.
+[Sun Sep 06 00:07:53 2026] You feel a shortness of breath.
+[Sun Sep 06 00:07:53 2026] A thunder spirit princess is pierced by YOUR thorns for 3 points of non-melee damage.
+[Sun Sep 06 00:07:53 2026] A thunder spirit princess hits YOU for 240 points of damage.
+[Sun Sep 06 00:07:53 2026] You resist a thunder spirit princess's Choking!
+[Sun Sep 06 00:07:54 2026] You have taken 12 damage from Choking by a thunder spirit princess.
+[Sun Sep 06 00:07:54 2026] You healed Reviir over time for 253 hit points by Slugs Healing.
+[Sun Sep 06 00:07:55 2026] You punch a thunder spirit princess for 8 points of damage.
+[Sun Sep 06 00:07:55 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:55 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:55 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:55 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:55 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:55 2026] You punch a thunder spirit princess for 60 points of damage.
+[Sun Sep 06 00:07:55 2026] You punch a thunder spirit princess for 72 points of damage.
+[Sun Sep 06 00:07:56 2026] You hurt yourself for 4 points.
+[Sun Sep 06 00:07:56 2026] You kick a thunder spirit princess for 73 points of damage.
+[Sun Sep 06 00:07:56 2026] A thunder spirit princess tries to hit YOU, but YOU dodge!
+[Sun Sep 06 00:07:56 2026] You punch a thunder spirit princess for 33 points of damage.
+[Sun Sep 06 00:07:56 2026] You punch a thunder spirit princess for 30 points of damage.
+[Sun Sep 06 00:07:56 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:57 2026] You gain a rune for 5 points of absorption.
+[Sun Sep 06 00:07:57 2026] You strike a thunder spirit princess for 36 points of damage. (Critical)
+[Sun Sep 06 00:07:57 2026] You strike a thunder spirit princess for 2 points of damage.
+[Sun Sep 06 00:07:57 2026] You punch a thunder spirit princess for 21 points of damage.
+[Sun Sep 06 00:07:57 2026] You punch a thunder spirit princess for 117 points of damage.
+[Sun Sep 06 00:07:57 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:58 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:58 2026] You punch a thunder spirit princess for 32 points of damage.
+[Sun Sep 06 00:07:58 2026] You punch a thunder spirit princess for 39 points of damage.
+[Sun Sep 06 00:07:58 2026] You punch a thunder spirit princess for 60 points of damage.
+[Sun Sep 06 00:07:58 2026] You try to frenzy on a thunder spirit princess, but a thunder spirit princess parries!
+[Sun Sep 06 00:07:58 2026] You hurt yourself for 2 points.
+[Sun Sep 06 00:07:58 2026] You frenzy on a thunder spirit princess for 35 points of damage.
+[Sun Sep 06 00:07:58 2026] You hurt yourself for 3 points.
+[Sun Sep 06 00:07:58 2026] You gain a rune for 14 points of absorption.
+[Sun Sep 06 00:07:58 2026] You frenzy on a thunder spirit princess for 97 points of damage. (Critical)
+[Sun Sep 06 00:07:58 2026] You hurt yourself for 3 points.
+[Sun Sep 06 00:07:58 2026] You gain a rune for 14 points of absorption.
+[Sun Sep 06 00:07:58 2026] You frenzy on a thunder spirit princess for 97 points of damage. (Critical)
+[Sun Sep 06 00:07:59 2026] A thunder spirit princess tries to hit YOU, but misses!
+[Sun Sep 06 00:07:59 2026] A thunder spirit princess tries to hit YOU, but misses!
+[Sun Sep 06 00:07:59 2026] You hurt yourself for 3 points.
+[Sun Sep 06 00:07:59 2026] You kick a thunder spirit princess for 47 points of damage.
+[Sun Sep 06 00:07:59 2026] You punch a thunder spirit princess for 27 points of damage.
+[Sun Sep 06 00:07:59 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:59 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:59 2026] You hurt yourself for 2 points.
+[Sun Sep 06 00:07:59 2026] You gain a rune for 10 points of absorption.
+[Sun Sep 06 00:07:59 2026] You strike a thunder spirit princess for 69 points of damage. (Critical)
+[Sun Sep 06 00:07:59 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:07:59 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:00 2026] You punch a thunder spirit princess for 11 points of damage.
+[Sun Sep 06 00:08:00 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:00 2026] You punch a thunder spirit princess for 44 points of damage.
+[Sun Sep 06 00:08:00 2026] You have taken 12 damage from Choking by a thunder spirit princess.
+[Sun Sep 06 00:08:00 2026] You healed Reviir over time for 253 hit points by Slugs Healing.
+[Sun Sep 06 00:08:01 2026] You punch a thunder spirit princess for 36 points of damage.
+[Sun Sep 06 00:08:01 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:01 2026] A thunder spirit princess is pierced by YOUR thorns for 3 points of non-melee damage.
+[Sun Sep 06 00:08:01 2026] A thunder spirit princess hits YOU for 120 points of damage.
+[Sun Sep 06 00:08:01 2026] a thunder spirit princess hit you for 20 points of magic damage by Choking.
+[Sun Sep 06 00:08:01 2026] You feel a shortness of breath.
+[Sun Sep 06 00:08:02 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:02 2026] You hurt yourself for 1 points.
+[Sun Sep 06 00:08:02 2026] You strike a thunder spirit princess for 17 points of damage.
+[Sun Sep 06 00:08:02 2026] You hurt yourself for 7 points.
+[Sun Sep 06 00:08:02 2026] You kick a thunder spirit princess for 113 points of damage.
+[Sun Sep 06 00:08:02 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:02 2026] You punch a thunder spirit princess for 71 points of damage.
+[Sun Sep 06 00:08:03 2026] You punch a thunder spirit princess for 25 points of damage.
+[Sun Sep 06 00:08:03 2026] You try to punch a thunder spirit princess, but a thunder spirit princess parries!
+[Sun Sep 06 00:08:03 2026] You try to frenzy on a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:03 2026] You hurt yourself for 4 points.
+[Sun Sep 06 00:08:03 2026] You frenzy on a thunder spirit princess for 68 points of damage.
+[Sun Sep 06 00:08:03 2026] You hurt yourself for 3 points.
+[Sun Sep 06 00:08:03 2026] You frenzy on a thunder spirit princess for 48 points of damage.
+[Sun Sep 06 00:08:03 2026] A thunder spirit princess is pierced by YOUR thorns for 3 points of non-melee damage.
+[Sun Sep 06 00:08:03 2026] A thunder spirit princess hits YOU for 60 points of damage.
+[Sun Sep 06 00:08:03 2026] a thunder spirit princess hit you for 20 points of magic damage by Choking.
+[Sun Sep 06 00:08:03 2026] You feel a shortness of breath.
+[Sun Sep 06 00:08:03 2026] A thunder spirit princess is pierced by YOUR thorns for 3 points of non-melee damage.
+[Sun Sep 06 00:08:03 2026] A thunder spirit princess hits YOU for 160 points of damage.
+[Sun Sep 06 00:08:03 2026] a thunder spirit princess hit you for 20 points of magic damage by Choking.
+[Sun Sep 06 00:08:03 2026] You feel a shortness of breath.
+[Sun Sep 06 00:08:04 2026] You punch a thunder spirit princess for 99 points of damage.
+[Sun Sep 06 00:08:04 2026] You try to punch a thunder spirit princess, but a thunder spirit princess dodges!
+[Sun Sep 06 00:08:04 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:05 2026] You gain a rune for 17 points of absorption.
+[Sun Sep 06 00:08:05 2026] You punch a thunder spirit princess for 114 points of damage. (Critical)
+[Sun Sep 06 00:08:05 2026] You punch a thunder spirit princess for 31 points of damage.
+[Sun Sep 06 00:08:05 2026] You hurt yourself for 4 points.
+[Sun Sep 06 00:08:05 2026] You gain a rune for 18 points of absorption.
+[Sun Sep 06 00:08:05 2026] You kick a thunder spirit princess for 122 points of damage. (Critical)
+[Sun Sep 06 00:08:06 2026] You punch a thunder spirit princess for 71 points of damage.
+[Sun Sep 06 00:08:06 2026] You try to punch a thunder spirit princess, but a thunder spirit princess dodges!
+[Sun Sep 06 00:08:06 2026] A thunder spirit princess tries to hit YOU, but misses!
+[Sun Sep 06 00:08:06 2026] You hurt yourself for 5 points.
+[Sun Sep 06 00:08:06 2026] You strike a thunder spirit princess for 75 points of damage.
+[Sun Sep 06 00:08:06 2026] You have taken 12 damage from Choking by a thunder spirit princess.
+[Sun Sep 06 00:08:06 2026] You healed Reviir over time for 253 hit points by Slugs Healing.
+[Sun Sep 06 00:08:07 2026] You punch a thunder spirit princess for 58 points of damage.
+[Sun Sep 06 00:08:07 2026] You punch a thunder spirit princess for 40 points of damage.
+[Sun Sep 06 00:08:07 2026] You punch a thunder spirit princess for 11 points of damage.
+[Sun Sep 06 00:08:07 2026] You punch a thunder spirit princess for 116 points of damage.
+[Sun Sep 06 00:08:08 2026] You hurt yourself for 10 points.
+[Sun Sep 06 00:08:08 2026] You gain a rune for 38 points of absorption.
+[Sun Sep 06 00:08:08 2026] You kick a thunder spirit princess for 258 points of damage. (Critical)
+[Sun Sep 06 00:08:08 2026] You try to kick a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:08 2026] You punch a thunder spirit princess for 28 points of damage.
+[Sun Sep 06 00:08:08 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:08 2026] You gain a rune for 24 points of absorption.
+[Sun Sep 06 00:08:08 2026] You punch a thunder spirit princess for 163 points of damage. (Critical)
+[Sun Sep 06 00:08:08 2026] You try to punch a thunder spirit princess, but a thunder spirit princess dodges!
+[Sun Sep 06 00:08:08 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:08 2026] A thunder spirit princess tries to hit YOU, but YOU block!
+[Sun Sep 06 00:08:08 2026] A thunder spirit princess is pierced by YOUR thorns for 3 points of non-melee damage.
+[Sun Sep 06 00:08:08 2026] A thunder spirit princess hits YOU for 70 points of damage.
+[Sun Sep 06 00:08:08 2026] You resist a thunder spirit princess's Choking!
+[Sun Sep 06 00:08:09 2026] You try to frenzy on a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:09 2026] You try to frenzy on a thunder spirit princess, but a thunder spirit princess dodges!
+[Sun Sep 06 00:08:09 2026] You try to frenzy on a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:09 2026] You try to frenzy on a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:09 2026] You punch a thunder spirit princess for 2 points of damage.
+[Sun Sep 06 00:08:09 2026] You punch a thunder spirit princess for 31 points of damage.
+[Sun Sep 06 00:08:09 2026] You punch a thunder spirit princess for 37 points of damage.
+[Sun Sep 06 00:08:09 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:10 2026] Auto attack is off.
+[Sun Sep 06 00:08:10 2026] Beginning to memorize Spirit of the Puma...
+[Sun Sep 06 00:08:11 2026] A thunder spirit princess tries to hit YOU, but YOU block!
+[Sun Sep 06 00:08:11 2026] A thunder spirit princess is pierced by YOUR thorns for 3 points of non-melee damage.
+[Sun Sep 06 00:08:11 2026] Aborting memorization of spell.
+[Sun Sep 06 00:08:11 2026] A thunder spirit princess hits YOU for 250 points of damage.
+[Sun Sep 06 00:08:11 2026] You resist a thunder spirit princess's Choking!
+[Sun Sep 06 00:08:12 2026] You have taken 12 damage from Choking by a thunder spirit princess.
+[Sun Sep 06 00:08:12 2026] You healed Reviir over time for 253 hit points by Slugs Healing.
+[Sun Sep 06 00:08:13 2026] Auto attack is on.
+[Sun Sep 06 00:08:13 2026] You hurt yourself for 1 points.
+[Sun Sep 06 00:08:13 2026] You strike a thunder spirit princess for 27 points of damage.
+[Sun Sep 06 00:08:13 2026] You try to strike a thunder spirit princess, but a thunder spirit princess dodges!
+[Sun Sep 06 00:08:13 2026] You kick a thunder spirit princess for 5 points of damage.
+[Sun Sep 06 00:08:13 2026] You gain a rune for 6 points of absorption.
+[Sun Sep 06 00:08:13 2026] You punch a thunder spirit princess for 45 points of damage. (Critical)
+[Sun Sep 06 00:08:13 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:13 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:13 2026] You punch a thunder spirit princess for 94 points of damage.
+[Sun Sep 06 00:08:14 2026] A thunder spirit princess tries to hit YOU, but YOU block!
+[Sun Sep 06 00:08:14 2026] A thunder spirit princess tries to hit YOU, but misses!
+[Sun Sep 06 00:08:14 2026] You try to frenzy on a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:14 2026] You try to frenzy on a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:14 2026] You try to frenzy on a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:14 2026] You try to frenzy on a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:14 2026] You punch a thunder spirit princess for 56 points of damage.
+[Sun Sep 06 00:08:14 2026] You punch a thunder spirit princess for 58 points of damage.
+[Sun Sep 06 00:08:14 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:15 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:15 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:15 2026] You punch a thunder spirit princess for 112 points of damage.
+[Sun Sep 06 00:08:16 2026] You hurt yourself for 2 points.
+[Sun Sep 06 00:08:16 2026] You strike a thunder spirit princess for 38 points of damage.
+[Sun Sep 06 00:08:16 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:16 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:16 2026] A thunder spirit princess is pierced by YOUR thorns for 3 points of non-melee damage.
+[Sun Sep 06 00:08:16 2026] A thunder spirit princess hits YOU for 54 points of damage.
+[Sun Sep 06 00:08:16 2026] a thunder spirit princess hit you for 20 points of magic damage by Choking.
+[Sun Sep 06 00:08:16 2026] You feel a shortness of breath.
+[Sun Sep 06 00:08:16 2026] You punch a thunder spirit princess for 71 points of damage.
+[Sun Sep 06 00:08:16 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:16 2026] You punch a thunder spirit princess for 117 points of damage.
+[Sun Sep 06 00:08:16 2026] You punch a thunder spirit princess for 37 points of damage.
+[Sun Sep 06 00:08:16 2026] You hurt yourself for 4 points.
+[Sun Sep 06 00:08:16 2026] You kick a thunder spirit princess for 63 points of damage.
+[Sun Sep 06 00:08:17 2026] You feel the slug spirit depart.
+[Sun Sep 06 00:08:17 2026] You punch a thunder spirit princess for 68 points of damage.
+[Sun Sep 06 00:08:17 2026] You punch a thunder spirit princess for 49 points of damage.
+[Sun Sep 06 00:08:17 2026] You hit a thunder spirit princess for 42 points of magic damage by Lifebite.
+[Sun Sep 06 00:08:17 2026] A thunder spirit princess staggers.
+[Sun Sep 06 00:08:17 2026] You healed Reviir for 42 hit points by Lifebite.
+[Sun Sep 06 00:08:17 2026] You punch a thunder spirit princess for 111 points of damage.
+[Sun Sep 06 00:08:18 2026] You hurt yourself for 2 points.
+[Sun Sep 06 00:08:18 2026] You strike a thunder spirit princess for 40 points of damage.
+[Sun Sep 06 00:08:18 2026] You hurt yourself for 5 points.
+[Sun Sep 06 00:08:18 2026] You strike a thunder spirit princess for 75 points of damage.
+[Sun Sep 06 00:08:18 2026] You punch a thunder spirit princess for 80 points of damage.
+[Sun Sep 06 00:08:18 2026] You try to punch a thunder spirit princess, but a thunder spirit princess dodges!
+[Sun Sep 06 00:08:18 2026] You have taken 12 damage from Choking by a thunder spirit princess.
+[Sun Sep 06 00:08:18 2026] You healed Reviir over time for 253 hit points by Slugs Healing.
+[Sun Sep 06 00:08:19 2026] A thunder spirit princess tries to hit YOU, but misses!
+[Sun Sep 06 00:08:19 2026] You try to punch a thunder spirit princess, but a thunder spirit princess dodges!
+[Sun Sep 06 00:08:19 2026] You punch a thunder spirit princess for 65 points of damage.
+[Sun Sep 06 00:08:19 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:19 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:19 2026] You frenzy on a thunder spirit princess for 11 points of damage.
+[Sun Sep 06 00:08:19 2026] You hurt yourself for 2 points.
+[Sun Sep 06 00:08:19 2026] You frenzy on a thunder spirit princess for 37 points of damage.
+[Sun Sep 06 00:08:19 2026] You hurt yourself for 1 points.
+[Sun Sep 06 00:08:19 2026] You kick a thunder spirit princess for 18 points of damage.
+[Sun Sep 06 00:08:20 2026] You punch a thunder spirit princess for 66 points of damage.
+[Sun Sep 06 00:08:20 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:20 2026] You punch a thunder spirit princess for 79 points of damage.
+[Sun Sep 06 00:08:20 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:21 2026] You punch a thunder spirit princess for 17 points of damage.
+[Sun Sep 06 00:08:21 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:21 2026] You try to punch a thunder spirit princess, but a thunder spirit princess dodges!
+[Sun Sep 06 00:08:21 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:21 2026] A thunder spirit princess is pierced by YOUR thorns for 3 points of non-melee damage.
+[Sun Sep 06 00:08:21 2026] A thunder spirit princess hits YOU for 120 points of damage.
+[Sun Sep 06 00:08:21 2026] a thunder spirit princess hit you for 20 points of magic damage by Choking.
+[Sun Sep 06 00:08:21 2026] You feel a shortness of breath.
+[Sun Sep 06 00:08:22 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:22 2026] You try to punch a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:22 2026] You gain a rune for 19 points of absorption.
+[Sun Sep 06 00:08:22 2026] You punch a thunder spirit princess for 129 points of damage. (Critical)
+[Sun Sep 06 00:08:22 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:22 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:22 2026] You try to strike a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:23 2026] You try to kick a thunder spirit princess, but miss!
+[Sun Sep 06 00:08:23 2026] You punch a thunder spirit princess for 29 points of damage.
+[Sun Sep 06 00:08:23 2026] You hit a thunder spirit princess for 42 points of magic damage by Lifebite.
+[Sun Sep 06 00:08:23 2026] A thunder spirit princess staggers.
+[Sun Sep 06 00:08:23 2026] You healed Reviir for 42 hit points by Lifebite.
+[Sun Sep 06 00:08:23 2026] You punch a thunder spirit princess for 39 points of damage.
+[Sun Sep 06 00:08:24 2026] A thunder spirit princess tries to hit YOU, but misses!
+[Sun Sep 06 00:08:24 2026] You punch a thunder spirit princess for 49 points of damage.
+[Sun Sep 06 00:08:24 2026] You gain experience (with a bonus)! (1.493%)
+[Sun Sep 06 00:08:24 2026] You have slain a thunder spirit princess!
+[Sun Sep 06 00:08:24 2026] You can breathe again.
+[Sun Sep 06 00:08:33 2026] --You have looted a Blade of Abrogation +1 from a thunder spirit princess's corpse.--
+[Sun Sep 06 00:08:36 2026] --You have looted a Key of Swords from a thunder spirit princess's corpse.--
+[Sun Sep 06 00:08:36 2026] Key of Swords vanishes as you commit its details to memory.
+[Sun Sep 06 00:08:36 2026] --You have looted a Key of the Misplaced from a thunder spirit princess's corpse.--
+[Sun Sep 06 00:08:36 2026] Key of the Misplaced vanishes as you commit its details to memory.

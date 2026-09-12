@@ -1,0 +1,19 @@
+[package]
+name = "grimoire-forge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Command line: read logs, cut corpus artifacts, check the model against the game."
+
+[[bin]]
+name = "grimoire"
+path = "src/main.rs"
+
+[dependencies]
+grimoire-core = { workspace = true, features = ["serde"] }
+grimoire-parse = { workspace = true }
+grimoire-corpus = { workspace = true }
+grimoire-wasm = { path = "../grimoire-wasm" }
+serde = { workspace = true }
+serde_json = { workspace = true }

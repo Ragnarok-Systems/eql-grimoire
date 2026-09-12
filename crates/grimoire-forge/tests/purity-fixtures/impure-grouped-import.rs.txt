@@ -1,0 +1,16 @@
+//! Fixture: a grouped import that names `time` without ever spelling the qualified path
+//! `std::time`. A plain search for `std::time` does not see this line; the scanner must.
+
+use std::{fmt, time::Instant};
+
+pub fn now_ish() -> Instant {
+    Instant::now()
+}
+
+impl core::fmt::Debug for Placeholder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "placeholder")
+    }
+}
+
+pub struct Placeholder;

@@ -1,0 +1,18 @@
+[package]
+name = "grimoire-wasm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The engine, for the browser. JSON in, JSON out, over a plain C ABI."
+
+[lib]
+# rlib as well as cdylib so the dispatch layer can be unit-tested on the host.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+grimoire-core = { workspace = true, features = ["serde"] }
+grimoire-parse = { workspace = true }
+grimoire-corpus = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

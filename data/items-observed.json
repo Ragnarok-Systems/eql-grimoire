@@ -1,0 +1,730 @@
+[
+{
+"id": 1202,
+"name": "Shiverback-Hide Armbands"
+},
+{
+"id": 1345,
+"name": "Robe of the Keeper"
+},
+{
+"id": 1360,
+"name": "Shining Metallic Robes"
+},
+{
+"id": 1412,
+"name": "Green Silken Drape"
+},
+{
+"id": 1534,
+"name": "Leatherfoot Sandals"
+},
+{
+"id": 1538,
+"name": "Earring of Bashing"
+},
+{
+"id": 1543,
+"name": "Icebelt"
+},
+{
+"id": 1544,
+"name": "Darkbrood Mask"
+},
+{
+"id": 1880,
+"name": "Pristine Studded Leather Tunic"
+},
+{
+"id": 1881,
+"name": "Pristine Studded Leather Bracer"
+},
+{
+"id": 2356,
+"name": "Radiant Gloves"
+},
+{
+"id": 2408,
+"name": "Cloak of Shadows"
+},
+{
+"id": 2469,
+"name": "Guise of the Deceiver"
+},
+{
+"id": 2742,
+"name": "Brell's Girdle"
+},
+{
+"id": 4164,
+"name": "Rubicite Breastplate"
+},
+{
+"id": 4301,
+"name": "Skull-Shaped Barbute"
+},
+{
+"id": 4302,
+"name": "Crested Spaulders"
+},
+{
+"id": 4309,
+"name": "Mithril Breastplate"
+},
+{
+"id": 4394,
+"name": "Imbued Granite Spaulders"
+},
+{
+"id": 4405,
+"name": "Carnal Pauldrons"
+},
+{
+"id": 4406,
+"name": "Runed Mithril Bracer"
+},
+{
+"id": 4407,
+"name": "Golden Efreeti Boots"
+},
+{
+"id": 4408,
+"name": "Golden Chitin Bracer"
+},
+{
+"id": 4410,
+"name": "Black Chitin Leggings"
+},
+{
+"id": 4411,
+"name": "Mithril Vambraces"
+},
+{
+"id": 4501,
+"name": "Polished Mithril Torque"
+},
+{
+"id": 4504,
+"name": "Crown of King Tranix"
+},
+{
+"id": 4505,
+"name": "Polished Mithril Mask"
+},
+{
+"id": 4836,
+"name": "Lustrous Russet Greaves"
+},
+{
+"id": 4844,
+"name": "Umbral Platemail Bracer"
+},
+{
+"id": 4846,
+"name": "Umbral Platemail Greaves"
+},
+{
+"id": 4847,
+"name": "Umbral Platemail Boots"
+},
+{
+"id": 4851,
+"name": "Valorium Helmet"
+},
+{
+"id": 4853,
+"name": "Valorium Vambraces"
+},
+{
+"id": 4854,
+"name": "Valorium Bracers"
+},
+{
+"id": 4863,
+"name": "Imbrued Platemail Vambraces"
+},
+{
+"id": 4866,
+"name": "Imbrued Platemail Greaves"
+},
+{
+"id": 4881,
+"name": "Ethereal Mist Helm"
+},
+{
+"id": 4882,
+"name": "Ethereal Mist Chestplate"
+},
+{
+"id": 4884,
+"name": "Ethereal Mist Bracers"
+},
+{
+"id": 4893,
+"name": "Thorny Vine Vambraces"
+},
+{
+"id": 4894,
+"name": "Thorny Vine Bracer"
+},
+{
+"id": 4914,
+"name": "Indicolite Bracer"
+},
+{
+"id": 4916,
+"name": "Indicolite Greaves"
+},
+{
+"id": 4917,
+"name": "Indicolite Boots"
+},
+{
+"id": 5403,
+"name": "Ghoulbane"
+},
+{
+"id": 5410,
+"name": "Painbringer"
+},
+{
+"id": 5412,
+"name": "Razing Sword of Skarlon"
+},
+{
+"id": 5500,
+"name": "Short Sword of the Ykesha"
+},
+{
+"id": 5667,
+"name": "Earthshaker"
+},
+{
+"id": 5820,
+"name": "Shimmering Ruby Stiletto"
+},
+{
+"id": 6404,
+"name": "Staff of Writhing"
+},
+{
+"id": 6691,
+"name": "Mudman Enforcer"
+},
+{
+"id": 6692,
+"name": "Smoldering Brand"
+},
+{
+"id": 7257,
+"name": "Serpent's Tooth"
+},
+{
+"id": 7406,
+"name": "Shield of the Slain Unicorn"
+},
+{
+"id": 7507,
+"name": "Shrieking Ahlspiess"
+},
+{
+"id": 7834,
+"name": "Anthemion Armbands"
+},
+{
+"id": 8013,
+"name": "Throwing Boulder"
+},
+{
+"id": 8331,
+"name": "Turmoil Warts"
+},
+{
+"id": 8716,
+"name": "Gloomwater Arrow"
+},
+{
+"id": 9307,
+"name": "Shiny Brass Shield"
+},
+{
+"id": 9403,
+"name": "Trueheart Shield"
+},
+{
+"id": 9405,
+"name": "Prismatic Shield"
+},
+{
+"id": 10011,
+"name": "Carnelian"
+},
+{
+"id": 10012,
+"name": "Black Pearl"
+},
+{
+"id": 10015,
+"name": "Malachite"
+},
+{
+"id": 10018,
+"name": "Hematite"
+},
+{
+"id": 10019,
+"name": "Bloodstone"
+},
+{
+"id": 10020,
+"name": "Jasper"
+},
+{
+"id": 10024,
+"name": "Pearl"
+},
+{
+"id": 10025,
+"name": "Topaz"
+},
+{
+"id": 10027,
+"name": "Onyx"
+},
+{
+"id": 10028,
+"name": "Peridot"
+},
+{
+"id": 10029,
+"name": "Emerald"
+},
+{
+"id": 10031,
+"name": "Fire Opal"
+},
+{
+"id": 10032,
+"name": "Star Ruby"
+},
+{
+"id": 10034,
+"name": "Sapphire"
+},
+{
+"id": 10035,
+"name": "Ruby"
+},
+{
+"id": 10036,
+"name": "Black Sapphire"
+},
+{
+"id": 10037,
+"name": "Diamond"
+},
+{
+"id": 10053,
+"name": "Jacinth"
+},
+{
+"id": 10148,
+"name": "Serpentine Bracer"
+},
+{
+"id": 10150,
+"name": "Moonstone Ring"
+},
+{
+"id": 10151,
+"name": "Adamantite Band"
+},
+{
+"id": 10163,
+"name": "Platinum Skull Ring"
+},
+{
+"id": 10218,
+"name": "Crystalline Orb"
+},
+{
+"id": 10219,
+"name": "Rokyls Channelling Crystal"
+},
+{
+"id": 10366,
+"name": "Djarn's Amethyst Ring"
+},
+{
+"id": 10559,
+"name": "Mudwater Rune"
+},
+{
+"id": 11552,
+"name": "Shield of the Stalwart Seas"
+},
+{
+"id": 11553,
+"name": "Six Note Blade"
+},
+{
+"id": 11567,
+"name": "Staff of Elemental Mastery: Earth"
+},
+{
+"id": 11569,
+"name": "Staff of Elemental Mastery: Water"
+},
+{
+"id": 11570,
+"name": "Diamond Rod"
+},
+{
+"id": 11621,
+"name": "Cloak of Flames"
+},
+{
+"id": 11622,
+"name": "Red Dragon Scales"
+},
+{
+"id": 11624,
+"name": "Gauntlets of Fiery Might"
+},
+{
+"id": 11625,
+"name": "Orb of Tishan"
+},
+{
+"id": 11626,
+"name": "Selo`s Drums of the March"
+},
+{
+"id": 11628,
+"name": "Blight, Hammer of the Scourge"
+},
+{
+"id": 11631,
+"name": "Prayers of Life"
+},
+{
+"id": 11632,
+"name": "Bladestopper"
+},
+{
+"id": 11646,
+"name": "Amulet of Necropotence"
+},
+{
+"id": 11662,
+"name": "Staff of Undead Legions"
+},
+{
+"id": 12283,
+"name": "Decayed Helm"
+},
+{
+"id": 12284,
+"name": "Decayed Visor"
+},
+{
+"id": 12291,
+"name": "Decayed Right Gauntlet"
+},
+{
+"id": 12292,
+"name": "Decayed Left Gauntlet"
+},
+{
+"id": 12316,
+"name": "Code of Zan Fi"
+},
+{
+"id": 12317,
+"name": "The Idol"
+},
+{
+"id": 12504,
+"name": "Wand of Souls"
+},
+{
+"id": 12506,
+"name": "Wand of Swiftness"
+},
+{
+"id": 13005,
+"name": "Iron Ration"
+},
+{
+"id": 13006,
+"name": "Water Flask"
+},
+{
+"id": 13009,
+"name": "Bandages"
+},
+{
+"id": 13068,
+"name": "Bat Wing"
+},
+{
+"id": 13570,
+"name": "Torn Brown Shirt*"
+},
+{
+"id": 14214,
+"name": "Lucerne"
+},
+{
+"id": 14215,
+"name": "Sage Leaf"
+},
+{
+"id": 14216,
+"name": "Birthwort"
+},
+{
+"id": 14217,
+"name": "Fenugreek"
+},
+{
+"id": 14219,
+"name": "Mandrake Root"
+},
+{
+"id": 14221,
+"name": "Benzoin"
+},
+{
+"id": 14222,
+"name": "Night Shade"
+},
+{
+"id": 14228,
+"name": "Comfrey"
+},
+{
+"id": 14229,
+"name": "Blue Vervain Bulb"
+},
+{
+"id": 14230,
+"name": "Valerian Root"
+},
+{
+"id": 14313,
+"name": "Golem Metal Wand"
+},
+{
+"id": 14417,
+"name": "Potion of Accuracy"
+},
+{
+"id": 14428,
+"name": "Greater Potion of Accuracy"
+},
+{
+"id": 14434,
+"name": "Greater Potion of Heat"
+},
+{
+"id": 14701,
+"name": "Black Sapphire Electrum Earring"
+},
+{
+"id": 14707,
+"name": "Platinum Diamond Wedding Ring"
+},
+{
+"id": 14708,
+"name": "Split Paw Tooth Necklace"
+},
+{
+"id": 14762,
+"name": "Idol of the Underking"
+},
+{
+"id": 16552,
+"name": "White Hellebore"
+},
+{
+"id": 16848,
+"name": "Preserved Split Paw Eye"
+},
+{
+"id": 17005,
+"name": "Backpack"
+},
+{
+"id": 17353,
+"name": "Light Burlap Sack"
+},
+{
+"id": 17702,
+"name": "Treasure Hunter`s Satchel"
+},
+{
+"id": 17703,
+"name": "Darkwood Trunk"
+},
+{
+"id": 17811,
+"name": "Reinforced Medicine Bag"
+},
+{
+"id": 17880,
+"name": "Large Sewing Kit"
+},
+{
+"id": 17912,
+"name": "Jeweler's Kit"
+},
+{
+"id": 19004,
+"name": "Icon of the Ardent"
+},
+{
+"id": 19071,
+"name": "Torn, Burnt Book"
+},
+{
+"id": 20361,
+"name": "Splintered Wooden Key"
+},
+{
+"id": 20362,
+"name": "Charred Bone Key"
+},
+{
+"id": 20363,
+"name": "Smoked Glass Key"
+},
+{
+"id": 20631,
+"name": "Small Stone Key"
+},
+{
+"id": 20632,
+"name": "Polished Brass Key"
+},
+{
+"id": 20633,
+"name": "Scuffed Silver Key"
+},
+{
+"id": 20634,
+"name": "Cracked Glass Key"
+},
+{
+"id": 20655,
+"name": "Slime Blood of Cazic-Thule"
+},
+{
+"id": 20656,
+"name": "Eye of Innoruuk"
+},
+{
+"id": 20919,
+"name": "Efreeti's Key"
+},
+{
+"id": 22182,
+"name": "Yerbhimba"
+},
+{
+"id": 22503,
+"name": "Blue Diamond"
+},
+{
+"id": 22799,
+"name": "Kobold Meat"
+},
+{
+"id": 24086,
+"name": "Deepwater Ink"
+},
+{
+"id": 30367,
+"name": "Platinum Blue Diamond Tiara"
+},
+{
+"id": 32601,
+"name": "Backpack*"
+},
+{
+"id": 34914,
+"name": "Simple Sewing Needle"
+},
+{
+"id": 37869,
+"name": "Clivers"
+},
+{
+"id": 55603,
+"name": "Shadow Rage Sleeves"
+},
+{
+"id": 63089,
+"name": "Tattered Codex"
+},
+{
+"id": 93167,
+"name": "Small Vial"
+},
+{
+"id": 93168,
+"name": "Tregrum"
+},
+{
+"id": 93169,
+"name": "Gerti Blossom"
+},
+{
+"id": 93172,
+"name": "Arnworth"
+},
+{
+"id": 148590,
+"name": "Mote of Infinitesimal Potential"
+},
+{
+"id": 148591,
+"name": "Mote of Minor Potential"
+},
+{
+"id": 177708,
+"name": "Boots of the Long Road"
+},
+{
+"id": 177751,
+"name": "Spacious Rucksack"
+},
+{
+"id": 177773,
+"name": "The Baron's Blade"
+},
+{
+"id": 177797,
+"name": "Midnight Clad Wristbands"
+},
+{
+"id": 177860,
+"name": "Grimy Black Silk Robe"
+},
+{
+"id": 177914,
+"name": "Nisch Mas Ilkvel"
+},
+{
+"id": 177917,
+"name": "Brutish Breastplate"
+},
+{
+"id": 177920,
+"name": "Splitpaw Keepsake Ring"
+},
+{
+"id": 177931,
+"name": "Talisman of Kejaar Kerrath"
+}
+]

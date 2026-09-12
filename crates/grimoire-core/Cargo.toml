@@ -1,0 +1,17 @@
+[package]
+name = "grimoire-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "EQL Grimoire domain model: combine odds, quoting, regard, order lifecycle."
+
+[features]
+default = ["serde"]
+serde = ["dep:serde"]
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[dependencies]
+serde = { workspace = true, optional = true }

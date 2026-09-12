@@ -1,0 +1,37 @@
+stateDiagram-v2
+    direction TB
+
+    state "THE PAGE IS EMPTY" as Empty
+
+    state "LOOKING AT A THING" as Looking
+    Looking : You consider the Fine Plate Bracer.
+    Looking : he cons it and quotes the cheapest hand
+    Looking : commits nothing
+
+    state "THINGS ON THE PAGE" as Listed
+    Listed : mark toggles a line off
+    Listed : stepper changes a quantity
+    Listed : running total always visible
+
+    state "HE HAS NAMED HANDS" as Offered
+    Offered : not Grimtooth, and he re-quotes
+    Offered : who else, and he reads the roster
+    Offered : name a hand to pin him
+    Offered : changing the page forces a re-quote
+
+    state "SEALED AND SENT" as Sealed
+    Sealed : one order per hand
+    Sealed : vetoes and pins cleared
+
+    [*] --> Empty
+    Empty --> Looking : click a row, or type its name
+    Looking --> Empty : wanted none of it
+    Looking --> Listed : click the mark, or say add it
+    Empty --> Listed : click the mark on a row
+    Listed --> Looking : click another row
+    Listed --> Empty : last line removed
+    Listed --> Offered : Ask him to place it
+    Offered --> Listed : back to The page tab
+    Offered --> Empty : every line removed
+    Offered --> Sealed : Seal it
+    Sealed --> Empty : start over

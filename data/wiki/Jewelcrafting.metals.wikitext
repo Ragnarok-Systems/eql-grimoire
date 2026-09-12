@@ -1,0 +1,22 @@
+=== Metals ===
+There are five types of of metal bars. To create any jewelry with stats an Enchanter must enchant them.
+
+{| class="eoTable"
+|-
+! Unenchanted Bar
+! Enchanted Bar
+! Spell
+! Enc Level
+! Mana Cost
+! Material Cost (pp)
+|-
+| [[Silver Bar]]   || [[Enchanted Silver Bar]]   || [[Enchant Silver]]   || 8  || 60 || 0.503
+|-
+| [[Electrum Bar]] || [[Enchanted Electrum Bar]] || [[Enchant Electrum]] || 16 || 75 || 2.519
+|-
+| [[Gold Bar]]     || [[Enchanted Gold Bar]]     || [[Enchant Gold]]     || 24 || 150 || 10.079
+|-
+| [[Platinum Bar]] || [[Enchanted Platinum Bar]] || [[Enchant Platinum]] || 34 || 225 || 100.799
+|-
+| [[Velium Bar]]   || [[Enchanted Velium Bar]]   || [[Enchant Velium]]   || 44 || 200 || 251.999
+|}

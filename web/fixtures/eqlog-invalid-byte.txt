@@ -1,0 +1,23 @@
+# eqlog-invalid-byte.txt -- PROVENANCE, and the planted byte.
+#
+# THIS INPUT IS PARTLY SYNTHETIC AND THIS COMMENT IS WHERE IT SAYS SO.
+#
+# The three log lines below are real: they were lifted whole out of
+# eqlog-tail-200k.txt, which is itself a slice of a real client log (see that
+# file for its own provenance and its name scrub).
+#
+# One byte in the middle line is NOT real. A single 0xC3 was spliced in by hand
+# immediately before a space. 0xC3 opens a two-byte UTF-8 sequence and 0x20
+# cannot continue one, so the pair is not decodable and must produce exactly one
+# replacement character and a replacement count of exactly one. Nothing else in
+# this file is above 0x7F.
+#
+# The offset the byte was planted at is recorded below, and the test asserts it
+# rather than searching for it, so an accidental re-cut of this fixture that
+# moved the byte would fail loudly instead of quietly testing something else.
+#
+# PLANTED: one 0xC3 at byte offset 1139 of this file.
+#
+[Wed Jul 15 23:16:50 2026] You frenzy on a dry bone skeleton for 22 points of damage.
+[Wed Jul 15 23:16:50 2026] You cleave a dry bone skeleton√ for 54 points of damage.
+[Wed Jul 15 23:16:51 2026] Tanefilo slashes a lurking mummy for 40 points of damage.

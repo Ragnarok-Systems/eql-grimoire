@@ -1,0 +1,311 @@
+=== Recipes listed by trivial ===
+{| class="wikitable sortable"
+|-
+! Trivial !! Recipe !! Func. !! Type !! Effect !! Ing. 1 !! Ing. 2 !! Ing. 3 !! Ing. 4 !! Ing. 5 !! Ing. 6 !! Ing. 7 !! Ing. 8
+|-
+| 17 || [[Potion of Lesser Cohesion]] || Buff || Stat || Stamina, Dexterity || [[Sage Leaf]] || [[Fenugreek]] ||  ||  ||  ||  ||  ||
+|-
+| 17 || [[Potion of Lesser Stability]] || Buff || Stat || Stamina, Strength || [[Lucerne]] || [[Sage Leaf]] ||  ||  ||  ||  ||  ||
+|-
+| 17 || [[Potion of Lesser Vigor]] || Buff || Stat || Strength, Agility || [[Lucerne]] || [[Birthwort]] ||  ||  ||  ||  ||  ||
+|-
+| 22 || [[Potion of Charming Deceit]] || Buff || Stat || Charisma || [[Mugwart]] || [[Undead Froglok Tongue]] ||  ||  ||  ||  ||  ||
+|-
+| 22 || [[Potion of Lesser Accuracy]] || Buff || Stat || Agility, Dexterity || [[Birthwort]] || [[Fenugreek]] ||  ||  ||  ||  ||  ||
+|-
+| 22 || [[Potion of Lesser Adroitness]] || Buff || Stat || Agility, Stamina || [[Sage Leaf]] || [[Birthwort]] ||  ||  ||  ||  ||  ||
+|-
+| 22 || [[Potion of Lesser Power]] || Buff || Stat || Dexterity, Strength || [[Lucerne]] || [[Fenugreek]] ||  ||  ||  ||  ||  ||
+|-
+| 27 || [[Minor Null Potion]] || Buff || Resist || Magic, Dexterity || [[Fenugreek]] || [[Mandrake Root]] ||  ||  ||  ||  ||  ||
+|-
+| 27 || [[Minor Potion of Antibody]] || Buff || Resist || Disease || [[Maidenhair Fern]] || [[Mullein]] ||  ||  ||  ||  ||  ||
+|-
+| 27 || [[Minor Potion of Cold]] || Buff || Resist || Fire, Agility || [[Birthwort]] || [[Allspice]] ||  ||  ||  ||  ||  ||
+|-
+| 31 || [[Distillate of Alacrity I]] || Buff || Combat || Haste || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Arnworth]] ||  ||
+|-
+| 31 || [[Distillate of Celestial Healing I]] || Utility || Regen || Health || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Gerti Blossom]] ||  ||
+|-
+| 31 || [[Distillate of Clarity I]] || Utility || Regen || Mana || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Katuka Bark]] ||  ||
+|-
+| 31 || [[Distillate of Divine Healing I]] || Utility || Heal || Health || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Tregrum]] ||  ||
+|-
+| 31 || [[Distillate of Replenishment I]] || Utility || Regen || Health || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Clivers]] ||  ||
+|-
+| 31 || [[Distillate of Spirituality I]] || Utility || Regen || Mana, Health || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Methysticum]] ||  ||
+|-
+| 32 || [[Minor Potion of Heat]] || Buff || Resist || Cold, Stamina || [[Sage Leaf]] || [[Benzoin]] ||  ||  ||  ||  ||  ||
+|-
+| 32 || [[Minor Potion of Purity]] || Buff || Resist || Poison, Strength || [[Lucerne]] || [[Night Shade]] ||  ||  ||  ||  ||  ||
+|-
+| 37 || [[Blood of the Wolf]] || Buff || Utility || Movement Speed || [[Birthwort]] || [[Fenugreek]] || [[Wolf Blood]] ||  ||  ||  ||  ||
+|-
+| 37 || [[Potion of Lesser Rejuvenation]] || Buff || Regen || Health || [[Lucerne]] || [[Sage Leaf]] || [[Yarrow]] ||  ||  ||  ||  ||
+|-
+| 37 || [[Potion of Wolves Blood]] || Buff || Utility || Night Vision || [[High Quality Wolf Skin]] || [[Sticklewort]] ||  ||  ||  ||  ||  ||
+|-
+| 41 || [[Distillate of Alacrity II]] || Buff || Combat || Haste || [[Pixie Dust]] || [[Thorny Ergot]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Arnworth]]
+|-
+| 41 || [[Distillate of Celestial Healing II]] || Utility || Regen || Health || [[Pixie Dust]] || [[Thorny Ergot]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Gerti Blossom]]
+|-
+| 41 || [[Distillate of Clarity II]] || Utility || Regen || Mana || [[Pixie Dust]] || [[Thorny Ergot]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Katuka Bark]]
+|-
+| 41 || [[Distillate of Divine Healing II]] || Utility || Heal || Health || [[Pixie Dust]] || [[Thorny Ergot]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Tregrum]]
+|-
+| 41 || [[Distillate of Replenishment II]] || Utility || Regen || Health || [[Pixie Dust]] || [[Thorny Ergot]] || [[Clivers]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]]
+|-
+| 41 || [[Distillate of Spirituality II]] || Utility || Regen || Mana, Health || [[Pixie Dust]] || [[Thorny Ergot]] || [[Methysticum]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]]
+|-
+| 42 || [[Potion of Frosty Insurgency]] || Buff || Resist || Cold || [[Polar Bear Skin]] || [[Bistort]] ||  ||  ||  ||  ||  ||
+|-
+| 42 || [[Potion of Unlife Awareness]] || Utility || Invisibility || Undead || [[Elderberry]] || [[Fennel]] ||  ||  ||  ||  ||  ||
+|-
+| 47 || [[Potion of Aquatic Haunt]] || Buff || Utility || Water Breathing || [[Jatamasi]] || [[Hydrangea]] ||  ||  ||  ||  ||  ||
+|-
+| 47 || [[Potion of Fleeting Languor]] || Buff || Utility || Night Vision || [[White Wolf Skin]] || [[Burdock Root]] ||  ||  ||  ||  ||  ||
+|-
+| 47 || [[Potion of Gorging Toxin]] || Utility || Cure || Poison || [[Giant Wasp Venom Sac]] || [[Boneset]] ||  ||  ||  ||  ||  ||
+|-
+| 47 || [[Potion of Negation]] || Utility || Dispel || Magic || [[Mercury]] || [[Mystic Ash]] ||  ||  ||  ||  ||  ||
+|-
+| 50 || [[Benefit Awareness I]] || Buff || Mana Cost || Beneficial || [[Sage Leaf]] || [[Sumbul]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 50 || [[Cold Awareness I]] || Buff || Mana Cost || Cold || [[Benzoin]] || [[Sumbul]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 50 || [[Disease Awareness I]] || Buff || Mana Cost || Disease || [[Birthwort]] || [[Sumbul]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 50 || [[Magic Awareness I]] || Buff || Mana Cost || Magic || [[Mandrake Root]] || [[Sumbul]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 50 || [[Poison Awareness I]] || Buff || Mana Cost || Poison || [[Night Shade]] || [[Sumbul]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 51 || [[Heat Awareness I]] || Buff || Mana Cost || Fire || [[Lucerne]] || [[Sumbul]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 52 || [[Kilva's Blistering Flesh]] || Buff || Combat || Damage Shield || [[Clubmoss]] || [[Jatamasi]] ||  ||  ||  ||  ||  ||
+|-
+| 52 || [[Potion Skin of Ro]] || Buff || Resist || Fire || [[Vox's Dust]] || [[Fire Drake Scale]] ||  ||  ||  ||  ||  ||
+|-
+| 52 || [[Potion of Antiweight]] || Buff || Utility || Levitation || [[Sumbul]] || [[Hydrangea]] ||  ||  ||  ||  ||  ||
+|-
+| 57 || [[Ethira's Poison Antidote]] || Utility || Cure || Poison || [[Hyssop]] || [[Lady's Mantle]] ||  ||  ||  ||  ||  ||
+|-
+| 57 || [[Kithar's Disease Treatment]] || Utility || Cure || Disease || [[Echinacea]] || [[Lady's Mantle]] ||  ||  ||  ||  ||  ||
+|-
+| 57 || [[Potion of Gnomish Boils]] || Buff || Utility || Night Vision || [[Bat Fur]] || [[Eyebright]] ||  ||  ||  ||  ||  ||
+|-
+| 62 || [[Distillate of Alacrity III]] || Buff || Combat || Haste || [[Red Hellebore]] || [[Amanita Phalloide]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Arnworth]]
+|-
+| 62 || [[Distillate of Celestial Healing III]] || Buff || Regen || Health || [[Red Hellebore]] || [[Amanita Phalloide]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Gerti Blossom]]
+|-
+| 62 || [[Distillate of Clarity III]] || Buff || Regen || Mana || [[Red Hellebore]] || [[Amanita Phalloide]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Katuka Bark]]
+|-
+| 62 || [[Distillate of Divine Healing III]] || Utility || Heal || Health || [[Red Hellebore]] || [[Amanita Phalloide]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Tregrum]]
+|-
+| 62 || [[Distillate of Replenishment III]] || Buff || Regen || Health || [[Red Hellebore]] || [[Amanita Phalloide]] || [[Clivers]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]]
+|-
+| 62 || [[Distillate of Spirituality III]] || Buff || Regen || Mana, Health || [[Red Hellebore]] || [[Amanita Phalloide]] || [[Methysticum]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]]
+|-
+| 63 || [[Potion of Vox's Vitality]] || Buff || Utility || Water Breathing || [[Froglok Leg]] || [[Sea Spirit]] ||  ||  ||  ||  ||  ||
+|-
+| 63 || [[Serpent's Conviction]] || Buff || Utility || Night Vision || [[Fennel]] || [[Eucalyptus Leaf]] ||  ||  ||  ||  ||  ||
+|-
+| 63 || [[Turtle's Drink]] || Buff || Combat || Armor Class || [[Clubmoss]] || [[Sumbul]] ||  ||  ||  ||  ||  ||
+|-
+| 70 || [[Ant's Potion]] || Utility || Utility || Shrink || [[Sumbul]] || [[Celandine Herb]] ||  ||  ||  ||  ||  ||
+|-
+| 70 || [[Vial of Tamed Mercury]] || Buff || Combat || Haste || [[Mercury]] || [[Comfrey]] ||  ||  ||  ||  ||  ||
+|-
+| 76 || [[Potion of Cohesion]] || Buff || Stat || Stamina, Dexterity || [[Sage Leaf]] || [[Fenugreek]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 76 || [[Potion of Stability]] || Buff || Stat || Stamina, Strength || [[Lucerne]] || [[Sage Leaf]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 76 || [[Potion of Vigor]] || Buff || Stat || Strength, Agility || [[Lucerne]] || [[Birthwort]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 83 || [[Potion of Accuracy]] || Buff || Stat || Agility, Dexterity || [[Birthwort]] || [[Fenugreek]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 83 || [[Potion of Adroitness]] || Buff || Stat || Agility, Stamina || [[Sage Leaf]] || [[Birthwort]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 83 || [[Potion of Gulon's Impunity]] || Buff || Utility || Levitation || [[Lightstone]] || [[Ground Figwort]] ||  ||  ||  ||  ||  ||
+|-
+| 83 || [[Potion of Power]] || Buff || Stat || Dexterity, Strength || [[Lucerne]] || [[Fenugreek]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 88 || [[Distillate of Alacrity IV]] || Buff || Combat || Haste || [[White Hellebore]] || [[Snakes Head Iris]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Arnworth]]
+|-
+| 88 || [[Distillate of Celestial Healing IV]] || Buff || Regen || Health || [[White Hellebore]] || [[Snakes Head Iris]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Gerti Blossom]]
+|-
+| 88 || [[Distillate of Clarity IV]] || Buff || Regen || Mana || [[White Hellebore]] || [[Snakes Head Iris]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Katuka Bark]]
+|-
+| 88 || [[Distillate of Divine Healing IV]] || Utility || Heal || Health || [[White Hellebore]] || [[Snakes Head Iris]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Tregrum]]
+|-
+| 88 || [[Distillate of Replenishment IV]] || Utility || Regen || Health || [[White Hellebore]] || [[Snakes Head Iris]] || [[Clivers]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]]
+|-
+| 88 || [[Distillate of Spirituality IV]] || Buff || Regen || Mana, Health || [[White Hellebore]] || [[Snakes Head Iris]] || [[Methysticum]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]]
+|-
+| 90 || [[Null Potion]] || Buff || Resist || Magic, Dexterity || [[Fenugreek]] || [[Mandrake Root]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 90 || [[Potion of Antibody]] || Buff || Resist || Disease || [[Maidenhair Fern]] || [[Mullein]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 90 || [[Potion of Copal's Demis]] || Utility || Dispel || Magic || [[Horehound]] || [[Evil Eye Eyestalk]] ||  ||  ||  ||  ||  ||
+|-
+| 96 || [[Potion of Cold]] || Buff || Resist || Fire, Agility || [[Birthwort]] || [[Allspice]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 96 || [[Potion of Heat]] || Buff || Resist || Cold, Stamina || [[Sage Leaf]] || [[Benzoin]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 103 || [[Potion of Purity]] || Buff || Resist || Poison, Strength || [[Lucerne]] || [[Night Shade]] || [[Blue Vervain Bulb]] ||  ||  ||  ||  ||
+|-
+| 103 || [[Potion of Rejuvenation]] || Buff || Regen || Health || [[Lucerne]] || [[Sage Leaf]] || [[Figwort]] ||  ||  ||  ||  ||
+|-
+| 103 || [[Potion of Shumar's Breath]] || Buff || Resist || Magic || [[Horehound]] || [[Vampire Dust]] ||  ||  ||  ||  ||  ||
+|-
+| 110 || [[Potion of Spirit Shield]] || Buff || Stat || Armor Class || [[Clubmoss]] || [[Sumbul]] || [[Clover]] ||  ||  ||  ||  ||
+|-
+| 116 || [[Benefit Awareness II]] || Buff || Mana Cost || Beneficial || [[Sage Leaf]] || [[Elderberry]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 116 || [[Cold Awareness II]] || Buff || Mana Cost || Cold || [[Benzoin]] || [[Elderberry]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 116 || [[Disease Awareness II]] || Buff || Mana Cost || Disease || [[Birthwort]] || [[Elderberry]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 116 || [[Heat Awareness II]] || Buff || Mana Cost || Fire || [[Lucerne]] || [[Elderberry]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 116 || [[Magic Awareness II]] || Buff || Mana Cost || Magic || [[Mandrake Root]] || [[Elderberry]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 116 || [[Poison Awareness II]] || Buff || Mana Cost || Poison || [[Night Shade]] || [[Elderberry]] || [[Aloe]] ||  ||  ||  ||  ||
+|-
+| 116 || [[Potion of Vampiric Spirit]] || Utility || Convert || Health to Mana || [[Feverfew]] || [[Griffon Feathers]] ||  ||  ||  ||  ||  ||
+|-
+| 123 || [[Greater Potion of Negation]] || Utility || Dispel || Magic || [[Mercury]] || [[Mystic Ash]] || [[Mystic Ash]] ||  ||  ||  ||  ||
+|-
+| 123 || [[Potion of Wrackbane]] || Utility || Convert || Mana to Health || [[Mammoth Meat]] || [[Woundwart]] ||  ||  ||  ||  ||  ||
+|-
+| 136 || [[Kilva's Skin of Flame]] || Buff || Utility || Damage Shield || [[Clubmoss]] || [[Jatamasi]] || [[Clover]] ||  ||  ||  ||  ||
+|-
+| 136 || [[Potion of Prince's Root]] || Utility || Cure || Poison || [[Giant Wasp Venom Sac]] || [[Elf Leaf]] ||  ||  ||  ||  ||  ||
+|-
+| 143 || [[Greater Potion of Cohesion]] || Buff || Stat || Stamina, Dexterity || [[Sage Leaf]] || [[Fenugreek]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 143 || [[Greater Potion of Stability]] || Buff || Stat || Stamina, Strength || [[Lucerne]] || [[Sage Leaf]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 143 || [[Greater Potion of Vigor]] || Buff || Stat || Strength, Agility || [[Lucerne]] || [[Birthwort]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 150 || [[Greater Potion of Accuracy]] || Buff || Stat || Agility, Dexterity || [[Birthwort]] || [[Fenugreek]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 150 || [[Greater Potion of Adroitness]] || Buff || Stat || Agility, Stamina || [[Sage Leaf]] || [[Birthwort]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 150 || [[Greater Potion of Power]] || Buff || Stat || Dexterity, Strength || [[Lucerne]] || [[Fenugreek]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 156 || [[Greater Null Potion]] || Buff || Resist || Magic, Dexterity || [[Fenugreek]] || [[Mandrake Root]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 156 || [[Greater Potion of Antibody]] || Buff || Resist || Disease || [[Maidenhair Fern]] || [[Mullein]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 156 || [[Greater Potion of Cold]] || Buff || Resist || Fire, Agility || [[Birthwort]] || [[Allspice]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 162 || [[Distillate of Alacrity VI]] || Buff || Combat || Haste || [[Mugwart]] || [[Black Henbane]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Arnworth]]
+|-
+| 162 || [[Distillate of Celestial Healing VI]] || Buff || Regen || Health || [[Mugwart]] || [[Black Henbane]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Gerti Blossom]]
+|-
+| 162 || [[Distillate of Clarity VI]] || Buff || Regen || Mana || [[Mugwart]] || [[Black Henbane]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Katuka Bark]]
+|-
+| 162 || [[Distillate of Divine Healing VI]] || Utility || Heal || Health || [[Mugwart]] || [[Black Henbane]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Tregrum]]
+|-
+| 162 || [[Distillate of Replenishment VI]] || Buff || Regen || Health || [[Mugwart]] || [[Black Henbane]] || [[Clivers]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]]
+|-
+| 162 || [[Distillate of Spirituality VI]] || Buff || Regen || Mana, Health || [[Mugwart]] || [[Black Henbane]] || [[Methysticum]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]] || [[Small Vial]]
+|-
+| 162 || [[Essence of Barbarian (Wormwood)]] || Utility || Illusion || Barbarian || [[Barbarian Meat]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 162 || [[Essence of Erudite (Wormwood)]] || Utility || Illusion || Erudite || [[Erudite Meat]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 162 || [[Essence of Human (Wormwood)]] || Utility || Illusion || Human || [[Wormwood]] || [[Human Parts]] ||  ||  ||  ||  ||  ||
+|-
+| 163 || [[Greater Potion of Heat]] || Buff || Resist || Cold, Stamina || [[Sage Leaf]] || [[Benzoin]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 163 || [[Greater Potion of Purity]] || Buff || Resist || Poison, Strength || [[Lucerne]] || [[Night Shade]] || [[Valerian Root]] ||  ||  ||  ||  ||
+|-
+| 163 || [[Potion of Greater Rejuvenation]] || Buff || Regen || Health || [[Lucerne]] || [[Sage Leaf]] || [[Agrimony]] ||  ||  ||  ||  ||
+|-
+| 163 || [[Potion of Hathcoat's Spirit]] || Utility || Dispel || Magic || [[Larkspur]] || [[Evil Eye Eyestalk]] ||  ||  ||  ||  ||  ||
+|-
+| 164 || [[Essence of Dark Elf (Wormwood)]] || Utility || Illusion || Dark Elf || [[Dark Elf Parts]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 164 || [[Essence of Ogre (Wormwood)]] || Utility || Illusion || Ogre || [[Ogre Meat]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 164 || [[Essence of Wood Elf (Wormwood)]] || Utility || Illusion || Wood Elf || [[Wood Elf Parts]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 166 || [[Essence of Half Elf (Wormwood)]] || Utility || Illusion || Half Elf || [[Half Elf Meat]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 167 || [[Essence of Gukta (Wormwood)]] || Utility || Illusion || Guktan || [[Wormwood]] || [[Froglok Blood]] ||  ||  ||  ||  ||  ||
+|-
+| 168 || [[Essence of High Elf (Wormwood)]] || Utility || Illusion || High Elf || [[High Elf Parts]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 170 || [[Adrenaline Tap]] || Buff || Combat || Haste || [[Dhea]] || [[Comfrey]] ||  ||  ||  ||  ||  ||
+|-
+| 170 || [[Essence of Halfling (Wormwood)]] || Utility || Illusion || Halfling || [[Halfling Parts]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 170 || [[Potion of the Frost]] || Utility || Teleport || Everfrost Peaks || [[Heliotrope]] || [[Oakmoss]] ||  ||  ||  ||  ||  ||
+|-
+| 170 || [[Potion of the Swamp]] || Utility || Teleport || Innothule Swamp || [[Heliotrope]] || [[Bladderwrack]] ||  ||  ||  ||  ||  ||
+|-
+| 171 || [[Essence of Dwarf (Wormwood)]] || Utility || Illusion || Dwarf || [[Dwarf Meat]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 172 || [[Essence of Gnome (Wormwood)]] || Utility || Illusion || Gnome || [[Gnome Meat]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 174 || [[Essence of Troll (Wormwood)]] || Utility || Illusion || Troll || [[Troll Parts]] || [[Wormwood]] ||  ||  ||  ||  ||  ||
+|-
+| 176 || [[Gate Potion]] || Utility || Teleport || Gate || [[Heliotrope]] || [[Heliotrope]] || [[Heliotrope]] ||  ||  ||  ||  ||
+|-
+| 180 || [[Titan Potion]] || Utility || Utility || Grow || [[Tri-Fern Leaf]] || [[Maliak Leaf]] ||  ||  ||  ||  ||  ||
+|-
+| 187 || [[Army Ant Potion]] || Utility || Utility || Shrink || [[Valerian Root]] || [[Sumbul]] || [[Celandine Herb]] || [[Feverfew]] ||  ||  ||  ||
+|-
+| 191 || [[Hawks Eye Tonic]] || Buff || Stat || Archery || [[Tri-Fern Leaf]] || [[Star Reach Clover]] ||  ||  ||  ||  ||  ||
+|-
+| 196 || [[Benefit Awareness III]] || Buff || Mana Cost || Beneficial || [[Sage Leaf]] || [[Figwort]] || [[Briar Thistle]] ||  ||  ||  ||  ||
+|-
+| 196 || [[Cold Awareness III]] || Buff || Mana Cost || Cold || [[Benzoin]] || [[Figwort]] || [[Briar Thistle]] ||  ||  ||  ||  ||
+|-
+| 196 || [[Disease Awareness III]] || Buff || Mana Cost || Disease || [[Birthwort]] || [[Figwort]] || [[Briar Thistle]] ||  ||  ||  ||  ||
+|-
+| 196 || [[Heat Awareness III]] || Buff || Mana Cost || Fire || [[Lucerne]] || [[Figwort]] || [[Briar Thistle]] ||  ||  ||  ||  ||
+|-
+| 196 || [[Magic Awareness III]] || Buff || Mana Cost || Magic || [[Mandrake Root]] || [[Figwort]] || [[Briar Thistle]] ||  ||  ||  ||  ||
+|-
+| 196 || [[Poison Awareness III]] || Buff || Mana Cost || Poison || [[Night Shade]] || [[Figwort]] || [[Briar Thistle]] ||  ||  ||  ||  ||
+|-
+| 202 || [[Essence of Froglok]] || Utility || Illusion || Froglok || [[Wormwood]] || [[Green Froglok Skin]] ||  ||  ||  ||  ||  ||
+|-
+| 202 || [[Mystical Infusion]] || Buff || Stat || Mana || [[Sickle Leaf]] || [[Sickle Leaf]] ||  ||  ||  ||  ||  ||
+|-
+| 212 || [[Elixir of Concentration]] || Buff || Regen || Mana || [[Violet Tri-Tube Sap]] || [[Yerbhimba]] ||  ||  ||  ||  ||  ||
+|-
+| 223 || [[Elixir of Divine Endurance]] || Buff || Resist || All || [[Betherium Bark]] || [[Blade Leaf]] ||  ||  ||  ||  ||  ||
+|-
+| 228 || [[Benefit Awareness IV]] || Buff || Mana Cost || Beneficial || [[Sage Leaf]] || [[Dhea]] || [[Agrimony]] || [[Clover]] || [[Briar Thistle]] ||  ||  ||
+|-
+| 228 || [[Cold Awareness IV]] || Buff || Mana Cost || Cold || [[Benzoin]] || [[Dhea]] || [[Agrimony]] || [[Clover]] || [[Briar Thistle]] ||  ||  ||
+|-
+| 228 || [[Disease Awareness IV]] || Buff || Mana Cost || Disease || [[Birthwort]] || [[Dhea]] || [[Agrimony]] || [[Clover]] || [[Briar Thistle]] ||  ||  ||
+|-
+| 228 || [[Heat Awareness IV]] || Buff || Mana Cost || Fire || [[Lucerne]] || [[Dhea]] || [[Agrimony]] || [[Clover]] || [[Briar Thistle]] ||  ||  ||
+|-
+| 228 || [[Magic Awareness IV]] || Buff || Mana Cost || Magic || [[Mandrake Root]] || [[Dhea]] || [[Agrimony]] || [[Clover]] || [[Briar Thistle]] ||  ||  ||
+|-
+| 228 || [[Poison Awareness IV]] || Buff || Mana Cost || Poison || [[Night Shade]] || [[Dhea]] || [[Agrimony]] || [[Clover]] || [[Briar Thistle]] ||  ||  ||
+|-
+| 234 || [[Greater Mystical Infusion]] || Buff || Stat || Mana || [[Sickle Leaf]] || [[Yerbhimba]] ||  ||  ||  ||  ||  ||
+|-
+| 244 || [[Elixir of Greater Concentration]] || Buff || Regen || Mana || [[Violet Tri-Tube Sap]] || [[Duskglow Vine]] ||  ||  ||  ||  ||  ||
+|-
+| 255 || [[Potion of Mystical Aptitude]] || Buff || Resist || Fizzles || [[Yerbhimba]] || [[Duskglow Vine]] ||  ||  ||  ||  ||  ||
+|-
+| 302 || [[Distillate of Alacrity IX]] || Buff || Combat || Haste || [[Comfrey]] || [[Deepwater Ink]] || [[Arnworth]]|| [[Small Vial]] x 5 || || || ||
+|-
+| 302 || [[Distillate of Celestial Healing IX]] || Buff || Regen || Health || [[Comfrey]] || [[Deepwater Ink]] || [[Gerti Blossom]]|| [[Small Vial]] x 5 || || || ||
+|-
+| 302 || [[Distillate of Clarity IX]] || Buff || Regen || Mana || [[Comfrey]] || [[Deepwater Ink]] || [[Katuka Bark]]|| [[Small Vial]] x 5 || || || ||
+|-
+| 302 || [[Distillate of Divine Healing IX]] || Utility || Heal || Health || [[Comfrey]] || [[Deepwater Ink]] || [[Tregrum]]|| [[Small Vial]] x 5 || || || ||
+|-
+| 302 || [[Distillate of Replenishment IX]] || Buff || Regen || Health || [[Comfrey]] || [[Deepwater Ink]] || [[Clivers]] || [[Small Vial]] x 5 || || || ||
+|-
+| 302 || [[Distillate of Spirituality IX]] || Buff || Regen || Mana, Health || [[Comfrey]] || [[Deepwater Ink]] || [[Methysticum]] || [[Small Vial]] x 5 || || || || [[Small Vial]]
+|}

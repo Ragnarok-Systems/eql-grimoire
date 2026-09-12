@@ -1,0 +1,7 @@
+//! Purity fixture: prose only. This comment names all four banned namespaces —
+//! `std::fs`, `std::net`, `std::env` and `std::time` — without any code using any of them.
+//! It should produce zero scanner violations.
+
+pub fn safe_addition(a: i32, b: i32) -> i32 {
+    a + b
+}

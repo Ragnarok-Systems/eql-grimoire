@@ -1,0 +1,78 @@
+=== Reagent Pricing ===
+<span style="color:#ee0000">'''Needs updating'''</span>
+
+{| class="eoTable2 sortable" style="width:50%;"
+! Reagent || Plat || Gold || Silver || Copper
+|-
+| [[Agrimony]]||132||2||9||9
+|-
+| [[Allspice]]||2||6||4||5
+|-
+| [[Balm Leaves]] || 66 || 8 || 4 || 0
+|-
+| [[Benzoin]]||2||6||4||5
+|-
+| [[Birthwort]]||2||6||4||5
+|-
+| [[Bladderwrack]]||135||4||7||5
+|-
+| [[Blue Vervain Bulb]]||8||4||6||7
+|-
+| [[Celandine Herb]]||8||4||6||7
+|-
+| [[Clover]]||22||4||9||0
+|-
+| [[Clubmoss]]||8||4||6||7
+|-
+| [[Comfrey]]||33||0||7||4
+|-
+| [[Dhea]]||39||6||8||9
+|-
+| [[Echinacea]]||6||7||7||3
+|-
+| [[Elderberry]]||10||5||8||3
+|-
+| [[Eucalyptus Leaf]]||6||7||7||6
+|-
+| [[Fennel]]||3||3||8||5
+|-
+| [[Fenugreek]]||2||6||4||9
+|-
+| [[Figwort]]||66||1||4||5
+|-
+| [[Heliotrope]]||135||4||7||4
+|-
+| [[Hydrangea]]||11||8||5||3
+|-
+| [[Hyssop]]||6||7||7||6
+|-
+| [[Jatamasi]]||6||7||7||5
+|-
+| [[Lady's Mantle]]||3||3||8||6
+|-
+| [[Lucerne]]||2||6||4||5
+|-
+| [[Maidenhair Fern]]||2||6||4||5
+|-
+| [[Mandrake Root]]||2||6||4||5
+|-
+| [[Mercury]]||10||1||6||0
+|-
+| [[Mullein]]||2||6||4||5
+|-
+| [[Mystic Ash]]||20||3||2||1
+|-
+| [[Night Shade]]||2||6||4||5
+|-
+| [[Oakmoss]]||135||4||7||5
+|-
+| [[Sage Leaf]]||2||6||4||8
+|-
+| [[Sumbul]]||6||7||7||3
+|-
+| [[Valerian Root]]||27||5||1||8
+|-
+| [[Wolf Blood]]||1||0||5||8
+|-
+| [[Yarrow]]||25||1||9||9
+|}

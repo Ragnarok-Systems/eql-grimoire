@@ -1,0 +1,2350 @@
+{
+"source": "eqlog_Reviir_{qeynos,freeport,neriak}.txt",
+"character": "Reviir",
+"skill_of": {
+"Electrum Malachite Bracelet": "Jewelry Making",
+"Electrum Lapis Lazuli Earring": "Jewelry Making",
+"Electrum Turquoise Engagement Ring": "Jewelry Making",
+"Electrum Bloodstone Necklace": "Jewelry Making",
+"Electrum Onyx Pendant": "Jewelry Making",
+"Electrum Jasper Earring": "Jewelry Making",
+"Electrum Carnelian Wedding Ring": "Jewelry Making",
+"Electrum Amber Earring": "Jewelry Making",
+"Jaded Electrum Bracelet": "Jewelry Making",
+"Electrum Pearl Choker": "Jewelry Making",
+"Topaz Electrum Earring": "Jewelry Making",
+"Gold Malachite Bracelet": "Jewelry Making",
+"Gold Lapis Lazuli Earring": "Jewelry Making",
+"Golden Hematite Choker": "Jewelry Making",
+"Gold Carnelian Wedding Ring": "Jewelry Making",
+"Golden Jaded Bracelet": "Jewelry Making",
+"Golden Topaz Earring": "Jewelry Making",
+"Golden Opal Amulet": "Jewelry Making",
+"Golden Ruby Ring": "Jewelry Making",
+"Golden Fire Wedding Ring": "Jewelry Making",
+"Potion of Accuracy": "Alchemy",
+"Greater Potion of Accuracy": "Alchemy",
+"Elixir of Concentration": "Alchemy",
+"Elixir of Greater Concentration": "Alchemy",
+"Potion of Mystical Aptitude": "Alchemy",
+"Reinforced Medicine Bag": "Tailoring"
+},
+"obs": [
+[
+"Electrum Amber Earring",
+97,
+1,
+1
+],
+[
+"Electrum Amber Earring",
+98,
+3,
+1
+],
+[
+"Electrum Amber Earring",
+100,
+2,
+2
+],
+[
+"Electrum Amber Earring",
+104,
+1,
+1
+],
+[
+"Electrum Bloodstone Necklace",
+82,
+2,
+1
+],
+[
+"Electrum Bloodstone Necklace",
+84,
+1,
+1
+],
+[
+"Electrum Bloodstone Necklace",
+85,
+3,
+2
+],
+[
+"Electrum Bloodstone Necklace",
+86,
+1,
+0
+],
+[
+"Electrum Bloodstone Necklace",
+87,
+1,
+1
+],
+[
+"Electrum Carnelian Wedding Ring",
+92,
+1,
+0
+],
+[
+"Electrum Carnelian Wedding Ring",
+93,
+1,
+0
+],
+[
+"Electrum Carnelian Wedding Ring",
+94,
+1,
+1
+],
+[
+"Electrum Carnelian Wedding Ring",
+95,
+1,
+1
+],
+[
+"Electrum Carnelian Wedding Ring",
+100,
+1,
+1
+],
+[
+"Electrum Jasper Earring",
+90,
+1,
+0
+],
+[
+"Electrum Jasper Earring",
+91,
+1,
+1
+],
+[
+"Electrum Jasper Earring",
+92,
+4,
+4
+],
+[
+"Electrum Lapis Lazuli Earring",
+75,
+3,
+2
+],
+[
+"Electrum Lapis Lazuli Earring",
+76,
+6,
+3
+],
+[
+"Electrum Malachite Bracelet",
+21,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+22,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+23,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+24,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+26,
+2,
+1
+],
+[
+"Electrum Malachite Bracelet",
+27,
+2,
+0
+],
+[
+"Electrum Malachite Bracelet",
+28,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+29,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+30,
+1,
+1
+],
+[
+"Electrum Malachite Bracelet",
+31,
+2,
+1
+],
+[
+"Electrum Malachite Bracelet",
+32,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+34,
+2,
+1
+],
+[
+"Electrum Malachite Bracelet",
+35,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+36,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+37,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+39,
+2,
+1
+],
+[
+"Electrum Malachite Bracelet",
+41,
+1,
+1
+],
+[
+"Electrum Malachite Bracelet",
+42,
+1,
+1
+],
+[
+"Electrum Malachite Bracelet",
+43,
+2,
+1
+],
+[
+"Electrum Malachite Bracelet",
+44,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+45,
+7,
+4
+],
+[
+"Electrum Malachite Bracelet",
+47,
+3,
+1
+],
+[
+"Electrum Malachite Bracelet",
+49,
+3,
+2
+],
+[
+"Electrum Malachite Bracelet",
+50,
+2,
+1
+],
+[
+"Electrum Malachite Bracelet",
+51,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+52,
+2,
+0
+],
+[
+"Electrum Malachite Bracelet",
+53,
+3,
+2
+],
+[
+"Electrum Malachite Bracelet",
+54,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+56,
+1,
+1
+],
+[
+"Electrum Malachite Bracelet",
+57,
+1,
+1
+],
+[
+"Electrum Malachite Bracelet",
+58,
+2,
+1
+],
+[
+"Electrum Malachite Bracelet",
+59,
+2,
+0
+],
+[
+"Electrum Malachite Bracelet",
+60,
+3,
+1
+],
+[
+"Electrum Malachite Bracelet",
+61,
+1,
+0
+],
+[
+"Electrum Malachite Bracelet",
+63,
+1,
+1
+],
+[
+"Electrum Malachite Bracelet",
+64,
+1,
+1
+],
+[
+"Electrum Malachite Bracelet",
+65,
+1,
+1
+],
+[
+"Electrum Malachite Bracelet",
+66,
+2,
+1
+],
+[
+"Electrum Malachite Bracelet",
+67,
+2,
+2
+],
+[
+"Electrum Malachite Bracelet",
+68,
+2,
+1
+],
+[
+"Electrum Malachite Bracelet",
+70,
+2,
+1
+],
+[
+"Electrum Malachite Bracelet",
+71,
+1,
+1
+],
+[
+"Electrum Malachite Bracelet",
+72,
+1,
+1
+],
+[
+"Electrum Malachite Bracelet",
+73,
+2,
+2
+],
+[
+"Electrum Malachite Bracelet",
+74,
+3,
+2
+],
+[
+"Electrum Onyx Pendant",
+88,
+2,
+1
+],
+[
+"Electrum Onyx Pendant",
+89,
+1,
+0
+],
+[
+"Electrum Onyx Pendant",
+90,
+5,
+5
+],
+[
+"Electrum Pearl Choker",
+106,
+2,
+0
+],
+[
+"Electrum Pearl Choker",
+108,
+5,
+5
+],
+[
+"Electrum Turquoise Engagement Ring",
+76,
+3,
+1
+],
+[
+"Electrum Turquoise Engagement Ring",
+77,
+2,
+0
+],
+[
+"Electrum Turquoise Engagement Ring",
+78,
+1,
+0
+],
+[
+"Electrum Turquoise Engagement Ring",
+79,
+2,
+0
+],
+[
+"Elixir of Concentration",
+146,
+1,
+0
+],
+[
+"Elixir of Concentration",
+147,
+5,
+2
+],
+[
+"Elixir of Concentration",
+148,
+2,
+0
+],
+[
+"Elixir of Concentration",
+149,
+3,
+0
+],
+[
+"Elixir of Concentration",
+150,
+20,
+6
+],
+[
+"Elixir of Concentration",
+151,
+5,
+1
+],
+[
+"Elixir of Concentration",
+152,
+1,
+0
+],
+[
+"Elixir of Concentration",
+153,
+15,
+7
+],
+[
+"Elixir of Concentration",
+154,
+10,
+7
+],
+[
+"Elixir of Concentration",
+155,
+1,
+0
+],
+[
+"Elixir of Concentration",
+156,
+5,
+1
+],
+[
+"Elixir of Concentration",
+157,
+10,
+3
+],
+[
+"Elixir of Concentration",
+158,
+2,
+1
+],
+[
+"Elixir of Concentration",
+159,
+10,
+3
+],
+[
+"Elixir of Concentration",
+160,
+5,
+2
+],
+[
+"Elixir of Concentration",
+161,
+1,
+0
+],
+[
+"Elixir of Concentration",
+162,
+2,
+1
+],
+[
+"Elixir of Concentration",
+163,
+3,
+1
+],
+[
+"Elixir of Concentration",
+164,
+7,
+4
+],
+[
+"Elixir of Concentration",
+165,
+9,
+5
+],
+[
+"Elixir of Concentration",
+166,
+20,
+10
+],
+[
+"Elixir of Concentration",
+167,
+6,
+5
+],
+[
+"Elixir of Concentration",
+168,
+11,
+6
+],
+[
+"Elixir of Concentration",
+169,
+3,
+2
+],
+[
+"Elixir of Concentration",
+170,
+3,
+3
+],
+[
+"Elixir of Concentration",
+171,
+2,
+1
+],
+[
+"Elixir of Concentration",
+172,
+3,
+1
+],
+[
+"Elixir of Concentration",
+173,
+4,
+2
+],
+[
+"Elixir of Concentration",
+174,
+6,
+5
+],
+[
+"Elixir of Concentration",
+175,
+2,
+2
+],
+[
+"Elixir of Concentration",
+176,
+5,
+2
+],
+[
+"Elixir of Concentration",
+177,
+2,
+1
+],
+[
+"Elixir of Concentration",
+179,
+6,
+3
+],
+[
+"Elixir of Concentration",
+180,
+2,
+1
+],
+[
+"Elixir of Concentration",
+181,
+7,
+5
+],
+[
+"Elixir of Concentration",
+182,
+6,
+6
+],
+[
+"Elixir of Concentration",
+183,
+7,
+6
+],
+[
+"Elixir of Concentration",
+184,
+13,
+12
+],
+[
+"Elixir of Concentration",
+185,
+7,
+5
+],
+[
+"Elixir of Concentration",
+186,
+9,
+5
+],
+[
+"Elixir of Concentration",
+187,
+1,
+1
+],
+[
+"Elixir of Concentration",
+188,
+11,
+6
+],
+[
+"Elixir of Concentration",
+189,
+5,
+5
+],
+[
+"Elixir of Concentration",
+190,
+12,
+10
+],
+[
+"Elixir of Concentration",
+191,
+3,
+2
+],
+[
+"Elixir of Concentration",
+192,
+3,
+3
+],
+[
+"Elixir of Concentration",
+193,
+3,
+3
+],
+[
+"Elixir of Concentration",
+194,
+24,
+18
+],
+[
+"Elixir of Greater Concentration",
+194,
+4,
+1
+],
+[
+"Elixir of Greater Concentration",
+195,
+18,
+7
+],
+[
+"Elixir of Greater Concentration",
+196,
+3,
+2
+],
+[
+"Elixir of Greater Concentration",
+197,
+20,
+13
+],
+[
+"Elixir of Greater Concentration",
+198,
+1,
+1
+],
+[
+"Elixir of Greater Concentration",
+199,
+2,
+1
+],
+[
+"Elixir of Greater Concentration",
+200,
+11,
+10
+],
+[
+"Elixir of Greater Concentration",
+201,
+4,
+2
+],
+[
+"Elixir of Greater Concentration",
+202,
+5,
+3
+],
+[
+"Elixir of Greater Concentration",
+203,
+7,
+3
+],
+[
+"Elixir of Greater Concentration",
+205,
+13,
+9
+],
+[
+"Elixir of Greater Concentration",
+206,
+6,
+5
+],
+[
+"Elixir of Greater Concentration",
+207,
+3,
+3
+],
+[
+"Gold Carnelian Wedding Ring",
+162,
+1,
+1
+],
+[
+"Gold Carnelian Wedding Ring",
+163,
+9,
+6
+],
+[
+"Gold Carnelian Wedding Ring",
+165,
+2,
+2
+],
+[
+"Gold Carnelian Wedding Ring",
+166,
+2,
+2
+],
+[
+"Gold Lapis Lazuli Earring",
+146,
+1,
+0
+],
+[
+"Gold Lapis Lazuli Earring",
+147,
+1,
+1
+],
+[
+"Gold Lapis Lazuli Earring",
+148,
+1,
+1
+],
+[
+"Gold Malachite Bracelet",
+111,
+2,
+0
+],
+[
+"Gold Malachite Bracelet",
+112,
+1,
+0
+],
+[
+"Gold Malachite Bracelet",
+113,
+3,
+3
+],
+[
+"Gold Malachite Bracelet",
+114,
+1,
+1
+],
+[
+"Gold Malachite Bracelet",
+115,
+1,
+1
+],
+[
+"Gold Malachite Bracelet",
+116,
+1,
+1
+],
+[
+"Gold Malachite Bracelet",
+117,
+3,
+2
+],
+[
+"Gold Malachite Bracelet",
+118,
+1,
+1
+],
+[
+"Gold Malachite Bracelet",
+119,
+1,
+1
+],
+[
+"Gold Malachite Bracelet",
+120,
+6,
+5
+],
+[
+"Gold Malachite Bracelet",
+121,
+2,
+1
+],
+[
+"Gold Malachite Bracelet",
+122,
+4,
+2
+],
+[
+"Gold Malachite Bracelet",
+123,
+2,
+2
+],
+[
+"Gold Malachite Bracelet",
+124,
+2,
+1
+],
+[
+"Gold Malachite Bracelet",
+125,
+3,
+3
+],
+[
+"Gold Malachite Bracelet",
+126,
+1,
+1
+],
+[
+"Gold Malachite Bracelet",
+127,
+2,
+2
+],
+[
+"Gold Malachite Bracelet",
+128,
+6,
+5
+],
+[
+"Gold Malachite Bracelet",
+129,
+2,
+1
+],
+[
+"Gold Malachite Bracelet",
+130,
+2,
+1
+],
+[
+"Gold Malachite Bracelet",
+131,
+5,
+5
+],
+[
+"Gold Malachite Bracelet",
+132,
+2,
+1
+],
+[
+"Gold Malachite Bracelet",
+134,
+5,
+5
+],
+[
+"Gold Malachite Bracelet",
+135,
+2,
+2
+],
+[
+"Gold Malachite Bracelet",
+136,
+8,
+6
+],
+[
+"Gold Malachite Bracelet",
+137,
+1,
+1
+],
+[
+"Gold Malachite Bracelet",
+138,
+6,
+3
+],
+[
+"Gold Malachite Bracelet",
+139,
+3,
+3
+],
+[
+"Gold Malachite Bracelet",
+140,
+4,
+3
+],
+[
+"Gold Malachite Bracelet",
+142,
+2,
+2
+],
+[
+"Gold Malachite Bracelet",
+143,
+1,
+1
+],
+[
+"Gold Malachite Bracelet",
+144,
+6,
+6
+],
+[
+"Gold Malachite Bracelet",
+145,
+1,
+1
+],
+[
+"Gold Malachite Bracelet",
+146,
+6,
+4
+],
+[
+"Golden Fire Wedding Ring",
+177,
+2,
+2
+],
+[
+"Golden Fire Wedding Ring",
+178,
+1,
+1
+],
+[
+"Golden Fire Wedding Ring",
+179,
+7,
+7
+],
+[
+"Golden Fire Wedding Ring",
+190,
+14,
+14
+],
+[
+"Golden Fire Wedding Ring",
+191,
+6,
+6
+],
+[
+"Golden Fire Wedding Ring",
+192,
+6,
+5
+],
+[
+"Golden Fire Wedding Ring",
+193,
+1,
+1
+],
+[
+"Golden Fire Wedding Ring",
+194,
+6,
+6
+],
+[
+"Golden Fire Wedding Ring",
+195,
+11,
+10
+],
+[
+"Golden Hematite Choker",
+151,
+2,
+1
+],
+[
+"Golden Hematite Choker",
+152,
+1,
+0
+],
+[
+"Golden Hematite Choker",
+153,
+1,
+1
+],
+[
+"Golden Hematite Choker",
+154,
+3,
+3
+],
+[
+"Golden Jaded Bracelet",
+166,
+2,
+1
+],
+[
+"Golden Jaded Bracelet",
+167,
+2,
+2
+],
+[
+"Golden Jaded Bracelet",
+168,
+2,
+2
+],
+[
+"Golden Jaded Bracelet",
+169,
+10,
+10
+],
+[
+"Golden Jaded Bracelet",
+170,
+6,
+5
+],
+[
+"Golden Opal Amulet",
+173,
+17,
+11
+],
+[
+"Golden Opal Amulet",
+174,
+1,
+1
+],
+[
+"Golden Opal Amulet",
+175,
+5,
+5
+],
+[
+"Golden Opal Amulet",
+176,
+5,
+4
+],
+[
+"Golden Opal Amulet",
+183,
+1,
+1
+],
+[
+"Golden Opal Amulet",
+184,
+23,
+21
+],
+[
+"Golden Opal Amulet",
+185,
+13,
+12
+],
+[
+"Golden Opal Amulet",
+186,
+1,
+1
+],
+[
+"Golden Opal Amulet",
+187,
+14,
+13
+],
+[
+"Golden Opal Amulet",
+188,
+7,
+7
+],
+[
+"Golden Opal Amulet",
+189,
+10,
+10
+],
+[
+"Golden Opal Amulet",
+190,
+1,
+1
+],
+[
+"Golden Ruby Ring",
+179,
+4,
+2
+],
+[
+"Golden Ruby Ring",
+180,
+1,
+0
+],
+[
+"Golden Topaz Earring",
+168,
+2,
+1
+],
+[
+"Golden Topaz Earring",
+169,
+5,
+5
+],
+[
+"Golden Topaz Earring",
+170,
+2,
+2
+],
+[
+"Golden Topaz Earring",
+175,
+9,
+8
+],
+[
+"Golden Topaz Earring",
+177,
+6,
+6
+],
+[
+"Golden Topaz Earring",
+178,
+1,
+1
+],
+[
+"Golden Topaz Earring",
+180,
+9,
+8
+],
+[
+"Golden Topaz Earring",
+181,
+3,
+3
+],
+[
+"Golden Topaz Earring",
+182,
+2,
+2
+],
+[
+"Golden Topaz Earring",
+183,
+1,
+1
+],
+[
+"Greater Potion of Accuracy",
+83,
+1,
+0
+],
+[
+"Greater Potion of Accuracy",
+85,
+2,
+1
+],
+[
+"Greater Potion of Accuracy",
+86,
+2,
+1
+],
+[
+"Greater Potion of Accuracy",
+87,
+2,
+1
+],
+[
+"Greater Potion of Accuracy",
+88,
+1,
+0
+],
+[
+"Greater Potion of Accuracy",
+90,
+2,
+1
+],
+[
+"Greater Potion of Accuracy",
+91,
+3,
+0
+],
+[
+"Greater Potion of Accuracy",
+92,
+3,
+2
+],
+[
+"Greater Potion of Accuracy",
+93,
+2,
+0
+],
+[
+"Greater Potion of Accuracy",
+94,
+1,
+0
+],
+[
+"Greater Potion of Accuracy",
+96,
+2,
+1
+],
+[
+"Greater Potion of Accuracy",
+97,
+5,
+1
+],
+[
+"Greater Potion of Accuracy",
+98,
+3,
+1
+],
+[
+"Greater Potion of Accuracy",
+99,
+1,
+0
+],
+[
+"Greater Potion of Accuracy",
+100,
+1,
+0
+],
+[
+"Greater Potion of Accuracy",
+101,
+2,
+1
+],
+[
+"Greater Potion of Accuracy",
+102,
+5,
+2
+],
+[
+"Greater Potion of Accuracy",
+103,
+2,
+0
+],
+[
+"Greater Potion of Accuracy",
+104,
+1,
+0
+],
+[
+"Greater Potion of Accuracy",
+105,
+6,
+3
+],
+[
+"Greater Potion of Accuracy",
+106,
+3,
+1
+],
+[
+"Greater Potion of Accuracy",
+107,
+1,
+1
+],
+[
+"Greater Potion of Accuracy",
+108,
+2,
+1
+],
+[
+"Greater Potion of Accuracy",
+110,
+3,
+2
+],
+[
+"Greater Potion of Accuracy",
+111,
+4,
+1
+],
+[
+"Greater Potion of Accuracy",
+112,
+1,
+0
+],
+[
+"Greater Potion of Accuracy",
+113,
+2,
+0
+],
+[
+"Greater Potion of Accuracy",
+114,
+1,
+1
+],
+[
+"Greater Potion of Accuracy",
+115,
+3,
+1
+],
+[
+"Greater Potion of Accuracy",
+116,
+1,
+0
+],
+[
+"Greater Potion of Accuracy",
+117,
+2,
+2
+],
+[
+"Greater Potion of Accuracy",
+118,
+3,
+1
+],
+[
+"Greater Potion of Accuracy",
+119,
+7,
+5
+],
+[
+"Greater Potion of Accuracy",
+120,
+2,
+1
+],
+[
+"Greater Potion of Accuracy",
+121,
+2,
+1
+],
+[
+"Greater Potion of Accuracy",
+122,
+12,
+6
+],
+[
+"Greater Potion of Accuracy",
+123,
+2,
+0
+],
+[
+"Greater Potion of Accuracy",
+124,
+4,
+3
+],
+[
+"Greater Potion of Accuracy",
+125,
+2,
+1
+],
+[
+"Greater Potion of Accuracy",
+126,
+4,
+2
+],
+[
+"Greater Potion of Accuracy",
+127,
+9,
+6
+],
+[
+"Greater Potion of Accuracy",
+128,
+5,
+2
+],
+[
+"Greater Potion of Accuracy",
+130,
+11,
+8
+],
+[
+"Greater Potion of Accuracy",
+132,
+5,
+3
+],
+[
+"Greater Potion of Accuracy",
+133,
+4,
+4
+],
+[
+"Greater Potion of Accuracy",
+134,
+1,
+1
+],
+[
+"Greater Potion of Accuracy",
+135,
+3,
+1
+],
+[
+"Greater Potion of Accuracy",
+136,
+1,
+0
+],
+[
+"Greater Potion of Accuracy",
+137,
+1,
+1
+],
+[
+"Greater Potion of Accuracy",
+138,
+1,
+1
+],
+[
+"Greater Potion of Accuracy",
+139,
+2,
+2
+],
+[
+"Greater Potion of Accuracy",
+140,
+9,
+7
+],
+[
+"Greater Potion of Accuracy",
+141,
+1,
+1
+],
+[
+"Greater Potion of Accuracy",
+142,
+1,
+1
+],
+[
+"Greater Potion of Accuracy",
+143,
+6,
+5
+],
+[
+"Greater Potion of Accuracy",
+144,
+1,
+1
+],
+[
+"Greater Potion of Accuracy",
+145,
+3,
+3
+],
+[
+"Greater Potion of Accuracy",
+146,
+15,
+13
+],
+[
+"Jaded Electrum Bracelet",
+101,
+1,
+1
+],
+[
+"Jaded Electrum Bracelet",
+102,
+2,
+1
+],
+[
+"Jaded Electrum Bracelet",
+103,
+1,
+1
+],
+[
+"Jaded Electrum Bracelet",
+104,
+3,
+2
+],
+[
+"Jaded Electrum Bracelet",
+105,
+1,
+1
+],
+[
+"Jaded Electrum Bracelet",
+106,
+3,
+3
+],
+[
+"Potion of Accuracy",
+21,
+2,
+0
+],
+[
+"Potion of Accuracy",
+22,
+1,
+0
+],
+[
+"Potion of Accuracy",
+23,
+2,
+0
+],
+[
+"Potion of Accuracy",
+24,
+1,
+0
+],
+[
+"Potion of Accuracy",
+25,
+1,
+0
+],
+[
+"Potion of Accuracy",
+26,
+1,
+0
+],
+[
+"Potion of Accuracy",
+27,
+1,
+0
+],
+[
+"Potion of Accuracy",
+28,
+2,
+1
+],
+[
+"Potion of Accuracy",
+29,
+1,
+0
+],
+[
+"Potion of Accuracy",
+30,
+1,
+0
+],
+[
+"Potion of Accuracy",
+31,
+1,
+0
+],
+[
+"Potion of Accuracy",
+32,
+1,
+0
+],
+[
+"Potion of Accuracy",
+33,
+1,
+0
+],
+[
+"Potion of Accuracy",
+34,
+1,
+0
+],
+[
+"Potion of Accuracy",
+35,
+2,
+1
+],
+[
+"Potion of Accuracy",
+36,
+1,
+0
+],
+[
+"Potion of Accuracy",
+37,
+1,
+0
+],
+[
+"Potion of Accuracy",
+38,
+1,
+0
+],
+[
+"Potion of Accuracy",
+39,
+1,
+0
+],
+[
+"Potion of Accuracy",
+40,
+1,
+0
+],
+[
+"Potion of Accuracy",
+41,
+1,
+0
+],
+[
+"Potion of Accuracy",
+42,
+1,
+0
+],
+[
+"Potion of Accuracy",
+44,
+3,
+1
+],
+[
+"Potion of Accuracy",
+45,
+3,
+2
+],
+[
+"Potion of Accuracy",
+46,
+1,
+0
+],
+[
+"Potion of Accuracy",
+48,
+1,
+1
+],
+[
+"Potion of Accuracy",
+49,
+1,
+1
+],
+[
+"Potion of Accuracy",
+50,
+5,
+2
+],
+[
+"Potion of Accuracy",
+51,
+3,
+1
+],
+[
+"Potion of Accuracy",
+52,
+2,
+0
+],
+[
+"Potion of Accuracy",
+53,
+1,
+0
+],
+[
+"Potion of Accuracy",
+54,
+1,
+0
+],
+[
+"Potion of Accuracy",
+56,
+4,
+1
+],
+[
+"Potion of Accuracy",
+57,
+1,
+0
+],
+[
+"Potion of Accuracy",
+58,
+2,
+0
+],
+[
+"Potion of Accuracy",
+59,
+1,
+0
+],
+[
+"Potion of Accuracy",
+60,
+1,
+0
+],
+[
+"Potion of Accuracy",
+61,
+3,
+1
+],
+[
+"Potion of Accuracy",
+62,
+2,
+1
+],
+[
+"Potion of Accuracy",
+63,
+1,
+0
+],
+[
+"Potion of Accuracy",
+65,
+1,
+1
+],
+[
+"Potion of Accuracy",
+66,
+1,
+1
+],
+[
+"Potion of Accuracy",
+67,
+2,
+2
+],
+[
+"Potion of Accuracy",
+68,
+2,
+2
+],
+[
+"Potion of Accuracy",
+69,
+4,
+2
+],
+[
+"Potion of Accuracy",
+71,
+3,
+2
+],
+[
+"Potion of Accuracy",
+72,
+1,
+0
+],
+[
+"Potion of Accuracy",
+73,
+2,
+0
+],
+[
+"Potion of Accuracy",
+74,
+2,
+1
+],
+[
+"Potion of Accuracy",
+76,
+1,
+1
+],
+[
+"Potion of Accuracy",
+77,
+1,
+1
+],
+[
+"Potion of Accuracy",
+78,
+1,
+1
+],
+[
+"Potion of Accuracy",
+79,
+2,
+2
+],
+[
+"Potion of Accuracy",
+80,
+2,
+1
+],
+[
+"Potion of Accuracy",
+81,
+1,
+0
+],
+[
+"Potion of Accuracy",
+82,
+1,
+1
+],
+[
+"Potion of Accuracy",
+83,
+17,
+10
+],
+[
+"Potion of Mystical Aptitude",
+194,
+1,
+1
+],
+[
+"Potion of Mystical Aptitude",
+207,
+9,
+7
+],
+[
+"Potion of Mystical Aptitude",
+208,
+14,
+7
+],
+[
+"Potion of Mystical Aptitude",
+209,
+3,
+3
+],
+[
+"Potion of Mystical Aptitude",
+210,
+3,
+3
+],
+[
+"Potion of Mystical Aptitude",
+211,
+7,
+6
+],
+[
+"Potion of Mystical Aptitude",
+212,
+6,
+5
+],
+[
+"Potion of Mystical Aptitude",
+213,
+2,
+1
+],
+[
+"Potion of Mystical Aptitude",
+214,
+15,
+13
+],
+[
+"Potion of Mystical Aptitude",
+216,
+27,
+18
+],
+[
+"Potion of Mystical Aptitude",
+217,
+14,
+13
+],
+[
+"Potion of Mystical Aptitude",
+218,
+5,
+4
+],
+[
+"Potion of Mystical Aptitude",
+219,
+4,
+4
+],
+[
+"Potion of Mystical Aptitude",
+220,
+2,
+1
+],
+[
+"Potion of Mystical Aptitude",
+221,
+4,
+4
+],
+[
+"Potion of Mystical Aptitude",
+222,
+7,
+5
+],
+[
+"Potion of Mystical Aptitude",
+223,
+1,
+1
+],
+[
+"Potion of Mystical Aptitude",
+224,
+24,
+23
+],
+[
+"Potion of Mystical Aptitude",
+225,
+10,
+7
+],
+[
+"Potion of Mystical Aptitude",
+226,
+23,
+21
+],
+[
+"Potion of Mystical Aptitude",
+227,
+8,
+8
+],
+[
+"Potion of Mystical Aptitude",
+228,
+2,
+2
+],
+[
+"Potion of Mystical Aptitude",
+229,
+1,
+1
+],
+[
+"Potion of Mystical Aptitude",
+230,
+2,
+2
+],
+[
+"Potion of Mystical Aptitude",
+231,
+23,
+21
+],
+[
+"Potion of Mystical Aptitude",
+232,
+8,
+6
+],
+[
+"Potion of Mystical Aptitude",
+233,
+19,
+16
+],
+[
+"Potion of Mystical Aptitude",
+234,
+26,
+25
+],
+[
+"Potion of Mystical Aptitude",
+235,
+30,
+30
+],
+[
+"Potion of Mystical Aptitude",
+236,
+1,
+1
+],
+[
+"Potion of Mystical Aptitude",
+237,
+2,
+2
+],
+[
+"Reinforced Medicine Bag",
+22,
+1,
+0
+],
+[
+"Reinforced Medicine Bag",
+24,
+1,
+0
+],
+[
+"Reinforced Medicine Bag",
+26,
+1,
+0
+],
+[
+"Reinforced Medicine Bag",
+27,
+1,
+0
+],
+[
+"Reinforced Medicine Bag",
+28,
+1,
+0
+],
+[
+"Reinforced Medicine Bag",
+30,
+2,
+1
+],
+[
+"Reinforced Medicine Bag",
+32,
+1,
+1
+],
+[
+"Topaz Electrum Earring",
+108,
+1,
+0
+],
+[
+"Topaz Electrum Earring",
+109,
+3,
+3
+],
+[
+"Topaz Electrum Earring",
+110,
+2,
+1
+]
+],
+"triv_hi": {
+"Electrum Malachite Bracelet": 74,
+"Electrum Lapis Lazuli Earring": 76,
+"Electrum Bloodstone Necklace": 87,
+"Electrum Onyx Pendant": 90,
+"Electrum Jasper Earring": 92,
+"Electrum Carnelian Wedding Ring": 100,
+"Electrum Amber Earring": 100,
+"Jaded Electrum Bracelet": 106,
+"Electrum Pearl Choker": 108,
+"Gold Malachite Bracelet": 146,
+"Golden Hematite Choker": 154,
+"Potion of Accuracy": 83
+},
+"triv_lo": {
+"Electrum Malachite Bracelet": 74,
+"Electrum Lapis Lazuli Earring": 76,
+"Electrum Turquoise Engagement Ring": 79,
+"Electrum Bloodstone Necklace": 86,
+"Electrum Onyx Pendant": 89,
+"Electrum Jasper Earring": 92,
+"Electrum Carnelian Wedding Ring": 95,
+"Electrum Amber Earring": 100,
+"Jaded Electrum Bracelet": 106,
+"Electrum Pearl Choker": 108,
+"Topaz Electrum Earring": 110,
+"Gold Malachite Bracelet": 146,
+"Gold Lapis Lazuli Earring": 148,
+"Golden Hematite Choker": 154,
+"Gold Carnelian Wedding Ring": 166,
+"Golden Jaded Bracelet": 170,
+"Golden Topaz Earring": 183,
+"Golden Opal Amulet": 190,
+"Golden Fire Wedding Ring": 195,
+"Golden Ruby Ring": 180,
+"Potion of Accuracy": 83,
+"Greater Potion of Accuracy": 146,
+"Elixir of Concentration": 194,
+"Potion of Mystical Aptitude": 237,
+"Elixir of Greater Concentration": 207,
+"Reinforced Medicine Bag": 32
+}
+}

@@ -1,0 +1,6 @@
+//! Fixture: a bare `std::fs` call, unmistakably impure. Never compiled — see the double
+//! extension — and never picked up by the real-tree scan, which only looks for `.rs`.
+
+pub fn read_something(path: &str) -> Vec<u8> {
+    std::fs::read(path).unwrap()
+}

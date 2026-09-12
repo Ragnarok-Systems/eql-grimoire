@@ -1,0 +1,46 @@
+# WHAT IT DOES. On any pull request from someone who has not signed, the action posts a comment
+# asking them to reply with one sentence. Their reply is recorded in signatures/version1/cla.json on
+# the cla-signatures branch, and the pull request gets a passing check. Signed contributors are never
+# asked again. Nothing leaves GitHub: there is no third-party service.
+#
+# SETUP THIS RELIES ON:
+#   - The action is pinned to a commit SHA, not a tag (release audit item 38).
+#   - A branch named cla-signatures exists to hold the signatures.
+#   - "CLA Assistant" is a required status check on master, so an unsigned pull request cannot merge.
+#   - No secret: the signatures live in this same repository, so the built-in GITHUB_TOKEN is enough.
+name: CLA
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, closed, synchronize]
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    # Only run for the signing comment or for pull request events, never for ordinary chatter.
+    if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA') || github.event_name == 'pull_request_target'
+    steps:
+      - name: CLA check
+        uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          path-to-signatures: signatures/version1/cla.json
+          path-to-document: https://github.com/Ragnarok-Systems/eql-grimoire/blob/master/CLA.md
+          branch: cla-signatures
+          allowlist: James-McMenamin,dependabot[bot],github-actions[bot]
+          custom-notsigned-prcomment: |
+            Thanks for the pull request. Before it can be merged, please read the
+            [Contributor Licence Agreement](https://github.com/Ragnarok-Systems/eql-grimoire/blob/master/CLA.md)
+            and sign it by posting a comment on this pull request with exactly this sentence:
+          custom-pr-sign-comment: 'I have read the CLA Document and I hereby sign the CLA'
+          custom-allsigned-prcomment: 'All contributors have signed the CLA. Thank you.'
+          lock-pullrequest-aftermerge: false

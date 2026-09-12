@@ -1,0 +1,47 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/grimoire-core",
+    "crates/grimoire-parse",
+    "crates/grimoire-corpus",
+    "crates/grimoire-forge",
+    "crates/grimoire-wasm",
+    "crates/grimoire-desktop",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "AGPL-3.0-only"
+repository = "https://github.com/Ragnarok-Systems/eql-grimoire"
+authors = ["James McMenamin"]
+
+[workspace.dependencies]
+grimoire-core = { path = "crates/grimoire-core", default-features = false }
+grimoire-parse = { path = "crates/grimoire-parse" }
+grimoire-corpus = { path = "crates/grimoire-corpus" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# The combat parser ships a 200 MB/s throughput floor as a test (see
+# crates/grimoire-forge/tests/combat_throughput.rs), and `cargo test` builds the dev profile. A
+# parser compiled at opt-level 0 measures the compiler rather than the code: the same corpus runs
+# at 73 MB/s unoptimised and 435 MB/s with this override, so without it the floor would fail on
+# code that is three times faster than it needs to be. A release build is not the answer either,
+# because the release profile above sets panic = "abort" and the test harness needs unwinding to
+# link.
+#
+# One package, deliberately. Only the crate being measured is optimised; the test harness that
+# drives it stays at opt-level 0 and stays debuggable, which means the number the test prints is
+# a floor on the parser rather than a flattering one. Debug assertions, overflow checks and debug
+# info are untouched everywhere.
+[profile.dev.package.grimoire-parse]
+opt-level = 3

@@ -1,0 +1,951 @@
+# RELEASE
+#
+# Cuts a Grimoire release: builds the Windows binary, proves it carries none of the build
+# machine's paths, signs it with the project's minisign key, and publishes it to the R2 bucket
+# the updater reads and to a GitHub Release that a human can download by hand.
+#
+# THIS IS A SEPARATE FILE FROM ci.yml ON PURPOSE. ci.yml runs on ubuntu-latest and ci.sh builds
+# no Windows binary at all, which is exactly why wry, webview2-com and windows-core sit behind
+# [target.'cfg(windows)'.dependencies] in crates/grimoire-desktop/Cargo.toml. Teaching the CI job
+# to also cut releases would mean one job with two runners and two meanings. This job is the only
+# thing in the repository that may write to the update bucket.
+#
+# THE SHAPE OF THE THING IT PUBLISHES is decided in the updater spec, not here. One object per
+# channel at grimoire/<channel>/latest.json, carrying the manifest as a JSON *string* plus the
+# minisign signature over exactly those bytes, so that no re-serialization anywhere in the
+# pipeline can invalidate a signature. This file assembles that object and never pretty-prints,
+# reformats or round-trips the manifest string after it has been signed.
+#
+# WHAT A HUMAN MUST HAVE DONE BEFORE THIS FILE CAN PUBLISH ANYTHING is in RELEASING.md at the
+# repository root. The short version: the minisign public key must already be compiled into the
+# app (crates/grimoire-desktop/src/updater/verify.rs) before the first binary reaches anyone,
+# because a shipped binary trusts what it was built with and there is no channel by which it can
+# ever be taught a new key. This job refuses to run if that key is missing, and refuses to run if
+# the private key in the secret does not match it.
+
+name: Release
+
+on:
+  push:
+    # Matches v0.2.0 and also v0.2.0-beta.1, since GitHub tag filters are globs and a semver
+    # pre-release is just more characters after the patch number. Which of the two it is decides
+    # the channel, in the "Decide what this run publishes" step below.
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build, scan, sign and self-check, but publish nothing"
+        type: boolean
+        default: true
+
+# contents: write is needed by `gh release create` and by nothing else in this job. The updater
+# spec asked for contents: read, which was written before publishing a GitHub Release was part of
+# the job. Nothing here writes to the repository's git history; the only write is the release.
+permissions:
+  contents: write
+
+# Two tags pushed close together would otherwise race on one mutable object, grimoire/<channel>/
+# latest.json, and the loser of that race decides what every client sees. cancel-in-progress is
+# false because cancelling a run that has already uploaded an artifact but not yet the pointer
+# leaves the bucket in the one state this pipeline is designed to avoid.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: pwsh
+
+env:
+  # The bucket and the host are not secrets. They are printed in the manifest that every client
+  # downloads, so hiding them here would be theatre while the account id, which identifies the
+  # Cloudflare account rather than the public product, stays a secret.
+  R2_BUCKET: grimoire-updates
+  PUBLIC_BASE: https://updates.ragnarok.systems
+
+  # HOW LONG A SIGNED MANIFEST STAYS VALID AFTER IT IS PUBLISHED.
+  #
+  # A POLICY, NOT A MEASUREMENT, AND IT IS NOT DRESSED AS ONE. The client's other replay defence is
+  # the stored `published` floor, and that floor is empty exactly where it is needed most: a fresh
+  # install, a machine whose update\state.json was lost, and the first check after a channel
+  # switch all have nothing stored. Without an expiry, a correctly signed envelope captured today
+  # is a valid document for ever, and re-serving it needs the bucket credentials rather than the
+  # signing key, which is a strictly weaker thing to get hold of.
+  #
+  # Forty-five days is chosen against two facts about this pipeline rather than against a
+  # measurement: clients check every six hours (updater/run.rs CHECK_EVERY), so a live channel
+  # re-publishes its pointer far inside any window; and a channel that has published nothing for
+  # forty-five days should start saying "this manifest has expired" rather than "you are up to
+  # date", because those are different facts. Raising it costs replay window; lowering it means a
+  # quiet channel reads as broken. If it ever needs a real number, measure how long the stable
+  # channel actually goes between releases and put that measurement here.
+  MANIFEST_LIFETIME_DAYS: 45
+
+  # minisign, pinned by release tag AND by the sha256 of what that tag serves. A signing tool
+  # fetched over the network with no hash check is the one place where swapping a single file
+  # silently changes what every signature in the pipeline means. Both hashes were measured on
+  # 2026-09-11 by downloading this exact asset:
+  #   minisign-0.12-win64.zip                 252505 bytes
+  #     sha256 37b600344e20c19314b2e82813db2bfdcc408b77b876f7727889dbd46d539479
+  #   minisign-win64/x86_64/minisign.exe      285696 bytes
+  #     sha256 5535be9e4e123831ebe6ef324aafe9dde507015c176191f9e20c3ad60567f9e1
+  # The inner exe is hashed as well as the zip, because the zip hash only proves the container
+  # was not swapped, and it is the exe that signs.
+  MINISIGN_VERSION: "0.12"
+  MINISIGN_ZIP_SHA256: "37b600344e20c19314b2e82813db2bfdcc408b77b876f7727889dbd46d539479"
+  MINISIGN_EXE_SHA256: "5535be9e4e123831ebe6ef324aafe9dde507015c176191f9e20c3ad60567f9e1"
+
+  # R2 is S3-compatible but it is not S3. AWS CLI v2 started sending an integrity checksum header
+  # on every PutObject by default, and third-party S3 implementations have rejected it. Asking
+  # for checksums only where the protocol requires them keeps the upload on the path R2 actually
+  # implements. region "auto" is what R2 expects; it has no regions to name.
+  AWS_DEFAULT_REGION: auto
+  AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+  AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+
+jobs:
+  windows:
+    name: Build, sign and publish
+    runs-on: windows-latest
+
+    steps:
+      # EVERY THIRD-PARTY ACTION IN THIS FILE IS PINNED TO A COMMIT SHA, AND A TAG IS NOT ENOUGH.
+      #
+      # A git tag is a mutable pointer. Whoever controls the action's repository can move v7 to a
+      # different commit at any time, and a compromised maintainer account has done exactly that
+      # in the wild (tj-actions/changed-files, March 2025, where a moved tag made thousands of
+      # workflows print their own secrets into the build log). This job holds the minisign private
+      # key and the R2 write credentials in its environment, so an action that changes underneath
+      # us is not a build break, it is a key compromise and a supply-chain compromise at once.
+      #
+      # A commit SHA cannot be moved. The comment beside each pin records which tag that SHA was
+      # at the moment it was resolved, so a human can tell at a glance how old the pin is, and
+      # bumping one is a visible commit rather than something that happens on its own overnight.
+      #
+      # Only two actions are used, and that is also deliberate. There is no cache action here: a
+      # GitHub Actions cache is writable by other workflows in this repository, and a release that
+      # restores one is a release whose bytes depend on something a pull request could have put
+      # there. A release build starts from nothing. The artifact upload and the GitHub Release are
+      # done with the gh CLI, and the R2 upload with the AWS CLI, both of which are already on the
+      # windows-latest image, so neither needs a third-party action at all.
+      - name: Checkout
+        # actions/checkout, tag v7.0.1 as of 2026-09-11.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          # The default leaves a credential in .git/config for the rest of the job, where every
+          # later step, including anything a dependency's build script runs, can read it. Nothing
+          # here pushes to git, so nothing here needs it.
+          persist-credentials: false
+
+      - name: Guard - every secret this job needs exists
+        # PREVENTS: discovering at minute twenty, in the middle of an upload, that a secret was
+        # never created, after the job has already built and signed. Each one is named, and only
+        # whether it is empty is ever printed.
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          $missing = @()
+          foreach ($name in 'MINISIGN_SECRET_KEY','R2_ACCOUNT_ID','R2_ACCESS_KEY_ID','R2_SECRET_ACCESS_KEY') {
+            if ([string]::IsNullOrWhiteSpace((Get-Item "env:$name" -ErrorAction SilentlyContinue).Value)) { $missing += $name }
+          }
+          if ($missing.Count -gt 0) {
+            Write-Host "::error::These repository secrets are missing or empty: $($missing -join ', '). RELEASING.md says what each one holds and how to create it."
+            exit 1
+          }
+          Write-Host "All four required secrets are present."
+
+      - name: Decide what this run publishes
+        # The tag is the only input that decides the version, and the presence of a semver
+        # pre-release suffix is the only thing that decides the channel. Nothing is typed twice.
+        #
+        # A manual run on a ref that is not a version tag is forced to a dry run no matter what
+        # the input said. PREVENTS: a click on "Run workflow" from a branch publishing a manifest
+        # whose version came from a working tree rather than from a tag anyone can check out.
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          $tag = $env:REF_NAME
+          $dry = ($env:INPUT_DRY_RUN -eq 'true')
+
+          if ($env:REF_TYPE -ne 'tag') {
+            Write-Host "::warning::This run is on $($env:REF_TYPE) '$tag', not on a version tag, so it is a dry run and will publish nothing."
+            $dry = $true
+            $version = 'dry-run'
+            $channel = 'stable'
+          } else {
+            # -match rather than -notmatch, because $Matches is only worth reading after the
+            # operator that is documented to fill it.
+            if ($tag -match '^v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$') {
+              $version = $Matches[1]
+            } else {
+              Write-Host "::error::The tag '$tag' is not v<semver>. A release tag looks like v0.2.0 or v0.2.0-beta.1."
+              exit 1
+            }
+            # A semver pre-release goes to the beta channel and a plain release to stable. The
+            # channel is also written INSIDE the signed manifest and checked by the client, so a
+            # beta manifest served at the stable path is caught on the client rather than trusted.
+            $channel = if ($version -match '-') { 'beta' } else { 'stable' }
+          }
+
+          $binName = "grimoire-desktop-$version-windows-x86_64.exe"
+          $prefix  = "grimoire/$channel/$version"
+
+          "TAG=$tag"                >> $env:GITHUB_ENV
+          "VERSION=$version"        >> $env:GITHUB_ENV
+          "CHANNEL=$channel"        >> $env:GITHUB_ENV
+          "BIN_NAME=$binName"       >> $env:GITHUB_ENV
+          "KEY_PREFIX=$prefix"      >> $env:GITHUB_ENV
+          "DRY_RUN=$($dry.ToString().ToLower())" >> $env:GITHUB_ENV
+
+          Write-Host "tag=$tag version=$version channel=$channel dry_run=$dry"
+          Write-Host "artifact will be published at $($env:PUBLIC_BASE)/$prefix/$binName"
+
+      - name: Guard - the tag and the workspace manifest name the same version
+        # PREVENTS: a manifest that advertises a version the binary does not report. The binary
+        # reads its version from env!("CARGO_PKG_VERSION") at crates/grimoire-desktop/src/
+        # titlebar.rs, which comes from [workspace.package].version, so the binary can never
+        # disagree with Cargo.toml. The manifest is written by this file and CAN disagree with
+        # both. A client that installs 0.2.0 and then sees the installed binary report 0.1.9 has
+        # an update that never finishes: it re-downloads the same artifact on every check,
+        # forever, and nothing in the app can tell it to stop.
+        #
+        # Keyed on there being a tag rather than on this being a real publish, because a dry run
+        # on a tag is exactly the rehearsal that should catch a version mismatch before the tag is
+        # pushed for real.
+        if: github.ref_type == 'tag'
+        run: |
+          $toml = Get-Content -Raw Cargo.toml
+          # Scoped to the [workspace.package] table so that neither rust-version nor a version
+          # inside [workspace.dependencies] can answer for it. -match rather than -notmatch,
+          # because $Matches is only worth reading after the operator that is documented to fill it.
+          if ($toml -match '(?ms)^\[workspace\.package\]\s*(.*?)(?=^\[|\z)') {
+            $block = $Matches[1]
+          } else {
+            Write-Host "::error::Cargo.toml has no [workspace.package] table."
+            exit 1
+          }
+          if ($block -match '(?m)^\s*version\s*=\s*"([^"]+)"') {
+            $declared = $Matches[1]
+          } else {
+            Write-Host "::error::[workspace.package] in Cargo.toml declares no version."
+            exit 1
+          }
+          if ($declared -ne $env:VERSION) {
+            Write-Host "::error::The tag says $($env:VERSION) and Cargo.toml says $declared. Bump [workspace.package].version, commit it, and move the tag onto that commit."
+            exit 1
+          }
+          Write-Host "Cargo.toml and the tag agree on $declared."
+
+      - name: Install minisign, pinned by version and by hash
+        # PREVENTS: signing with a tool nobody checked. The download is verified twice, once as
+        # the container and once as the executable, before it is ever run. A mismatch is fatal and
+        # says which hash failed, because "the signing tool changed" and "the network ate the
+        # download" want different responses from a human.
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'minisign.zip'
+          $url = "https://github.com/jedisct1/minisign/releases/download/$($env:MINISIGN_VERSION)/minisign-$($env:MINISIGN_VERSION)-win64.zip"
+          Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
+          $got = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower()
+          if ($got -ne $env:MINISIGN_ZIP_SHA256) {
+            Write-Host "::error::minisign zip sha256 is $got, expected $($env:MINISIGN_ZIP_SHA256). Either the release asset was replaced or the download is corrupt. Do not 'fix' this by updating the hash without checking upstream."
+            exit 1
+          }
+          $dir = Join-Path $env:RUNNER_TEMP 'minisign'
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          $exe = Join-Path $dir 'minisign-win64\x86_64\minisign.exe'
+          if (-not (Test-Path $exe)) {
+            Write-Host "::error::The minisign archive did not contain minisign-win64/x86_64/minisign.exe."
+            exit 1
+          }
+          $gotExe = (Get-FileHash -Algorithm SHA256 $exe).Hash.ToLower()
+          if ($gotExe -ne $env:MINISIGN_EXE_SHA256) {
+            Write-Host "::error::minisign.exe sha256 is $gotExe, expected $($env:MINISIGN_EXE_SHA256)."
+            exit 1
+          }
+          "MINISIGN=$exe" >> $env:GITHUB_ENV
+          & $exe -v
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::minisign could not run."; exit 1 }
+
+      - name: Guard - the signing key matches a public key the app was built with
+        # THIS IS THE MOST IMPORTANT GUARD IN THE FILE.
+        #
+        # PREVENTS TWO THINGS, and the second one cannot be undone.
+        #
+        # First, releasing before a key exists. A binary that ships without a public key compiled
+        # into it can never be auto-updated, because the only way to give it a key would be an
+        # update and an update is the thing the key authorises. Every copy in the field would need
+        # a human to download a new installer by hand, and nothing in the app could tell them so.
+        #
+        # Second, and quietly worse, signing with a key the field does not trust. That produces a
+        # pipeline that is green in every step, artifacts that verify against themselves, and a
+        # fleet of clients that refuse every single update with a signature error. Nobody notices
+        # until someone asks why the update everyone was told about never arrived.
+        #
+        # The check is not "is there a key in the source". It signs a probe with the private key
+        # from the secret and verifies that probe against the public keys read out of the source
+        # file, so the two halves are proved to be halves of the same key here, on this machine,
+        # in this run.
+        #
+        # KEYS is a slice because rotation can only ever work forwards: release N+1 must carry the
+        # new key while still being signed by the old one, so every key the field might hold has
+        # to be acceptable here. At least one must verify; which one is printed.
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          $verifyRs = 'crates/grimoire-desktop/src/updater/verify.rs'
+          if (-not (Test-Path $verifyRs)) {
+            Write-Host "::error::$verifyRs does not exist, so this build has no public key compiled into it and anything it produced could never be updated. See section 0 of the updater spec and RELEASING.md. Do not tag a release until the key is committed."
+            exit 1
+          }
+          # SCOPED TO THE KEYS DECLARATION, NOT THE WHOLE FILE. verify.rs also contains a test
+          # module that generates and names keypairs, and a doc comment could hold an example.
+          # Scanning the file would let one of those stand in as a trust root, which is the exact
+          # thing this guard exists to prevent.
+          $src = Get-Content -Raw $verifyRs
+          if ($src -match '(?s)pub const KEYS\s*:\s*&\[&str\]\s*=\s*&\[(.*?)\]\s*;') {
+            $decl = $Matches[1]
+          } else {
+            Write-Host "::error::$verifyRs does not declare 'pub const KEYS: &[&str] = &[...];'. That declaration is the trust root and this job reads it by shape."
+            exit 1
+          }
+          # A minisign public key is the base64 of 42 bytes, which is 56 characters with no
+          # padding, and it always begins RW. Measured against a real generated key on
+          # 2026-09-11: 56 characters, no '=' anywhere in it. A placeholder such as "RW..." does
+          # not match this pattern, which is the point: a placeholder must fail here.
+          # @() around the pipeline because a single match would otherwise come back as a bare
+          # string, where .Count answers about the string rather than about the list.
+          $keys = @([regex]::Matches($decl, 'RW[A-Za-z0-9+/]{54}') |
+                    ForEach-Object { $_.Value } | Select-Object -Unique)
+          if ($keys.Count -eq 0) {
+            Write-Host "::error::$verifyRs contains no minisign public key. KEYS must hold at least one real key before a release can be cut."
+            exit 1
+          }
+          Write-Host "Found $($keys.Count) public key(s) compiled into this build."
+
+          # THE DEVELOPMENT ANCHOR MAY NOT BE A RELEASE'S TRUST ROOT, AND NOTHING ELSE IN THIS JOB
+          # WOULD NOTICE.
+          #
+          # The guard above proves the secret and the compiled-in key are halves of one key. It
+          # does NOT prove that key is the RELEASE key, and the development anchor generated on
+          # 2026-09-11 is a real minisign key of exactly the shape scanned for above, so a run that
+          # never did section 0 of RELEASING.md passes every other check in this file. What ships
+          # is then permanently auto-updatable by whoever holds the development secret, whose
+          # custody no reader of this repository knows, and there is no way to take a key back out
+          # of binaries that have already been downloaded.
+          #
+          # The literal is duplicated from crates/grimoire-desktop/src/updater/verify.rs on
+          # purpose: this job cannot run Rust code before it has built anything. A test over there
+          # (the_release_workflow_refuses_to_ship_the_development_anchor) asserts this file still
+          # names it, so the two copies cannot drift apart quietly.
+          $devAnchor = 'RWQZwerBZWgbQmgNL9JnxWBBgsbah9tphw9hkZfUD/Mprnz+X+/7qzjh'
+          if ($decl -match [regex]::Escape($devAnchor)) {
+            Write-Host "::error::KEYS in $verifyRs still holds the DEVELOPMENT anchor. That key's secret half lives outside this repository and was never meant to sign a release; a binary shipped on it is auto-updatable for ever by whoever holds it. Do section 0 of RELEASING.md: generate the release keypair, paste its public half into KEYS, commit that, and tag from the commit that carries it."
+            exit 1
+          }
+
+          $keyFile = Join-Path $env:RUNNER_TEMP 'minisign.key'
+          # The key file goes in RUNNER_TEMP and never in the workspace. PREVENTS: the private
+          # key being swept up by a later glob, whether that is the release upload, an artifact
+          # upload or a `cargo package`. Written with no BOM because minisign parses the file's
+          # first line strictly.
+          [System.IO.File]::WriteAllText($keyFile, $env:MINISIGN_SECRET_KEY.Replace("`r`n","`n"), (New-Object System.Text.UTF8Encoding($false)))
+          "MINISIGN_KEY_FILE=$keyFile" >> $env:GITHUB_ENV
+
+          $probe = Join-Path $env:RUNNER_TEMP 'probe.bin'
+          [System.IO.File]::WriteAllText($probe, "grimoire key agreement probe $($env:GITHUB_RUN_ID)", (New-Object System.Text.UTF8Encoding($false)))
+          & $env:MINISIGN -S -s $keyFile -m $probe -t "grimoire key agreement probe" | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::minisign could not sign with MINISIGN_SECRET_KEY. The secret must hold the entire contents of the .key file, generated with 'minisign -G -W' so that it carries no password, since there is no terminal here to type one into."
+            exit 1
+          }
+
+          $ok = $null
+          foreach ($k in $keys) {
+            & $env:MINISIGN -V -H -P $k -m $probe -q | Out-Null
+            if ($LASTEXITCODE -eq 0) { $ok = $k; break }
+          }
+          if ($null -eq $ok) {
+            Write-Host "::error::MINISIGN_SECRET_KEY does not match any public key in $verifyRs. Signing with it would produce releases that every shipped binary refuses. Fix the secret, or add the matching public key to KEYS and ship that build first."
+            exit 1
+          }
+          Write-Host "The signing key matches the public key $ok, which is compiled into this build."
+          "PUBKEY=$ok" >> $env:GITHUB_ENV
+
+      - name: Guard - this version has not been published before
+        # PREVENTS: a re-run quietly replacing bytes that clients have already downloaded and
+        # whose sha256 is written into a manifest that is already out there. Everything under a
+        # version prefix is immutable by contract; the only object this pipeline ever overwrites
+        # is latest.json, which is a pointer and is meant to move.
+        if: env.DRY_RUN != 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+        run: |
+          $endpoint = "https://$($env:R2_ACCOUNT_ID).r2.cloudflarestorage.com"
+          "R2_ENDPOINT=$endpoint" >> $env:GITHUB_ENV
+          $key = "$($env:KEY_PREFIX)/$($env:BIN_NAME)"
+          # A miss here is the expected answer, so the preference is relaxed around the one call
+          # whose failure is information rather than a fault. Restored immediately afterwards.
+          $prev = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          aws s3api head-object --endpoint-url $endpoint --bucket $env:R2_BUCKET --key $key 2>$null | Out-Null
+          $exists = ($LASTEXITCODE -eq 0)
+          $ErrorActionPreference = $prev
+          if ($exists) {
+            Write-Host "::error::s3://$($env:R2_BUCKET)/$key already exists. Version $($env:VERSION) has been published. Cut a new version rather than replacing one; the versioned objects are immutable so that a published sha256 stays true."
+            exit 1
+          }
+          Write-Host "Nothing is published at $key yet."
+
+      - name: Install the Rust toolchain
+        # dtolnay/rust-toolchain, tag v1 as of 2026-09-11. Pinned to the SHA, which means the
+        # branch name can no longer imply the toolchain, so it is named explicitly.
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Record the exact compiler
+        # Not a guard, a receipt. The release notes and any later argument about a binary start
+        # with knowing what built it, and this is the only place that fact exists.
+        run: |
+          rustc -vV
+          cargo -V
+          $v = (rustc -vV | Select-String '^release: ').ToString().Split(' ')[1]
+          $h = (rustc -vV | Select-String '^commit-hash: ').ToString().Split(' ')[1]
+          "RUSTC_DESC=rustc $v ($h)" >> $env:GITHUB_ENV
+
+      - name: Guard - the gate, on Windows
+        # PREVENTS: shipping code that has never been compiled on the platform it ships to. ci.yml
+        # runs on ubuntu-latest, so until this step existed no CI job in this repository had ever
+        # built the Windows-only half of the app (wry, webview2-com, the DPAPI path in secret).
+        # A release is the wrong moment to find out, but it is a much better moment than a user's
+        # machine.
+        #
+        # GRIMOIRE_NO_DATA is required, not optional. The wiki corpus at crates/grimoire-desktop/
+        # data is deliberately not committed (the reasons are written out in .gitignore), and the
+        # eleven tests that read it FAIL rather than skip when it is absent, because a suite that
+        # goes green on an empty machine certifies nothing. The flag is how the operator says out
+        # loud that the corpus is absent on purpose; each of those tests then prints SKIPPED ON
+        # PURPOSE instead.
+        env:
+          GRIMOIRE_NO_DATA: "1"
+        run: |
+          cargo fmt --all --check
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          cargo clippy --workspace --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          cargo test --workspace
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Build the release binary, with the build machine's paths remapped out
+        # WHY THIS IS NOT OPTIONAL, IN NUMBERS. Measured on 2026-09-11 by building this workspace
+        # at a92d853 with the release profile and counting byte occurrences in the resulting
+        # grimoire-desktop.exe:
+        #
+        #   no remapping        10,874,880 bytes   621x "C:\Users"   620x the builder's user name
+        #                                          584x ".cargo\registry"   2x the workspace root
+        #   all three remaps    10,855,936 bytes     0x the builder's user name
+        #                                            0x ".cargo\registry"   0x ".rustup"
+        #                                            1x "C:\Users", the allowed constant below
+        #                                          584x "/cargo"   42x "/rustup"   2x the target dir
+        #
+        # Those 620 occurrences are not debug information, and `strip = true` in the release
+        # profile does not touch them: they are the panic location strings that rustc bakes into
+        # rodata for every unwrap and every bounds check, and they spell out an absolute path on
+        # whoever's machine did the build. Publishing them would put the build account's name in
+        # a public download.
+        #
+        # THREE REMAPS, EACH MEASURED AS NECESSARY. CARGO_HOME covers the 584 registry paths.
+        # RUSTUP_HOME covers 42 more that point into the toolchain's own std sources, and those
+        # were only found by scanning a binary that already had the other two remaps applied,
+        # which is the argument for the scan below being the enforcement rather than this list.
+        # GITHUB_WORKSPACE covers the workspace itself and, because the target directory sits
+        # inside it, the OUT_DIR paths that build scripts bake into generated bindings.
+        #
+        # THERE IS NO CATCH-ALL REMAP OF THE HOME DIRECTORY, ON PURPOSE. A rule broad enough to
+        # launder any path would also launder the next unexpected one, and the scan in the step
+        # below would go quiet about it. The scan is the enforcement; the remaps are the fix. When
+        # something new leaks, the job should fail and a human should add the remap that names it.
+        #
+        # CARGO_ENCODED_RUSTFLAGS rather than RUSTFLAGS because RUSTFLAGS is split on whitespace
+        # and a Windows path can contain spaces. The unit separator, U+001F, is what cargo defines
+        # as the delimiter for the encoded form, and it cannot appear in a path.
+        #
+        # Fat LTO means the final codegen unit is where almost all of this text is emitted, so a
+        # change to these flags rebuilds and re-remaps the dependency code too.
+        run: |
+          $cargoHome  = if ($env:CARGO_HOME)  { $env:CARGO_HOME }  else { Join-Path $env:USERPROFILE '.cargo' }
+          $rustupHome = if ($env:RUSTUP_HOME) { $env:RUSTUP_HOME } else { Join-Path $env:USERPROFILE '.rustup' }
+          $workspace  = $env:GITHUB_WORKSPACE
+          $sep = [char]0x1f
+          $flags = @(
+            "--remap-path-prefix=$cargoHome=/cargo",
+            "--remap-path-prefix=$rustupHome=/rustup",
+            "--remap-path-prefix=$workspace=/src"
+          ) -join $sep
+          $env:CARGO_ENCODED_RUSTFLAGS = $flags
+          Write-Host "remapping: $cargoHome -> /cargo, $rustupHome -> /rustup, $workspace -> /src"
+
+          cargo build --release -p grimoire-desktop
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item 'target/release/grimoire-desktop.exe' (Join-Path 'dist' $env:BIN_NAME) -Force
+
+          # Carried to the scan below so it tests the paths this build actually used rather than
+          # guessing at them.
+          "REMAP_CARGO_HOME=$cargoHome"   >> $env:GITHUB_ENV
+          "REMAP_RUSTUP_HOME=$rustupHome" >> $env:GITHUB_ENV
+
+      - name: Guard - the binary carries no build machine path
+        # PREVENTS: publishing the build account's name, home directory or workspace layout inside
+        # a file that anyone can download. This is a checklist item, and the counts in the comment
+        # on the build step are why it is one rather than a worry.
+        #
+        # THE SCAN HAS A SENTINEL, AND THE SENTINEL IS THE POINT. A scan that finds nothing
+        # forbidden proves nothing on its own, because it answers the same way when the remapping
+        # worked and when the whole binary was replaced by an empty file. So this step also
+        # requires the remapped prefix to be PRESENT. If /cargo is missing, either the remap did
+        # not run or the file is not what we think it is, and both are failures.
+        #
+        # ONE ALLOWED PATH, NAMED AND CITED. crates/grimoire-desktop/src/ingest.rs:1551 holds the
+        # literal C:\Users\Public\Daybreak Game Company\Installed Games\EverQuest Legends\Logs,
+        # which is where the game writes its logs on a default install. It is a string in the
+        # source, identical on every machine, and contains no user name. It is allowed by an exact
+        # prefix so that C:\Users\PublicSomethingElse would still fail.
+        #
+        # BOTH ENCODINGS ARE SCANNED. Rust string literals are UTF-8, but the linker and the
+        # Windows resource table can carry UTF-16LE, so every needle is searched for twice.
+        run: |
+          $exe = Join-Path 'dist' $env:BIN_NAME
+          $bytes = [System.IO.File]::ReadAllBytes($exe)
+          # Latin-1 maps every byte to exactly one character and back, so this is a searchable
+          # view of the raw bytes rather than a decode that could drop or merge any of them.
+          $latin1 = [System.Text.Encoding]::GetEncoding(28591)
+          $text = $latin1.GetString($bytes)
+
+          function Test-Needle([string]$needle) {
+            if ([string]::IsNullOrEmpty($needle)) { return $false }
+            if ($text.Contains($needle)) { return $true }
+            $utf16 = $latin1.GetString([System.Text.Encoding]::Unicode.GetBytes($needle))
+            return $text.Contains($utf16)
+          }
+
+          $failures = @()
+
+          # 1. The literal roots this build used. Nothing derived, nothing guessed.
+          foreach ($n in @($env:REMAP_CARGO_HOME, $env:REMAP_RUSTUP_HOME, $env:GITHUB_WORKSPACE, $env:RUNNER_TEMP, $env:USERPROFILE)) {
+            if (Test-Needle $n) { $failures += "the build machine path '$n' appears in the binary" }
+          }
+
+          # 2. The account that ran the build, which is the user name the checklist is about.
+          foreach ($n in @($env:USERNAME, 'runneradmin')) {
+            if (Test-Needle $n) { $failures += "the build account name '$n' appears in the binary" }
+          }
+
+          # 3. Any drive-letter path under a user home, except the one allowed above. This is the
+          #    catch for a path that came from somewhere none of the three remaps covers.
+          $paths = [regex]::Matches($text, '[A-Za-z]:\\[^\x00-\x1F"<>|*?]{4,240}') |
+                   ForEach-Object { $_.Value } | Select-Object -Unique
+          foreach ($p in $paths) {
+            if ($p -like 'C:\Users\Public\*') { continue }
+            if ($p -match '(?i)^[A-Za-z]:\\Users\\') { $failures += "a user home path appears in the binary: $p" }
+            elseif ($p -match '(?i)\.cargo\\registry|\.rustup\\') { $failures += "a toolchain path appears in the binary: $p" }
+          }
+
+          # 4. The sentinel. Without this the scan could pass vacuously.
+          if (-not $text.Contains('/cargo')) {
+            $failures += "the remapped prefix '/cargo' does not appear anywhere in the binary, so this scan proved nothing. Either --remap-path-prefix did not reach the compiler or dist/ does not hold the binary that was just built."
+          }
+
+          if ($failures.Count -gt 0) {
+            foreach ($f in ($failures | Select-Object -Unique)) { Write-Host "::error::$f" }
+            Write-Host "::error::Refusing to publish. Add the remap that covers the path named above, or, if it is a deliberate constant in the source, allow it by name here with a comment saying which file it comes from."
+            exit 1
+          }
+          Write-Host "No build machine path found, and the remapped prefix is present."
+
+      - name: Sign the artifact
+        # Signed with the project key, prehashed. Measured on 2026-09-11 against minisign 0.12:
+        # `-S` already produces a prehashed signature (the signature line decodes to the algorithm
+        # bytes "ED"), and `-H` is a VERIFY side flag that requires the signature to be prehashed.
+        # Prehashing is what lets the client verify a ten megabyte file as a stream without ever
+        # holding it in memory, which is what minisign-verify's verify_stream needs.
+        #
+        # The trusted comment is covered by the signature, so a .minisig found on its own still
+        # says what it is for.
+        run: |
+          $exe = Join-Path 'dist' $env:BIN_NAME
+          $now = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          & $env:MINISIGN -S -s $env:MINISIGN_KEY_FILE -m $exe `
+            -c "grimoire release" `
+            -t "grimoire $($env:CHANNEL) app $($env:VERSION) $now" | Out-Null
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::Signing the artifact failed."; exit 1 }
+          "PUBLISHED_AT=$now" >> $env:GITHUB_ENV
+
+      - name: Guard - the artifact verifies under the key the app ships with
+        # PREVENTS: publishing an artifact that every client will refuse. Verification here uses
+        # the public key read out of the source file, not the key file we just signed with, so
+        # this is the client's question being asked on the client's terms.
+        run: |
+          $exe = Join-Path 'dist' $env:BIN_NAME
+          & $env:MINISIGN -V -H -P $env:PUBKEY -m $exe
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::The artifact does not verify against the public key compiled into the app."
+            exit 1
+          }
+
+      - name: Assemble and sign the manifest
+        # THE MANIFEST IS A STRING INSIDE THE ENVELOPE, AND THAT IS THE WHOLE DESIGN. The bytes
+        # that are signed are exactly the bytes of that string, so no tool downstream can reorder
+        # a key, change the indentation or add a trailing newline and invalidate a signature that
+        # a human then spends a day debugging. It also means one GET per check instead of two, and
+        # it makes cache skew between a manifest and its signature impossible, because there is
+        # only one object to cache.
+        #
+        # size and sha256 are read from the file on disk, here, rather than carried in a variable
+        # from an earlier step. A number that was true earlier is not evidence about the file that
+        # is about to be uploaded.
+        #
+        # THE MANIFEST NAMES ONE ARTIFACT, kind "app". A data bundle cannot be built here: the
+        # corpus at crates/grimoire-desktop/data is deliberately not committed, so the runner has
+        # no copy of it to package. A data bundle needs a publisher that has the corpus. The
+        # client is specified to skip artifact kinds it does not find and to refuse in words when
+        # there is no app artifact, so a manifest with one entry is a complete manifest.
+        run: |
+          $exe  = Join-Path 'dist' $env:BIN_NAME
+          $size = (Get-Item $exe).Length
+          $sha  = (Get-FileHash -Algorithm SHA256 $exe).Hash.ToLower()
+          $sig  = [System.IO.File]::ReadAllText("$exe.minisig")
+          $url  = "$($env:PUBLIC_BASE)/$($env:KEY_PREFIX)/$($env:BIN_NAME)"
+          $notes = "$($env:GITHUB_SERVER_URL)/$($env:GITHUB_REPOSITORY)/releases/tag/$($env:TAG)"
+
+          # EXPIRES IS DERIVED FROM PUBLISHED AND NOT FROM THE CLOCK AGAIN, so the two stamps in
+          # the document cannot disagree about when the window opened. The client refuses a
+          # manifest whose expiry has passed (updater/manifest.rs), which is the half of the replay
+          # defence that needs nothing stored on the machine doing the refusing.
+          $expiresAt = ([datetime]::ParseExact($env:PUBLISHED_AT, "yyyy-MM-ddTHH:mm:ssZ", [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal)).AddDays([int]$env:MANIFEST_LIFETIME_DAYS).ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+          $manifest = [ordered]@{
+            # FORMAT 2 AND NOT 1. The rule is in updater/manifest.rs: adding an optional field
+            # never bumps this, and adding a field a client must honour for SAFETY always does.
+            # `expires` is the second kind, so a client that does not know to honour it must refuse
+            # the document rather than read it and ignore the field.
+            format    = 2
+            channel   = $env:CHANNEL
+            version   = $env:VERSION
+            published = $env:PUBLISHED_AT
+            expires   = $expiresAt
+            notes_url = $notes
+            yanked    = @()
+            rollback  = $null
+            artifacts = @(
+              [ordered]@{
+                kind      = 'app'
+                os        = 'windows'
+                arch      = 'x86_64'
+                version   = $env:VERSION
+                url       = $url
+                size      = $size
+                sha256    = $sha
+                signature = $sig
+              }
+            )
+          }
+
+          # Newlines normalised to LF before anything is signed, so that the signed bytes do not
+          # depend on which platform serialised them.
+          $manifestText = ($manifest | ConvertTo-Json -Depth 8) -replace "`r`n", "`n"
+          $utf8 = New-Object System.Text.UTF8Encoding($false)
+          [System.IO.File]::WriteAllText((Join-Path 'dist' 'manifest.json'), $manifestText, $utf8)
+
+          $now = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          & $env:MINISIGN -S -s $env:MINISIGN_KEY_FILE -m 'dist/manifest.json' `
+            -c "grimoire manifest" `
+            -t "grimoire $($env:CHANNEL) manifest $($env:VERSION) $now" | Out-Null
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::Signing the manifest failed."; exit 1 }
+
+          $envelope = [ordered]@{
+            envelope  = 1
+            manifest  = $manifestText
+            signature = [System.IO.File]::ReadAllText('dist/manifest.json.minisig')
+          }
+          $envelopeText = ($envelope | ConvertTo-Json -Depth 5) -replace "`r`n", "`n"
+          [System.IO.File]::WriteAllText((Join-Path 'dist' 'latest.json'), $envelopeText, $utf8)
+          Write-Host $manifestText
+
+      - name: Guard - the manifest names only artifacts that exist, match and verify
+        # THIS IS THE STEP THAT MAKES "IT CANNOT PUBLISH A MANIFEST WHOSE ARTIFACTS ARE MISSING OR
+        # UNSIGNED" TRUE RATHER THAN INTENDED.
+        #
+        # It throws away everything the earlier steps computed and re-derives all of it from the
+        # envelope that is about to be uploaded, exactly as a client would: pull the manifest
+        # string out, verify its signature with the public key from the source file, parse it,
+        # and then for every artifact it names, find the local file, check its length against the
+        # published size, recompute its sha256, and verify its inline signature. Anything that
+        # does not line up stops the run before a single byte is uploaded.
+        #
+        # PREVENTS, one by one:
+        #   a manifest listing an artifact that was never built             (the file is missing)
+        #   a manifest whose size or hash was computed from a stale file    (they disagree)
+        #   an artifact whose signature block was empty or truncated        (it fails to verify)
+        #   a manifest that was edited after it was signed                  (the envelope fails)
+        #   a manifest pointing clients at a host or a prefix nobody here controls
+        #   an artifacts field that serialised as an object instead of an array, which a client
+        #     would refuse to parse and which is invisible in a diff of the values
+        run: |
+          $check = Join-Path $env:RUNNER_TEMP 'check'
+          New-Item -ItemType Directory -Force -Path $check | Out-Null
+          $utf8 = New-Object System.Text.UTF8Encoding($false)
+
+          $raw = [System.IO.File]::ReadAllText('dist/latest.json')
+          $envelope = $raw | ConvertFrom-Json
+          if ($envelope.envelope -ne 1) { Write-Host "::error::The envelope version is not 1."; exit 1 }
+          if ([string]::IsNullOrWhiteSpace($envelope.manifest))  { Write-Host "::error::The envelope carries no manifest."; exit 1 }
+          if ([string]::IsNullOrWhiteSpace($envelope.signature)) { Write-Host "::error::The envelope carries no signature."; exit 1 }
+
+          $mPath = Join-Path $check 'manifest.json'
+          [System.IO.File]::WriteAllText($mPath, $envelope.manifest, $utf8)
+          [System.IO.File]::WriteAllText("$mPath.minisig", $envelope.signature, $utf8)
+          & $env:MINISIGN -V -H -P $env:PUBKEY -m $mPath
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::The manifest inside the envelope does not verify against the public key compiled into the app."; exit 1 }
+
+          if ($envelope.manifest -notmatch '"artifacts":\s*\[') {
+            Write-Host "::error::artifacts did not serialise as a JSON array."
+            exit 1
+          }
+
+          $m = $envelope.manifest | ConvertFrom-Json
+          if ($m.format  -ne 2)              { Write-Host "::error::format is $($m.format), expected 2.";  exit 1 }
+          if ($m.channel -ne $env:CHANNEL)   { Write-Host "::error::channel is $($m.channel), expected $($env:CHANNEL)."; exit 1 }
+          if ($m.version -ne $env:VERSION)   { Write-Host "::error::version is $($m.version), expected $($env:VERSION)."; exit 1 }
+          if ([string]::IsNullOrWhiteSpace($m.published)) { Write-Host "::error::published is empty. A client that stores it cannot refuse a replayed older manifest without it."; exit 1 }
+          # EXPIRES IS CHECKED HERE THE WAY A CLIENT WOULD CHECK IT, out of the signed bytes and
+          # not out of the variable the step above computed. PREVENTS: publishing a manifest that
+          # is already expired, or expired inside the window a client polls in, either of which
+          # makes every client report the channel as serving a stale document on the day of the
+          # release.
+          if ([string]::IsNullOrWhiteSpace($m.expires)) { Write-Host "::error::expires is empty. Without it a captured envelope is valid for ever on any machine with no stored replay floor, which is every fresh install."; exit 1 }
+          $expiresParsed = [datetime]::MinValue
+          if (-not [datetime]::TryParse($m.expires, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AdjustToUniversal -bor [System.Globalization.DateTimeStyles]::AssumeUniversal, [ref]$expiresParsed)) {
+            Write-Host "::error::expires is $($m.expires), which is not an RFC3339 stamp a client can parse."
+            exit 1
+          }
+          $liveFor = $expiresParsed - [datetime]::UtcNow
+          if ($liveFor.TotalHours -lt 24) {
+            Write-Host "::error::expires is $($m.expires), which is less than a day away. Clients check every six hours; a manifest that expires inside that window would be refused as stale by machines that fetched it minutes after it was published."
+            exit 1
+          }
+          Write-Host "The manifest is valid for $([math]::Round($liveFor.TotalDays, 1)) more days."
+
+          $app = @($m.artifacts | Where-Object { $_.kind -eq 'app' -and $_.os -eq 'windows' -and $_.arch -eq 'x86_64' })
+          if ($app.Count -ne 1) { Write-Host "::error::The manifest names $($app.Count) windows x86_64 app artifacts, expected exactly 1."; exit 1 }
+
+          $expectedPrefix = "$($env:PUBLIC_BASE)/$($env:KEY_PREFIX)/"
+          foreach ($a in $m.artifacts) {
+            if (-not $a.url.StartsWith($expectedPrefix)) {
+              Write-Host "::error::The artifact url $($a.url) is not under $expectedPrefix. A manifest may not send clients anywhere else."
+              exit 1
+            }
+            $name = $a.url.Substring($a.url.LastIndexOf('/') + 1)
+            $local = Join-Path 'dist' $name
+            if (-not (Test-Path $local)) { Write-Host "::error::The manifest names $name but no such file was built."; exit 1 }
+            $len = (Get-Item $local).Length
+            if ($len -ne $a.size) { Write-Host "::error::$name is $len bytes and the manifest says $($a.size)."; exit 1 }
+            $sha = (Get-FileHash -Algorithm SHA256 $local).Hash.ToLower()
+            if ($sha -ne $a.sha256) { Write-Host "::error::$name hashes to $sha and the manifest says $($a.sha256)."; exit 1 }
+            if ($a.sha256 -notmatch '^[0-9a-f]{64}$') { Write-Host "::error::$name has a sha256 that is not 64 lowercase hex characters."; exit 1 }
+            $sigPath = Join-Path $check "$name.minisig"
+            [System.IO.File]::WriteAllText($sigPath, $a.signature, $utf8)
+            & $env:MINISIGN -V -H -P $env:PUBKEY -m $local -x $sigPath
+            if ($LASTEXITCODE -ne 0) { Write-Host "::error::The signature the manifest carries for $name does not verify against the public key compiled into the app."; exit 1 }
+            Write-Host "$name checks out: $len bytes, $sha, signature verified."
+          }
+
+      - name: Publish the artifact and the versioned manifest to R2
+        # ORDER IS THE GUARD HERE, AND IT IS WHY latest.json IS NOT IN THIS STEP.
+        #
+        # latest.json is the pointer every client reads. Publishing it before the bytes it names
+        # would give every client that happened to check in that window a 404 on the artifact and
+        # a refusal that is nobody's fault and that nobody can reproduce afterwards. So the bytes
+        # go up first, they are read back from the public host in the next step, and only then
+        # does the pointer move.
+        #
+        # CACHE HEADERS ARE PART OF THE CORRECTNESS, NOT DECORATION. Everything under a version
+        # prefix is immutable by contract, so it is marked cacheable forever. latest.json is the
+        # opposite and is uploaded later with no-cache, because a pointer that a CDN holds for an
+        # hour is an hour in which half the fleet is told the wrong thing.
+        if: env.DRY_RUN != 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          $immutable = 'public, max-age=31536000, immutable'
+          $uploads = @(
+            @{ local = "dist/$($env:BIN_NAME)";          key = "$($env:KEY_PREFIX)/$($env:BIN_NAME)";          type = 'application/octet-stream' },
+            @{ local = "dist/$($env:BIN_NAME).minisig";  key = "$($env:KEY_PREFIX)/$($env:BIN_NAME).minisig";  type = 'text/plain; charset=utf-8' },
+            @{ local = 'dist/manifest.json';             key = "$($env:KEY_PREFIX)/manifest.json";             type = 'application/json' },
+            @{ local = 'dist/manifest.json.minisig';     key = "$($env:KEY_PREFIX)/manifest.json.minisig";     type = 'text/plain; charset=utf-8' }
+          )
+          foreach ($u in $uploads) {
+            aws s3 cp $u.local "s3://$($env:R2_BUCKET)/$($u.key)" `
+              --endpoint-url $env:R2_ENDPOINT `
+              --content-type $u.type `
+              --cache-control $immutable `
+              --only-show-errors
+            if ($LASTEXITCODE -ne 0) { Write-Host "::error::Uploading $($u.key) failed. Nothing has been pointed at it, so the bucket is still consistent."; exit 1 }
+            Write-Host "uploaded $($u.key)"
+          }
+
+      - name: Guard - read the artifact back from the public host
+        # PREVENTS: a successful upload that the world cannot see. The credential writes to a
+        # bucket; the client reads from a host name in front of it. Those are two different
+        # things, and a wrong prefix, a bucket binding that was never made, or a custom domain
+        # pointed somewhere else all look like a green upload and a 404 for every user. This
+        # fetches the artifact over the same public URL the manifest publishes and hashes it.
+        #
+        # The retry is a policy, not a measurement: a freshly written object can take a moment to
+        # become visible at the edge, and five attempts ten seconds apart is a bound chosen to be
+        # obviously long enough rather than derived from anything. If it ever needs a number,
+        # measure the propagation delay and put that measurement here.
+        if: env.DRY_RUN != 'true'
+        run: |
+          $url = "$($env:PUBLIC_BASE)/$($env:KEY_PREFIX)/$($env:BIN_NAME)"
+          $want = (Get-FileHash -Algorithm SHA256 (Join-Path 'dist' $env:BIN_NAME)).Hash.ToLower()
+          $out = Join-Path $env:RUNNER_TEMP 'readback.bin'
+          $ok = $false
+          foreach ($attempt in 1..5) {
+            try {
+              Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
+              $got = (Get-FileHash -Algorithm SHA256 $out).Hash.ToLower()
+              if ($got -eq $want) { $ok = $true; break }
+              Write-Host "attempt $attempt served $got, expected $want"
+            } catch {
+              Write-Host "attempt $attempt could not fetch $url : $($_.Exception.Message)"
+            }
+            Start-Sleep -Seconds 10
+          }
+          if (-not $ok) {
+            Write-Host "::error::The artifact is not readable at $url, or the bytes served are not the bytes that were signed. latest.json has NOT been published, so no client has been told to look for it."
+            exit 1
+          }
+          Write-Host "The public host serves exactly the signed bytes."
+
+      - name: Publish the GitHub Release
+        # Before the pointer moves, so that the human-readable download page exists by the time
+        # any client is told there is something new. A pre-release channel is marked as a
+        # prerelease so the GitHub UI does not offer a beta as the latest download.
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $pre = if ($env:CHANNEL -ne 'stable') { '--prerelease' } else { '' }
+          $notes = Join-Path $env:RUNNER_TEMP 'notes.md'
+          @(
+            "Channel: $($env:CHANNEL)",
+            "",
+            "Built by $($env:RUSTC_DESC) on windows-latest.",
+            "",
+            "Verify this download with minisign and the project public key:",
+            "",
+            '```',
+            "minisign -Vm $($env:BIN_NAME) -P $($env:PUBKEY)",
+            '```',
+            "",
+            "sha256: $((Get-FileHash -Algorithm SHA256 (Join-Path 'dist' $env:BIN_NAME)).Hash.ToLower())"
+          ) | Set-Content -Path $notes -Encoding utf8
+
+          # Not $args, which is an automatic variable in PowerShell and means something else.
+          $ghArgs = @('release','create', $env:TAG,
+                      "dist/$($env:BIN_NAME)",
+                      "dist/$($env:BIN_NAME).minisig",
+                      'dist/manifest.json',
+                      'dist/manifest.json.minisig',
+                      'dist/latest.json',
+                      '--repo', $env:GITHUB_REPOSITORY,
+                      '--title', "Grimoire $($env:VERSION)",
+                      '--notes-file', $notes,
+                      '--generate-notes')
+          if ($pre) { $ghArgs += $pre }
+          gh @ghArgs
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::Creating the GitHub Release failed."; exit 1 }
+
+      - name: Publish latest.json, last
+        # The pointer. Everything it names is already uploaded and has already been read back from
+        # the public host, so from the instant this object lands there is no window in which a
+        # client can be told about bytes that are not there.
+        #
+        # no-cache on the pointer and immutable on everything it points at. PREVENTS: a CDN
+        # holding an old manifest after a release, and, worse, holding a NEW manifest next to an
+        # artifact it evicted.
+        if: env.DRY_RUN != 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3 cp 'dist/latest.json' "s3://$($env:R2_BUCKET)/grimoire/$($env:CHANNEL)/latest.json" `
+            --endpoint-url $env:R2_ENDPOINT `
+            --content-type 'application/json' `
+            --cache-control 'no-cache, max-age=0, must-revalidate' `
+            --only-show-errors
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::Uploading latest.json failed. The artifact is published but no client will be offered it; re-running after fixing the cause is safe, because the versioned objects are identical."; exit 1 }
+
+      - name: Guard - read latest.json back and confirm what it points at
+        # PREVENTS: finishing green on a pointer that was written somewhere else, or that a cache
+        # is not yet serving. Reads the same URL the app reads, re-verifies the signature from the
+        # served bytes, and checks that the version and the artifact hash are the ones this run
+        # just published.
+        if: env.DRY_RUN != 'true'
+        run: |
+          $url = "$($env:PUBLIC_BASE)/grimoire/$($env:CHANNEL)/latest.json"
+          $want = (Get-FileHash -Algorithm SHA256 (Join-Path 'dist' $env:BIN_NAME)).Hash.ToLower()
+          $utf8 = New-Object System.Text.UTF8Encoding($false)
+          $check = Join-Path $env:RUNNER_TEMP 'readback-manifest.json'
+          $ok = $false
+          foreach ($attempt in 1..5) {
+            try {
+              $body = (Invoke-WebRequest -Uri $url -UseBasicParsing).Content
+              $e = $body | ConvertFrom-Json
+              [System.IO.File]::WriteAllText($check, $e.manifest, $utf8)
+              [System.IO.File]::WriteAllText("$check.minisig", $e.signature, $utf8)
+              & $env:MINISIGN -V -H -P $env:PUBKEY -m $check -q | Out-Null
+              if ($LASTEXITCODE -eq 0) {
+                $m = $e.manifest | ConvertFrom-Json
+                if ($m.version -eq $env:VERSION -and @($m.artifacts | Where-Object { $_.sha256 -eq $want }).Count -eq 1) { $ok = $true; break }
+                Write-Host "attempt $attempt served version $($m.version)"
+              } else {
+                Write-Host "attempt $attempt served a manifest that did not verify"
+              }
+            } catch {
+              Write-Host "attempt $attempt could not fetch $url : $($_.Exception.Message)"
+            }
+            Start-Sleep -Seconds 10
+          }
+          if (-not $ok) {
+            Write-Host "::error::$url does not serve a signed manifest for $($env:VERSION) naming the artifact that was just published."
+            exit 1
+          }
+          Write-Host "Clients on the $($env:CHANNEL) channel will now be offered $($env:VERSION)."
+
+      - name: Remove the signing key from the runner
+        # always(), because the interesting case is the run that failed halfway. The key file is
+        # overwritten before it is deleted so that the bytes do not survive in whatever the
+        # filesystem does with a deleted file, and this runner is thrown away afterwards anyway,
+        # which is the actual protection.
+        if: always()
+        run: |
+          $k = Join-Path $env:RUNNER_TEMP 'minisign.key'
+          if (Test-Path $k) {
+            $len = (Get-Item $k).Length
+            [System.IO.File]::WriteAllBytes($k, (New-Object byte[] $len))
+            Remove-Item $k -Force
+            Write-Host "Signing key removed."
+          }

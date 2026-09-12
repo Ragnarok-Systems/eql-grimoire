@@ -1,0 +1,15 @@
+[package]
+name = "grimoire-parse"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Reads EverQuest Legends logs and inventory dumps. Combines, skills, trivials."
+
+[features]
+default = ["serde"]
+serde = ["dep:serde", "grimoire-core/serde"]
+
+[dependencies]
+grimoire-core = { workspace = true, default-features = false }
+serde = { workspace = true, optional = true }

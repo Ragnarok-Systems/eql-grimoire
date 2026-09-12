@@ -1,0 +1,175 @@
+[package]
+name = "grimoire-desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "grimoire-desktop"
+path = "src/main.rs"
+
+[dependencies]
+# Native, immediate mode, no webview. The whole reason this crate exists rather than a Tauri
+# shell: there is no browser in the process, so there is no /engine endpoint, no wasm module and
+# no endpoint ladder. The maths is a function call.
+eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
+egui = "0.36"
+serde_json = "1"
+
+# The SAME dispatch the wasm module wraps and `grimoire serve` answers with. Calling it directly is
+# what makes this desktop app compute exactly what the shipped page computes, rather than a second
+# implementation that agrees until it does not.
+grimoire-wasm = { path = "../grimoire-wasm" }
+
+# The seven rungs of the faction ladder and where an unrated hand starts: `Regard` and
+# `Standing`. The persona footer prints your own standing on the rail, so this crate names the
+# type rather than restating its ladder, and the value it shows is `Standing::UNPROVEN`, the
+# engine's own definition of where a new hand stands, not a number this crate invents.
+#
+# THIS ENTRY WAS ABSENT ON PURPOSE AND CAME BACK WITH THE CODE THAT CALLS IT, which is the order
+# the rule asks for: the earlier comment here said the regard seal was cut, that no line of the
+# crate named the type, and that `grep -rn grimoire_core src/` answered with three comments and no
+# code. That was true and it is no longer: `persona.rs` reads `grimoire_core::Standing` and
+# `main.rs` writes one. A manifest entry no line of the crate uses is still the same defect as a
+# screen drawing a control for a feature that does not exist, and `grep` is still the check.
+grimoire-core = { workspace = true }
+
+# THE COMBAT ENGINE, CALLED RATHER THAN REIMPLEMENTED. `src/fights.rs` is an owned MIRROR of what
+# this crate returns, not a second parser: `grimoire-forge` drives the same `Fights` aggregator from
+# the CLI, and the parity sweep in that module asserts the two agree field by field over the
+# reference capture. This entry arrives WITH the code that calls it, so `grep -rn grimoire_parse src/`
+# answers with code and not with a comment.
+grimoire-parse = { workspace = true }
+
+
+# TLS FOR THE CHAT SOCKET, AND IT COSTS NO NEW PACKAGE. `rustls` 0.23.43 and `webpki-roots` 1.0.9
+# are ALREADY compiled into this binary: `ureq` 3 above pulls both, and Cargo.lock has carried
+# them (lines 3259 and 4340) since the live status poller started speaking HTTPS. Naming them
+# here makes the socket in `src/chat.rs` legal without adding one crate to the graph. The comment
+# on the `ureq` line saying rustls is the default is what made this look already-done; a comment
+# is not a manifest entry.
+#
+# DEFAULT FEATURES ARE OFF ON PURPOSE. rustls 0.23`s default set selects `aws-lc-rs`, which builds
+# C and assembly and would break the no-C-dependencies claim the `image` note above is proud of.
+# `ring` is the provider `ureq` already selected, so asking for it here compiles ONE provider into
+# the binary rather than two that disagree about which one `CryptoProvider::get_default` returns.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+webpki-roots = "1"
+
+# Everything below was added up front, before any lane started, so that no two agents ever have to
+# edit this file at the same time. A dependency that is not used yet is a warning; two agents racing
+# on Cargo.toml is a corrupted manifest.
+serde = { version = "1", features = ["derive"] }
+# The live status poller and the atlas fetch. No TLS feature juggling: rustls is the default.
+ureq = { version = "3", features = ["json"] }
+# Ctrl+Alt chords, system wide, on the main thread's event loop.
+global-hotkey = "0.8"
+# Opening a Twitch or YouTube URL in the system browser.
+open = "5"
+# Where settings live per platform.
+dirs = "6"
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+# The channel artwork pipeline (`src/channel_art.rs`): the Watch screen paints Broken Stoic's
+# own Twitch offline screen where the player would be, and the app had no image support at all.
+# DEFAULT FEATURES OFF, AND THE LIST IS THE TWO FORMATS THAT WERE MEASURED. `default-formats`
+# would compile in AVIF, EXR, TIFF, WebP and six more, and drag `ravif`, `dav1d` and `rayon` in
+# with them; this crate is proud of having no C dependencies and a 9.4 MB release binary. Twitch
+# serves the offline screen and the avatar as JPEG and PNG and YouTube serves JPEG, so those two
+# are what is compiled. A host that ever answers with anything else is a named refusal in
+# `channel_art::decode` and the screen keeps its words.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+
+log = "0.4"
+env_logger = "0.11"
+
+# THE THREE ENTRIES BELOW ARRIVE WITH `src/updater/`, WHICH IS THE ORDER THE NOTES ON
+# `grimoire-core` AND ON THE DELETED `watch-embed` FEATURE BOTH ASK FOR. `grep -rn minisign_verify
+# src/`, `grep -rn "semver::" src/` and `grep -rn "sha2::" src/` each answer with code in that
+# module and not with a comment.
+#
+# `minisign-verify` 0.2.5, ZERO DEPENDENCIES, and that is the deciding property rather than a
+# nice-to-have. The obvious alternative for a self-updater is `self_update`, which pulls `reqwest`
+# and usually `native-tls`: a second HTTP client and a second TLS provider, in a binary whose
+# rustls note above explains that two providers make `CryptoProvider::get_default` ambiguous and
+# whose `image` note is proud of having no C dependencies. The fetch is built on
+# `ureq::Agent::config_builder()` exactly as `watcher.rs:162` and `channel_art.rs:336` already do.
+# Verification only: the private half of a minisign key never exists in this process.
+minisign-verify = "0.2"
+# Version comparison, NOT hand rolled. Pre-release ordering is exactly where a comparator written
+# on `split('.')` is wrong, and being wrong there means offering the `0.0.0-smoketest` object
+# currently in the update bucket as an upgrade to a 0.1.0 build. 1.0.28 is already in Cargo.lock
+# and has no non-optional dependencies of its own.
+semver = "1"
+# The download's content hash. Pure Rust, no build script, no C, and `digest` is already in the
+# lock. It is not redundant with the signature: a hash mismatch and a signature mismatch are two
+# different events (a bad CDN versus a substituted file) and a reader told the wrong one goes
+# looking in the wrong place.
+sha2 = "0.10"
+
+# NO webview dependency, and no feature flag for one. Decision D1 permits a wry surface in the
+# Watch window and only there, and its fallback clause (live status, a chat link, an Open on
+# Twitch button, playback in the browser) is the shipped v1. The round-one tree carried an
+# optional wry dependency behind a watch-embed feature that compiled wry in and hosted nothing,
+# because a deferred egui viewport exposes no native window handle (see README, "Embedded
+# playback"). A feature that changes nothing is a claim on the manifest that the binary cannot
+# keep, so it is gone; it comes back with the code that hosts the surface, not before.
+
+# THE WEBVIEW, AND IT ARRIVED WITH THE CODE THAT HOSTS IT (see `src/player/`).
+#
+# The note above this block used to say there was no webview dependency and no feature flag for
+# one, because a `watch-embed` feature had compiled wry in and hosted nothing: a deferred egui
+# viewport exposes no native window handle. That reasoning was right about the POP-OUT window and
+# wrong about the BODY. `App::ui` is the root viewport's callback and eframe hands it an
+# `&mut eframe::Frame`, which implements `HasWindowHandle` for the root window (eframe 0.36
+# epi.rs:701), and `WebViewBuilder::build_as_child` takes exactly that. The surface lives in the
+# body; `windows.rs` still draws the browser path in the pop-out, for the original reason.
+#
+# WINDOWS ONLY, AND NOT FOR TIDINESS. WebView2 is a Windows component, and `wry` on Linux links
+# webkit2gtk through pkg-config at BUILD time. This tree's CI is a bare ubuntu-latest image with no
+# such packages, so an unconditional `wry` would turn every push red on a machine that can never
+# run the feature. `src/player/surface_absent.rs` is what other platforms compile, and it says so
+# on screen rather than pretending.
+#
+# `webview2-com` and `windows-core` are here for two calls wry does not wrap and both are measured
+# necessities, not decoration: `ICoreWebView2Profile3::SetPreferredTrackingPreventionLevel`, which
+# turns off the Edge tracking prevention that withholds Twitch's cookies from the player iframe on
+# a fresh profile, and `ICoreWebView2_8::IsDocumentPlayingAudio`, which is the only honest answer
+# to "is sound actually coming out" (a player's own isMuted() returns the flag we set it to).
+# The versions match wry 0.56's own, so one set of COM types is compiled, not two.
+[target.'cfg(windows)'.dependencies]
+wry = "0.56"
+webview2-com = "0.38"
+windows-core = "0.61"
+# The Win32 calls wry does not wrap, for the picture in picture video handoff: EnumThreadWindows and
+# GetWindowTextW to resolve the pop-out viewport's HWND (eframe hands out a handle for the ROOT
+# window only, epi_integration.rs:202, and the deferred viewport's callback gets none), plus
+# SetWindowRgn and CombineRgn to withdraw the video from the chrome's own rectangles.
+#
+# 0.61 IS NOT A CHOICE, IT IS THE VERSION ALREADY IN THE TREE. `wry` 0.56 and `webview2-com` 0.38
+# both resolve to windows 0.61.3 (Cargo.lock:4539), and `wry::WebViewExtWindows::hwnd` returns a
+# `windows::Win32::Foundation::HWND` from that exact build. Naming a different major would compile a
+# second set of COM types and make that HWND untypeable here, which is the duplication the note
+# above promises this crate does not have.
+windows = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  # DPAPI, for the one thing in this app worth encrypting at rest: see src/secret.rs.
+  "Win32_Security_Cryptography",
+  "Win32_System_Threading",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+# THE SIGNING HALF OF MINISIGN, FOR TESTS ONLY, AND IT IS NOT IN THE SHIPPED GRAPH:
+# `cargo tree -p grimoire-desktop -e normal` does not contain it. The alternative is a signature
+# pasted into the source as a fixture, and a fixture can only prove that ONE byte sequence
+# verifies: it cannot produce a manifest with a different channel, a different `published`, a
+# lower version or an unknown field, so every rule downstream of the signature gate would have to
+# be tested at a layer production does not use. Generating a keypair per test also means no secret
+# of any kind lives in this repository.
+minisign = "0.7"
+

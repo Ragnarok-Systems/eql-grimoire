@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Grimoire — engine bench</title>
+<style>
+  :root{
+    --ink:#e8e2d4; --dim:#9a93ad; --gold:#e8c46a; --rust:#b4562e;
+    --page:#171419; --panel:#1e1a22; --line:#332c3a; --cyan:#9fd8e8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);
+       font:14px/1.5 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+  header{padding:18px 22px;border-bottom:1px solid var(--line)}
+  h1{margin:0;font:600 17px/1.2 Georgia,serif;letter-spacing:.04em}
+  .sub{color:var(--dim);font-size:12px;margin-top:4px}
+  main{display:grid;grid-template-columns:minmax(280px,1fr) minmax(340px,1.3fr);
+       gap:18px;padding:18px 22px;align-items:start}
+  @media (max-width:820px){main{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:14px 16px}
+  h2{margin:0 0 10px;font:600 12px/1 Georgia,serif;letter-spacing:.14em;
+     text-transform:uppercase;color:var(--dim)}
+  input,select,button{background:#141118;color:var(--ink);border:1px solid var(--line);
+    border-radius:2px;padding:6px 8px;font:inherit;font-size:13px}
+  input:focus,select:focus{outline:1px solid var(--gold);border-color:var(--gold)}
+  button{cursor:pointer}
+  button:hover{border-color:var(--gold);color:var(--gold)}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  .row label{color:var(--dim);font-size:12px}
+  #list{max-height:52vh;overflow:auto;border-top:1px solid var(--line);margin-top:8px}
+  .item{display:flex;justify-content:space-between;gap:10px;padding:5px 6px;cursor:pointer;
+        border-bottom:1px solid #241f2b}
+  .item:hover{background:#241f2b}
+  .item.on{background:#2b2333;color:var(--gold)}
+  .item i{font-style:normal;color:var(--dim);font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td{padding:3px 0}
+  td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rule td{border-top:1px solid var(--line);padding-top:7px}
+  .tot{color:var(--gold);font-weight:600}
+  .con-red{color:#d9534f}.con-yellow{color:#d9c04f}.con-white{color:#eee}
+  .con-blue{color:#6f9fd8}.con-light{color:var(--cyan)}.con-green{color:#6bbf72}
+  .con-grey{color:#8b8b8b}
+  .warn{background:#2a1a16;border:1px solid var(--rust);color:#f0c9b8;
+        padding:12px 14px;border-radius:3px;margin:18px 22px;font-size:13px}
+  .warn code{color:var(--gold);display:block;margin-top:6px;font-size:12px}
+  .muted{color:var(--dim)}
+  .post{color:var(--cyan)}
+</style>
+</head>
+<body>
+<header>
+  <h1>EQL Grimoire — engine bench</h1>
+  <div class="sub">Every number below comes out of <b>grimoire-core</b> through wasm. There is no
+    JavaScript copy of the maths, on purpose.</div>
+</header>
+
+<div id="boot" class="warn" hidden></div>
+
+<main id="app" hidden>
+  <section class="panel">
+    <h2>Catalogue</h2>
+    <div class="row">
+      <input id="q" placeholder="search recipes" style="flex:1;min-width:140px">
+      <select id="skill"><option value="">every skill</option></select>
+    </div>
+    <div class="sub" id="count"></div>
+    <div id="list"></div>
+  </section>
+
+  <section class="panel">
+    <h2>The quote</h2>
+    <div class="row">
+      <label>qty</label><input id="qty" type="number" min="1" value="10" style="width:64px">
+      <label>his skill</label><input id="hs" type="number" min="0" max="300" value="146" style="width:70px">
+      <label>courtesy</label><input id="cy" type="number" min="0" max="100" value="0" style="width:60px"><span class="muted">%</span>
+      <label><input id="mine" type="checkbox"> I post the parts</label>
+    </div>
+    <div id="out" class="muted">Pick something on the left.</div>
+  </section>
+</main>
+
+<script src="grimoire.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let ENG = null, CORPUS = null, CAT = [], picked = null;
+
+const CON = {red:'con-red',yellow:'con-yellow',white:'con-white',blue:'con-blue',
+             'light blue':'con-light',green:'con-green',grey:'con-grey'};
+
+async function boot() {
+  try {
+    ENG = await Grimoire.load('grimoire_wasm.wasm');
+  } catch (e) {
+    return fail(`<b>The engine is not built.</b><br>${e.message}`);
+  }
+  try {
+    const res = await fetch('corpus.grim');
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    CORPUS = new Uint8Array(await res.arrayBuffer());
+    CAT = ENG.catalogue(CORPUS);
+  } catch (e) {
+    return fail(`<b>No corpus.</b> ${e.message}
+      <code>grimoire corpus web/corpus.grim --from data --trivials data/trivials-measured.csv</code>`);
+  }
+
+  const skills = [...new Set(CAT.map(r => r.skill))].sort();
+  $('#skill').replaceChildren(new Option('every skill', ''),
+    ...skills.map(s => new Option(s, s)));
+  // A retry that works must clear the banner from the attempt that did not, or the page
+  // says "the engine is not built" while it is plainly using one.
+  $('#boot').hidden = true;
+  $('#app').hidden = false;
+  draw();
+}
+
+function fail(html) {
+  const b = $('#boot');
+  b.hidden = false;
+  b.innerHTML = html + `<code>rustup target add wasm32-unknown-unknown
+cargo build --release -p grimoire-wasm --target wasm32-unknown-unknown
+cp target/wasm32-unknown-unknown/release/grimoire_wasm.wasm web/</code>`;
+}
+
+function matches() {
+  const q = $('#q').value.trim().toLowerCase();
+  const s = $('#skill').value;
+  return CAT.filter(r =>
+    (!s || r.skill === s) && (!q || r.name.toLowerCase().includes(q)));
+}
+
+function draw() {
+  const rows = matches();
+  $('#count').textContent =
+    `${rows.length} of ${CAT.length} recipes · ${CAT.filter(r => r.priced).length} fully priced`;
+  $('#list').innerHTML = rows.slice(0, 400).map(r => `
+    <div class="item${picked && picked.key === r.key ? ' on' : ''}" data-k="${r.key}">
+      <span>${r.name}</span>
+      <i>${r.trivial}${r.priced ? '' : ' · parts unpriced'}</i>
+    </div>`).join('') || '<div class="sub" style="padding:8px">nothing matches</div>';
+}
+
+function price() {
+  if (!picked) return;
+  const qty = Math.max(1, +$('#qty').value || 1);
+  const skill = Math.max(0, +$('#hs').value || 0);
+  const courtesy = Math.min(1, Math.max(0, (+$('#cy').value || 0) / 100));
+  const mine = $('#mine').checked;
+
+  const recipe = ENG.recipe(CORPUS, picked.key);
+  const hand = { skill, mastery: 0, courtesy, owns_tools: true };
+  const q = ENG.quote(recipe, qty, hand, mine);
+  const c = ENG.chance(skill, recipe.trivial);
+  const money = Grimoire.coin;
+
+  const mats = q.materials.map(m => `<tr>
+      <td>${m.units} × ${m.name}${m.buyer_supplies ? ' <span class="post">(you post it)</span>' : ''}${m.crafter_owns ? ' <span class="muted">(he has one)</span>' : ''}</td>
+      <td class="n">${m.cost ? money(m.cost) : '<span class="muted">—</span>'}</td>
+    </tr>`).join('');
+
+  // Same job across a band of skills, so the cost of a poor hand is visible rather than argued.
+  const t = recipe.trivial;
+  const band = [t - 60, t - 40, t - 20, t, t + 20].filter(s => s >= 0).map(s => {
+    const bq = ENG.quote(recipe, qty, { skill: s, mastery: 0, courtesy: 0, owns_tools: true }, mine);
+    const bc = ENG.chance(s, t);
+    return `<tr><td class="${CON[bc.con]}">skill ${s} · ${bc.con}</td>
+      <td class="n">${(bc.chance * 100).toFixed(0)}%</td>
+      <td class="n">${bq.attempts.toFixed(1)}</td>
+      <td class="n">${money(bq.total)}</td></tr>`;
+  }).join('');
+
+  $('#out').innerHTML = `
+    <div style="margin-bottom:10px">
+      <b>${recipe.product_name}</b> ×${qty}<br>
+      <span class="muted">${recipe.skill} · trivial ${t} ·
+      <span class="${CON[c.con]}">${c.con}</span> to him, and he lands
+      <b>${(c.chance * 100).toFixed(0)}%</b> of the time${c.trivial_to_him ? ' — grey means no skill-up, not safe' : ''}</span><br>
+      <span class="muted">${q.runs} combines wanted, ${q.attempts.toFixed(1)} attempts expected</span>
+    </div>
+    <table>${mats}
+      <tr class="rule"><td>materials</td><td class="n">${money(q.material_cost)}</td></tr>
+      <tr><td>his work</td><td class="n">${money(q.labour)}</td></tr>
+      <tr><td>risk</td><td class="n">${money(q.risk)}</td></tr>
+      <tr class="rule"><td>subtotal</td><td class="n">${money(q.subtotal)}</td></tr>
+      ${q.courtesy ? `<tr><td>guild courtesy</td><td class="n">−${money(q.courtesy)}</td></tr>` : ''}
+      <tr><td class="tot">total</td><td class="n tot">${money(q.total)}</td></tr>
+    </table>
+    <h2 style="margin-top:16px">What a worse hand costs you</h2>
+    <table>${band}</table>`;
+}
+
+$('#list').addEventListener('click', e => {
+  const el = e.target.closest('.item');
+  if (!el) return;
+  picked = CAT.find(r => r.key === el.dataset.k);
+  if (picked) { $('#hs').value = picked.trivial; }
+  draw(); price();
+});
+for (const id of ['#q', '#skill']) $(id).addEventListener('input', draw);
+for (const id of ['#qty', '#hs', '#cy', '#mine']) $(id).addEventListener('input', price);
+
+boot();
+</script>
+</body>
+</html>
