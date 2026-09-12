@@ -657,6 +657,9 @@ struct App {
     auth: twitch_auth::Auth,
     /// Whether the saved sign-in has been looked for yet. Once per process; see `heartbeat`.
     restored: bool,
+    /// The Ragnarok account sign-in. Idle until Settings asks or a saved sign-in is found; holds
+    /// the app token and hands the screen only a view. See `account::session`.
+    account: grimoire_desktop::account::Account,
 
     /// The YouTube half of the merged feed: a hidden browser pane running the live chat page.
     ///
@@ -813,6 +816,7 @@ impl App {
             ytchat: ytchat::surface::YtChat::idle(),
             auth: twitch_auth::Auth::default(),
             restored: false,
+            account: grimoire_desktop::account::Account::production(),
             screens,
             /* NOT `PersonaFooter::default()`: on a unit struct that is
              * `clippy::default_constructed_unit_structs`, which is deny here. */
@@ -1999,6 +2003,7 @@ impl App {
         if !self.restored {
             self.restored = true;
             self.auth.restore(ctx);
+            self.account.restore(ctx);
         }
         for t in self.hotkeys.poll(ctx) {
             self.windows.summon(t);
@@ -2158,6 +2163,7 @@ impl eframe::App for App {
          * instead of holding a lock across a draw. `Cx` deliberately carries no updater: a screen
          * that could reach it could start a download from inside a draw. */
         self.settings_screen.updater = self.updater.as_ref().map(|u| u.view());
+        self.settings_screen.account = Some(self.account.view());
         self.live = self.watcher.status();
         /* THE POLL IS IN `heartbeat` NOW, which both eframe callbacks reach; see the note there.
          * Calling it again here would be harmless (it rate-limits itself) and would say something
@@ -2837,6 +2843,10 @@ impl eframe::App for App {
             if let Some(u) = &self.updater {
                 u.ask(a);
             }
+        }
+        /* The ACCOUNT section's presses, the same way: the driver owns the threads. */
+        if let Some(a) = changed.account {
+            self.account.ask(&ctx, a);
         }
         /* AND THE ONE THE WORKER CANNOT DO EITHER. It cannot close a window, and the executable
          * that has to be started is the ENTRY POINT rather than this one

@@ -1,8 +1,9 @@
 //! KEEPING A SECRET ON DISK, OR REFUSING TO.
 //!
-//! One thing in this app is worth protecting at rest: the Twitch access token, which can speak in
-//! chat as the owner. `settings.json` is plain JSON on purpose and everything in it is inert; a
-//! token is not, so it does not go there and it does not go anywhere else in the clear.
+//! Two things in this app are worth protecting at rest: the Twitch refresh token, which can speak
+//! in chat as the owner, and the Ragnarok account token, which signs the app in as the owner's
+//! account. `settings.json` is plain JSON on purpose and everything in it is inert; a token is not,
+//! so it does not go there and it does not go anywhere else in the clear.
 //!
 //! WINDOWS DATA PROTECTION API, AND WHAT IT ACTUALLY BUYS. `CryptProtectData` encrypts with a key
 //! derived from the logged-in user's credentials, held by the OS. The ciphertext is bound to THIS
@@ -16,11 +17,12 @@
 //! plaintext in a roaming profile, in a backup, in a synced folder, or in a support bundle
 //! somebody zips up and emails.
 //!
-//! THE ENTROPY IS NOT A KEY AND IS NOT PRETENDING TO BE. `ENTROPY` is a fixed application string
-//! mixed into the derivation, so a blob written by this app cannot be unsealed by a different
-//! program that merely happens to run as the same user and guess the file. It is in the source in
-//! the clear, it is meant to be, and calling it a secret would be the kind of security theatre
-//! this file exists to avoid.
+//! THE ENTROPY IS NOT A KEY AND IS NOT PRETENDING TO BE. Each [`Purpose`] mixes a fixed application
+//! string into the derivation, so a blob written by this app cannot be unsealed by a different
+//! program that merely happens to run as the same user and guess the file, and a blob written for
+//! one purpose cannot be swapped into the other's file and read back as the wrong kind of token.
+//! The strings are in the source in the clear, they are meant to be, and calling them secrets
+//! would be the kind of security theatre this file exists to avoid.
 //!
 //! EVERY OTHER PLATFORM REFUSES RATHER THAN DEGRADES. There is no DPAPI on Linux or macOS, and the
 //! wrong answer there is to write the token in the clear and say nothing. [`seal`] answers `None`
@@ -28,16 +30,39 @@
 //! closes. A feature that quietly becomes less safe on another platform is worse than one that is
 //! honestly absent.
 
-/// Mixed into the key derivation. See the module note: this is not a key and is not secret.
+/// WHICH SECRET IS BEING KEPT, and so which entropy is mixed in.
 ///
-/// Windows only, because only DPAPI reads it; everywhere else `seal` refuses, and an ungated
-/// constant is dead code there that `-D warnings` rejects on the Linux CI runner.
-#[cfg(windows)]
-const ENTROPY: &[u8] = b"eql-grimoire/twitch-token/v1";
+/// AN ENUM AND NOT A `&[u8]` PARAMETER, so a caller cannot invent a third string at a call site
+/// and every entropy this app has ever written lives in one match below.
+#[derive(Clone, Copy, Debug)]
+pub enum Purpose {
+    /// The Twitch refresh token (`twitch_auth`). Its entropy is the ORIGINAL one and must never
+    /// change: every sign-in saved before accounts existed was sealed with it.
+    TwitchToken,
+    /// The Ragnarok account app token (`account`).
+    AccountToken,
+}
+
+impl Purpose {
+    /// Mixed into the key derivation. See the module note: this is not a key and is not secret.
+    ///
+    /// Windows only, because only DPAPI reads it; everywhere else `seal` refuses, and an ungated
+    /// function is dead code there that `-D warnings` rejects on the Linux CI runner.
+    ///
+    /// `TwitchToken`'s bytes ARE THE ONES THIS FILE SHIPPED WITH as its single `ENTROPY` constant.
+    /// Changing them signs every existing Twitch sign-in out on upgrade, silently, and
+    /// `a_twitch_blob_sealed_the_old_way_still_unseals` is what fails if they move.
+    #[cfg(windows)]
+    fn entropy(self) -> &'static [u8] {
+        match self {
+            Purpose::TwitchToken => b"eql-grimoire/twitch-token/v1",
+            Purpose::AccountToken => b"eql-grimoire/account-token/v1",
+        }
+    }
+}
 
 #[cfg(windows)]
 mod imp {
-    use super::ENTROPY;
     use windows::Win32::Foundation::{LocalFree, HLOCAL};
     use windows::Win32::Security::Cryptography::{
         CryptProtectData, CryptUnprotectData, CRYPT_INTEGER_BLOB,
@@ -62,13 +87,13 @@ mod imp {
         v
     }
 
-    pub fn seal(plain: &[u8]) -> Option<Vec<u8>> {
+    pub fn seal(entropy: &[u8], plain: &[u8]) -> Option<Vec<u8>> {
         let mut out = CRYPT_INTEGER_BLOB::default();
         let r = unsafe {
             CryptProtectData(
                 &blob(plain),
                 None,
-                Some(&blob(ENTROPY)),
+                Some(&blob(entropy)),
                 None,
                 None,
                 0,
@@ -84,13 +109,13 @@ mod imp {
         }
     }
 
-    pub fn unseal(sealed: &[u8]) -> Option<Vec<u8>> {
+    pub fn unseal(entropy: &[u8], sealed: &[u8]) -> Option<Vec<u8>> {
         let mut out = CRYPT_INTEGER_BLOB::default();
         let r = unsafe {
             CryptUnprotectData(
                 &blob(sealed),
                 None,
-                Some(&blob(ENTROPY)),
+                Some(&blob(entropy)),
                 None,
                 None,
                 0,
@@ -107,18 +132,6 @@ mod imp {
     }
 }
 
-#[cfg(not(windows))]
-mod imp {
-    /// No DPAPI here, so nothing is persisted. See the module note on why this refuses rather
-    /// than falling back to plaintext.
-    pub fn seal(_plain: &[u8]) -> Option<Vec<u8>> {
-        None
-    }
-    pub fn unseal(_sealed: &[u8]) -> Option<Vec<u8>> {
-        None
-    }
-}
-
 /// WHETHER A SECRET CAN BE KEPT ON THIS MACHINE AT ALL.
 ///
 /// The Chat screen has to tell the owner whether signing in lasts past this run, and the honest
@@ -130,14 +143,45 @@ pub fn persists() -> bool {
     cfg!(windows)
 }
 
-/// Encrypt for this user on this machine, or `None` if that cannot be done here.
+/// Encrypt the Twitch token for this user on this machine, or `None` if that cannot be done here.
+///
+/// THE ORIGINAL SIGNATURE, KEPT. `twitch_auth` calls this and nothing about what it writes has
+/// changed; it is [`seal_for`] with [`Purpose::TwitchToken`].
 pub fn seal(plain: &[u8]) -> Option<Vec<u8>> {
-    imp::seal(plain)
+    seal_for(Purpose::TwitchToken, plain)
 }
 
 /// Decrypt something [`seal`] produced, or `None` if it was not, or was not for us.
 pub fn unseal(sealed: &[u8]) -> Option<Vec<u8>> {
-    imp::unseal(sealed)
+    unseal_for(Purpose::TwitchToken, sealed)
+}
+
+/// Encrypt for this user on this machine under `purpose`'s entropy, or `None` off Windows.
+pub fn seal_for(purpose: Purpose, plain: &[u8]) -> Option<Vec<u8>> {
+    #[cfg(windows)]
+    {
+        imp::seal(purpose.entropy(), plain)
+    }
+    /* No DPAPI here, so nothing is persisted. See the module note on why this refuses rather than
+     * falling back to plaintext. */
+    #[cfg(not(windows))]
+    {
+        let _ = (purpose, plain);
+        None
+    }
+}
+
+/// Decrypt something [`seal_for`] produced under the SAME purpose, or `None`.
+pub fn unseal_for(purpose: Purpose, sealed: &[u8]) -> Option<Vec<u8>> {
+    #[cfg(windows)]
+    {
+        imp::unseal(purpose.entropy(), sealed)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (purpose, sealed);
+        None
+    }
 }
 
 #[cfg(test)]
@@ -188,11 +232,59 @@ mod tests {
         assert_eq!(unseal(&sealed), None, "a tampered blob decrypted");
     }
 
+    /// A TWITCH SIGN-IN SAVED BEFORE ACCOUNTS EXISTED STILL COMES BACK.
+    ///
+    /// THE BLOB IS SEALED WITH THE LITERAL BYTES, NOT WITH `Purpose::entropy`. Before this file
+    /// grew purposes it had one constant, `ENTROPY = b"eql-grimoire/twitch-token/v1"`, and every
+    /// `twitch-token.bin` in the field was sealed with exactly that. Sealing the fixture through
+    /// the enum would prove only that the enum agrees with itself; sealing it with the old bytes,
+    /// spelled out here, is what fails the day somebody "tidies" the Twitch string.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: change any byte of `Purpose::TwitchToken`'s entropy, or route
+    /// `unseal` through `Purpose::AccountToken`.
+    #[cfg(windows)]
+    #[test]
+    fn a_twitch_blob_sealed_the_old_way_still_unseals() {
+        let old = imp::seal(b"eql-grimoire/twitch-token/v1", b"REFRESH-FROM-LAST-MONTH")
+            .expect("DPAPI is present on Windows");
+        assert_eq!(
+            unseal(&old).as_deref(),
+            Some(b"REFRESH-FROM-LAST-MONTH".as_slice()),
+            "a Twitch token sealed before accounts existed no longer unseals, so every owner is \
+             signed out of chat by the upgrade"
+        );
+        assert_eq!(
+            unseal_for(Purpose::TwitchToken, &old).as_deref(),
+            Some(b"REFRESH-FROM-LAST-MONTH".as_slice())
+        );
+    }
+
+    /// THE TWO PURPOSES CANNOT READ EACH OTHER'S BLOBS.
+    ///
+    /// The account token file and the Twitch token file sit side by side. A blob copied from one
+    /// into the other must not unseal as the wrong kind of token, which is what distinct entropy
+    /// buys and what a shared one would silently lose.
+    #[cfg(windows)]
+    #[test]
+    fn an_account_blob_and_a_twitch_blob_are_not_interchangeable() {
+        let account = seal_for(Purpose::AccountToken, b"rsa_ACCOUNT").expect("DPAPI");
+        let twitch = seal_for(Purpose::TwitchToken, b"TWITCH").expect("DPAPI");
+        assert_eq!(
+            unseal_for(Purpose::AccountToken, &account).as_deref(),
+            Some(b"rsa_ACCOUNT".as_slice())
+        );
+        assert_eq!(unseal_for(Purpose::TwitchToken, &account), None);
+        assert_eq!(unseal(&account), None);
+        assert_eq!(unseal_for(Purpose::AccountToken, &twitch), None);
+    }
+
     /// OFF WINDOWS NOTHING IS PERSISTED, WHICH IS THE POINT.
     #[cfg(not(windows))]
     #[test]
     fn without_dpapi_nothing_is_written_in_the_clear() {
         assert_eq!(seal(b"token"), None);
         assert_eq!(unseal(b"token"), None);
+        assert_eq!(seal_for(Purpose::AccountToken, b"token"), None);
+        assert_eq!(unseal_for(Purpose::AccountToken, b"token"), None);
     }
 }

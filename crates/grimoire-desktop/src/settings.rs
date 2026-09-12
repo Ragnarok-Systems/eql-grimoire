@@ -1033,6 +1033,12 @@ pub struct Changed {
     /// started is the ENTRY POINT rather than this executable
     /// (`crate::updater::run::entry_point` says why). `App` answers it.
     pub restart: bool,
+    /// A BUTTON IN THE ACCOUNT SECTION WAS PRESSED, and which one.
+    ///
+    /// AN ASK FOR THE SAME REASON AS `updater` ABOVE. `App` owns the `account::Account`, which
+    /// owns the sign-in threads, and a screen that could reach it could open a browser and a port
+    /// from inside a draw. `Option` for the same reason too: one press per frame.
+    pub account: Option<crate::account::Ask>,
 }
 
 /// How long after the last keystroke the file is written. Long enough that typing a path does not
@@ -1063,6 +1069,12 @@ pub struct SettingsScreen {
     /// preflight run constructs none on purpose, and neither does a platform with no local data
     /// directory. The section says so in words rather than drawing an empty one.
     pub updater: Option<crate::updater::run::UpdateView>,
+    /// WHAT THE ACCOUNT SIGN-IN IS DOING, written by the App every frame, in the shape `updater`
+    /// above has and for its reasons. The view carries no token.
+    ///
+    /// `None` MEANS NO ACCOUNT DRIVER IN THIS WINDOW, which is what every test frame looks like,
+    /// and the section says so in words rather than offering a Sign in button nothing answers.
+    pub account: Option<crate::account::AccountView>,
 
     /* Text buffers for the two path fields. A path is edited as text and applied when the field
      * loses focus, so a half typed path never lands in settings as a folder that does not exist.
@@ -1193,6 +1205,10 @@ impl SettingsScreen {
              * not, so it goes at the end of that group rather than inside it, next to WINDOW,
              * which is the other section about how the app itself behaves. */
             self.updates(ui, cx);
+            /* ACCOUNT SITS DIRECTLY UNDER UPDATES, for the same reason UPDATES sits under WINDOW:
+             * it is about the app itself (who it is signed in as), not about where it reads from
+             * and not about what the owner has written into it. */
+            self.account(ui);
             /* FIGHT NOTES SITS HERE AND NOT AT THE TOP, because a person comes to this screen for
              * it deliberately (a note he cannot find any more) rather than sweeping the page. The
              * sections above are all about where the app READS from; this one and HOTKEYS are
@@ -2182,6 +2198,84 @@ impl SettingsScreen {
         ui.add_space(6.0);
     }
 
+    /// THE ACCOUNT SECTION: who this app is signed in as on ragnarok.systems, and the buttons that
+    /// change it.
+    ///
+    /// # THE SCREEN ASKS AND NEVER DRIVES
+    ///
+    /// Every button writes `self.changed.account` and nothing else. `App` hands the ask to
+    /// `account::Account`, which opens the browser and the loopback port on its own thread; this
+    /// draw never makes a request, and never sees the token. What is drawn is `account_rows`, a
+    /// pure function the tests drive state by state.
+    ///
+    /// # OFF WINDOWS IT SAYS THE SIGN-IN DOES NOT LAST
+    ///
+    /// There is no DPAPI there, so `account::save_token` writes nothing, and a screen that let the
+    /// owner believe otherwise would be the lie `secret::persists` exists to prevent.
+    fn account(&mut self, ui: &mut Ui) {
+        use crate::account::AccountView;
+
+        heading(ui, "ACCOUNT");
+        let Some(view) = self.account.clone() else {
+            ui.horizontal(|ui| {
+                ui.add_space(FIELD_W);
+                mark(
+                    ui,
+                    State::Idle,
+                    "no account sign-in is running in this window",
+                );
+            });
+            ui.add_space(6.0);
+            return;
+        };
+
+        let rows = account_rows(&view);
+        let signed_in = matches!(view, AccountView::In { .. });
+        if let Some((st, words)) = &rows.line {
+            ui.horizontal(|ui| {
+                ui.add_space(FIELD_W);
+                mark(ui, *st, words);
+            });
+        }
+        /* THE PROVIDERS ARE A FACT WITH A LABEL; THE SIGNED-OUT LINE IS A HINT BESIDE A BUTTON. */
+        if signed_in {
+            if let Some(d) = &rows.detail {
+                ui.horizontal(|ui| {
+                    field_label(ui, "With");
+                    ui.label(RichText::new(d).color(TEXT_2));
+                });
+            }
+        }
+        ui.horizontal(|ui| {
+            ui.add_space(FIELD_W);
+            for (label, ask) in &rows.buttons {
+                if ui.button(*label).clicked() {
+                    self.changed.account = Some(*ask);
+                }
+            }
+            if !signed_in {
+                if let Some(d) = &rows.detail {
+                    ui.label(RichText::new(d).color(TEXT_3));
+                }
+            }
+        });
+        if !crate::secret::persists()
+            && matches!(
+                view,
+                AccountView::Out | AccountView::Waiting | AccountView::In { .. }
+            )
+        {
+            ui.horizontal(|ui| {
+                ui.add_space(FIELD_W);
+                ui.label(
+                    RichText::new("On this system the sign-in lasts until the app closes.")
+                        .color(TEXT_3),
+                );
+            });
+        }
+        ui.add_space(6.0);
+    }
+
     fn hotkeys(&mut self, ui: &mut Ui, cx: &mut Cx) {
         heading(ui, "HOTKEYS");
         if self.bindings.is_empty() {
@@ -2613,6 +2707,66 @@ pub fn notes_newest_first(notes: &BTreeMap<String, String>) -> Vec<(&str, &str)>
     rows
 }
 
+/// WHAT THE ACCOUNT SECTION SAYS AND OFFERS FOR ONE VIEW, lifted out of the paint so every state
+/// can be driven, exactly as `phase_line` is for UPDATES.
+struct AccountRows {
+    /// The signal square and its sentence, when the state has one.
+    line: Option<(State, String)>,
+    /// The providers when signed in; where the sign-in happens when signed out.
+    detail: Option<String>,
+    /// The buttons, in order, and what each asks for.
+    buttons: Vec<(&'static str, crate::account::Ask)>,
+}
+
+/// The words the goal doc names for each state, and nothing it does not.
+///
+/// ONLY `Wrong` IS RED, and only for a sign-in that failed or a saved one that could not be
+/// checked. Waiting on the browser and checking a saved sign-in are `Working`; signed in is
+/// `Settled`; signed out has no square at all, because it is not a problem and a hollow ring
+/// beside a Sign in button would read as one.
+///
+/// A SAVED SIGN-IN THAT COULD NOT BE CHECKED OFFERS SIGN OUT. The token is still on this computer
+/// and still live on the website; without the button an owner offline, or behind an answer that is
+/// neither yes nor no, could not sign out or sign in as anybody else.
+fn account_rows(view: &crate::account::AccountView) -> AccountRows {
+    use crate::account::{AccountView, Ask};
+    match view {
+        AccountView::Out => AccountRows {
+            line: None,
+            detail: Some("With Twitch, YouTube, GitHub or Discord, in your browser".to_owned()),
+            buttons: vec![("Sign in", Ask::SignIn)],
+        },
+        AccountView::Checking => AccountRows {
+            line: Some((State::Working, "Checking your saved sign-in".to_owned())),
+            detail: None,
+            buttons: Vec::new(),
+        },
+        AccountView::Waiting => AccountRows {
+            line: Some((
+                State::Working,
+                "Finish signing in in your browser".to_owned(),
+            )),
+            detail: None,
+            buttons: vec![("Cancel", Ask::Cancel)],
+        },
+        AccountView::In { name, providers } => AccountRows {
+            line: Some((State::Settled, format!("Signed in as {name}"))),
+            detail: (!providers.is_empty()).then(|| providers.join(", ")),
+            buttons: vec![("Manage account", Ask::Manage), ("Sign out", Ask::SignOut)],
+        },
+        AccountView::Failed(why) => AccountRows {
+            line: Some((State::Wrong, why.clone())),
+            detail: None,
+            buttons: vec![("Try again", Ask::SignIn)],
+        },
+        AccountView::Unchecked(why) => AccountRows {
+            line: Some((State::Wrong, why.clone())),
+            detail: None,
+            buttons: vec![("Try again", Ask::SignIn), ("Sign out", Ask::SignOut)],
+        },
+    }
+}
+
 /// Width of the label column, so every field's control starts on the same vertical line.
 const FIELD_W: f32 = 92.0;
 
@@ -2747,10 +2901,19 @@ mod tests {
     /// so `dirty_since` stays `None` and the debounce in `ui` never calls `write`; and `write`
     /// goes to `save_replacing_unreadable`, which refuses outright under `cfg(test)`.
     fn settings_screen_frame() -> (Vec<String>, bool) {
+        settings_screen_frame_with(|_| {})
+    }
+
+    /// The same two frames, over a screen `prepare` has written into first: what a test uses to
+    /// paint a section in a state the default screen is never in, such as a signed in ACCOUNT.
+    fn settings_screen_frame_with(
+        prepare: impl FnOnce(&mut SettingsScreen),
+    ) -> (Vec<String>, bool) {
         let ctx = egui::Context::default();
         crate::fonts::install(&ctx);
         crate::theme::install(&ctx);
         let mut screen = SettingsScreen::default();
+        prepare(&mut screen);
         let mut settings = Settings::default();
         let mut ingest = crate::ingest::Ingest::new(&settings);
         let live = crate::watcher::Status {
@@ -4752,6 +4915,194 @@ mod tests {
                  nothing measured. It painted {words:?}"
             );
         }
+    }
+
+    /// DEFECT THIS PREVENTS: THE ACCOUNT SECTION EXISTING AND NEVER BEING DRAWN, OR DRAWN SOMEWHERE
+    /// NOBODY LOOKS FOR IT.
+    ///
+    /// The same defect `the_updates_section_is_drawn_and_says_what_this_build_is` guards, for the
+    /// section beside it. Its place is part of the claim: directly under UPDATES and above FIGHT
+    /// NOTES, which `SettingsScreen::ui` states. And the default screen has no driver, so the one
+    /// honest line for that state must be painted rather than a Sign in button nothing answers.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: drop `self.account(ui)` from `SettingsScreen::ui`, move it
+    /// below `self.notes`, or paint the buttons with no view.
+    #[test]
+    fn the_account_section_is_drawn_under_updates_and_says_when_nothing_drives_it() {
+        let (words, _) = settings_screen_frame();
+        let at = |want: &str| {
+            words
+                .iter()
+                .position(|w| w == want)
+                .unwrap_or_else(|| panic!("the settings screen never painted {want:?}: {words:?}"))
+        };
+        let (updates, account, notes) = (at("UPDATES"), at("ACCOUNT"), at("FIGHT NOTES"));
+        assert!(
+            updates < account && account < notes,
+            "ACCOUNT belongs between UPDATES ({updates}) and FIGHT NOTES ({notes}), not at \
+             {account}"
+        );
+        let section = &words[account..notes];
+        assert!(
+            section
+                .iter()
+                .any(|w| w == "no account sign-in is running in this window"),
+            "with no driver the section drew no explanation: {section:?}"
+        );
+        assert!(
+            !section.iter().any(|w| w == "Sign in"),
+            "a Sign in button was painted with nothing to answer it"
+        );
+    }
+
+    /// DEFECT THIS PREVENTS: A STATE OF THE SIGN-IN THAT THE SCREEN DOES NOT SAY, OR SAYS WRONG.
+    ///
+    /// Every view is painted through the real screen, and the section between its heading and the
+    /// next one must carry the goal doc's words for that state and its buttons, and no em-dash.
+    /// Buttons that belong to another state must be absent: a Sign out beside Sign in, or a Sign
+    /// in while the browser is already open, is a press that does nothing or does harm.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: any rewording of the six states, dropping a button, or
+    /// painting `detail` for signed out as a field with a label.
+    #[test]
+    fn every_account_state_paints_its_words_and_only_its_buttons() {
+        use crate::account::AccountView;
+        let signed_in = AccountView::In {
+            name: "Broken Stoic".to_owned(),
+            providers: vec![
+                "Twitch (broken_stoic)".to_owned(),
+                "GitHub (stoic)".to_owned(),
+            ],
+        };
+        let failed = "The website did not accept the sign-in code, so nothing was signed in.";
+        let unchecked = "Could not reach the account service to check your saved sign-in.";
+        let cases: Vec<(AccountView, Vec<&str>, Vec<&str>)> = vec![
+            (
+                AccountView::Out,
+                vec![
+                    "Sign in",
+                    "With Twitch, YouTube, GitHub or Discord, in your browser",
+                ],
+                vec!["Sign out", "Cancel", "Manage account"],
+            ),
+            (
+                AccountView::Checking,
+                vec!["Checking your saved sign-in"],
+                vec!["Sign in", "Sign out", "Cancel"],
+            ),
+            (
+                AccountView::Waiting,
+                vec!["Finish signing in in your browser", "Cancel"],
+                vec!["Sign in", "Sign out"],
+            ),
+            (
+                signed_in,
+                vec![
+                    "Signed in as Broken Stoic",
+                    "With",
+                    "Twitch (broken_stoic), GitHub (stoic)",
+                    "Manage account",
+                    "Sign out",
+                ],
+                vec!["Sign in", "Cancel"],
+            ),
+            (
+                AccountView::Failed(failed.to_owned()),
+                vec![failed, "Try again"],
+                vec!["Sign out", "Cancel"],
+            ),
+            (
+                AccountView::Unchecked(unchecked.to_owned()),
+                vec![unchecked, "Try again", "Sign out"],
+                vec!["Sign in", "Cancel", "Manage account"],
+            ),
+        ];
+        for (view, present, absent) in cases {
+            let painted = view.clone();
+            let (words, _) = settings_screen_frame_with(move |s| s.account = Some(painted));
+            let from = words
+                .iter()
+                .position(|w| w == "ACCOUNT")
+                .expect("the ACCOUNT heading");
+            let to = words
+                .iter()
+                .position(|w| w == "FIGHT NOTES")
+                .expect("the FIGHT NOTES heading");
+            let section = &words[from..to];
+            for want in present {
+                assert!(
+                    section.iter().any(|w| w == want),
+                    "{view:?} did not paint {want:?}: {section:?}"
+                );
+            }
+            for not in absent {
+                assert!(
+                    !section.iter().any(|w| w == not),
+                    "{view:?} painted {not:?}, a button that belongs to another state"
+                );
+            }
+            assert!(
+                !section.iter().any(|w| w.contains('\u{2014}')),
+                "an em-dash in the ACCOUNT section: {section:?}"
+            );
+            let lasts = section
+                .iter()
+                .any(|w| w == "On this system the sign-in lasts until the app closes.");
+            let should = !crate::secret::persists()
+                && matches!(
+                    view,
+                    AccountView::Out | AccountView::Waiting | AccountView::In { .. }
+                );
+            assert_eq!(
+                lasts, should,
+                "{view:?}: the line about the sign-in not lasting must appear exactly where \
+                 nothing is saved"
+            );
+        }
+    }
+
+    /// EACH BUTTON ASKS FOR WHAT IT SAYS, which the paint test cannot see: it reads words, and a
+    /// Sign out button that asked for Sign in would paint exactly the same.
+    #[test]
+    fn each_account_button_asks_for_what_it_says() {
+        use crate::account::{AccountView, Ask};
+        let buttons = |v: AccountView| account_rows(&v).buttons;
+        assert_eq!(buttons(AccountView::Out), vec![("Sign in", Ask::SignIn)]);
+        assert_eq!(buttons(AccountView::Checking), vec![]);
+        assert_eq!(buttons(AccountView::Waiting), vec![("Cancel", Ask::Cancel)]);
+        assert_eq!(
+            buttons(AccountView::In {
+                name: "n".to_owned(),
+                providers: vec![]
+            }),
+            vec![("Manage account", Ask::Manage), ("Sign out", Ask::SignOut)]
+        );
+        assert_eq!(
+            buttons(AccountView::Failed("x".to_owned())),
+            vec![("Try again", Ask::SignIn)]
+        );
+        assert_eq!(
+            buttons(AccountView::Unchecked("x".to_owned())),
+            vec![("Try again", Ask::SignIn), ("Sign out", Ask::SignOut)],
+            "a saved sign-in that could not be checked must be able to sign out"
+        );
+        /* AND ONLY A FAILURE IS RED. */
+        for (v, st) in [
+            (AccountView::Checking, State::Working),
+            (AccountView::Waiting, State::Working),
+            (
+                AccountView::In {
+                    name: "n".to_owned(),
+                    providers: vec![],
+                },
+                State::Settled,
+            ),
+            (AccountView::Failed("x".to_owned()), State::Wrong),
+            (AccountView::Unchecked("x".to_owned()), State::Wrong),
+        ] {
+            assert_eq!(account_rows(&v).line.map(|(s, _)| s), Some(st), "{v:?}");
+        }
+        assert!(account_rows(&AccountView::Out).line.is_none());
     }
 
     /// DEFECT THIS PREVENTS: A SECOND GRIMOIRE WINDOW OPENING OVER A FULLSCREEN GAME, MID-RAID,

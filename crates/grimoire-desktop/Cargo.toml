@@ -110,6 +110,15 @@ semver = "1"
 # looking in the wrong place.
 sha2 = "0.10"
 
+# THE PKCE CHALLENGE AND THE RANDOM VALUES OF THE ACCOUNT SIGN-IN (`src/account/`), in RFC 4648
+# base64url with no padding, which is the one spelling RFC 7636 accepts. `base64` 0.23.1 is ALREADY
+# compiled into this binary: `ureq` 3.4 depends on it (Cargo.lock, the `ureq` entry), so naming it
+# here adds no crate to the graph on either platform, exactly as the `rustls` note above argues.
+# Not hand rolled: the alphabet and the padding rule are where a hand encoder is wrong, and wrong
+# here is a challenge the server refuses for every sign-in. The randomness itself comes from the
+# `ring` provider `rustls` already selects, so no `getrandom` is named either.
+base64 = "0.23"
+
 # NO webview dependency, and no feature flag for one. Decision D1 permits a wry surface in the
 # Watch window and only there, and its fallback clause (live status, a chat link, an Open on
 # Twitch button, playback in the browser) is the shipped v1. The round-one tree carried an

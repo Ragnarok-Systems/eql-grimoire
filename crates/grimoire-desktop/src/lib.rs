@@ -26,6 +26,11 @@
 //!
 //! The module set is the contract, fixed by decision D9; the binary re-exports nothing and
 //! reaches in by path.
+/// A CHANGE TO THE MODULE SET, STATED AS ONE, like `updater` below. `account` is the Ragnarok
+/// account sign-in: PKCE through the system browser and a loopback listener, the app token sealed
+/// beside settings, and the driver the Settings screen's ACCOUNT section asks. The contract it
+/// speaks is `docs/RAGNAROK-ACCOUNTS-SIGN-IN-GOAL.md`.
+pub mod account;
 pub mod castmsg;
 pub mod channel_art;
 pub mod chat;
