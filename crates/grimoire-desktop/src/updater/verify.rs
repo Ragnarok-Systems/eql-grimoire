@@ -774,6 +774,52 @@ mod tests {
         );
     }
 
+    /// DEFECT THIS PREVENTS: A CORRECT "NOT PUBLISHED YET" FAILING THE RELEASE ANYWAY.
+    ///
+    /// GitHub appends `exit $LASTEXITCODE` to every pwsh step. The publish guard in release.yml
+    /// asks R2 for an object it expects NOT to find, so the AWS CLI exits non-zero on the good
+    /// path, and a step that ends without resetting that fails with its own success message
+    /// printed. That stopped `v0.1.2-beta.2` on 2026-09-12. A dry run never reaches the step,
+    /// which is why nothing caught it before a real tag did.
+    ///
+    /// ALSO HELD: only a 404 counts as "not published", so a bad R2 token stops the run at this
+    /// step instead of passing as an empty bucket.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: delete the trailing `exit 0` from that step, or drop its 404
+    /// check.
+    #[test]
+    fn the_publish_guard_ends_green_on_the_miss_it_expects() {
+        let workflow = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join(".github")
+            .join("workflows")
+            .join("release.yml");
+        let yml = std::fs::read_to_string(&workflow)
+            .unwrap_or_else(|e| panic!("{} could not be read ({e})", workflow.display()));
+        let step = yml
+            .split("- name: ")
+            .find(|s| s.starts_with("Guard - this version has not been published before"))
+            .expect("release.yml has no publish guard step");
+
+        let last = step
+            .lines()
+            .map(str::trim)
+            .rev()
+            .find(|l| !l.is_empty() && !l.starts_with('#'))
+            .unwrap_or_default();
+        assert_eq!(
+            last, "exit 0",
+            "the publish guard does not end with an explicit exit 0, so the expected miss from R2 \
+             leaves a non-zero exit code that GitHub turns into a failed release"
+        );
+        assert!(
+            step.contains(r"\(404\)"),
+            "the publish guard no longer tells a missing object from any other R2 failure, so a \
+             bad token would read as an empty bucket"
+        );
+    }
+
     /// DEFECT THIS PREVENTS: A MANIFEST NOBODY SIGNED BEING READ ANYWAY.
     ///
     /// The whole ordering rule rests on this call: if `open` returned a `Verified` for an

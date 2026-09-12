@@ -395,14 +395,30 @@ jobs:
           # whose failure is information rather than a fault. Restored immediately afterwards.
           $prev = $ErrorActionPreference
           $ErrorActionPreference = 'Continue'
-          aws s3api head-object --endpoint-url $endpoint --bucket $env:R2_BUCKET --key $key 2>$null | Out-Null
-          $exists = ($LASTEXITCODE -eq 0)
+          # Each stderr line becomes its plain message text, so a refusal prints R2's own sentence and
+          # not a PowerShell error record wrapped around it.
+          $said = ((aws s3api head-object --endpoint-url $endpoint --bucket $env:R2_BUCKET --key $key 2>&1 | ForEach-Object { "$_" }) -join ' ')
+          $code = $LASTEXITCODE
           $ErrorActionPreference = $prev
-          if ($exists) {
+          if ($code -eq 0) {
             Write-Host "::error::s3://$($env:R2_BUCKET)/$key already exists. Version $($env:VERSION) has been published. Cut a new version rather than replacing one; the versioned objects are immutable so that a published sha256 stays true."
             exit 1
           }
+          # ONLY A 404 MEANS "NOT PUBLISHED". PREVENTS: a wrong or expired R2 token, which also makes
+          # head-object fail, reading as an empty bucket and letting the job build for twenty minutes
+          # before the upload refuses it. Anything else stops the run here, with what R2 said.
+          if ($said -notmatch '\(404\)|Not Found') {
+            Write-Host "::error::Could not ask R2 whether $key exists (aws exit $code): $($said.Trim())"
+            exit 1
+          }
           Write-Host "Nothing is published at $key yet."
+          # EXIT 0, EXPLICITLY, AND THE STEP IS WRONG WITHOUT IT. GitHub appends
+          # `exit $LASTEXITCODE` to every pwsh step, and the expected miss above leaves that non-zero,
+          # so without this line a correct "not published" answer fails the step. That is how
+          # v0.1.2-beta.2 stopped here on 2026-09-12, with the line above printed over its error.
+          # Reproduced locally: this body in that wrapper exits 1, and exits 0 with this line.
+          # A dry run never reaches this step, which is why only a real tag could find it.
+          exit 0
 
       - name: Install the Rust toolchain
         # dtolnay/rust-toolchain, tag v1 as of 2026-09-11. Pinned to the SHA, which means the
