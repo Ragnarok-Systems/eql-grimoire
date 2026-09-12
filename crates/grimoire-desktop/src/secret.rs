@@ -29,6 +29,10 @@
 //! honestly absent.
 
 /// Mixed into the key derivation. See the module note: this is not a key and is not secret.
+///
+/// Windows only, because only DPAPI reads it; everywhere else `seal` refuses, and an ungated
+/// constant is dead code there that `-D warnings` rejects on the Linux CI runner.
+#[cfg(windows)]
 const ENTROPY: &[u8] = b"eql-grimoire/twitch-token/v1";
 
 #[cfg(windows)]

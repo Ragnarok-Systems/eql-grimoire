@@ -306,8 +306,15 @@ fn why(e: Ended) -> &'static str {
 /// `eqlog_Reviir_freeport.txt` names the character between the first and last underscore. A file
 /// not shaped like that yields nothing rather than a guess, because a wrong name silently merges
 /// two people into one row.
+///
+/// THE FILE NAME IS CUT AT EITHER SEPARATOR, WHATEVER THIS BINARY RUNS ON. `Path` splits on the
+/// host's separator only, so on Linux `C:\EQ\Logs\eqlog_Reviir_freeport.txt` is one component with
+/// no `eqlog_` prefix and the name came out as nothing; the public CI runs on Linux and that is
+/// where it failed. The game writes these names, on Windows and on a Mac, and never puts either
+/// separator inside one, so cutting at both is right on every platform.
 fn owner_of(path: &str) -> Option<String> {
-    let stem = Path::new(path).file_stem()?.to_str()?;
+    let file = path.rsplit(['/', '\\']).next()?;
+    let stem = Path::new(file).file_stem()?.to_str()?;
     let rest = stem.strip_prefix("eqlog_")?;
     let (name, server) = rest.rsplit_once('_')?;
     if name.is_empty() || server.is_empty() || name.contains('_') {

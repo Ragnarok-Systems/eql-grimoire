@@ -181,6 +181,21 @@ fn sync_dir(dir: &Path) {
     }
 }
 
+/// A temp file beside `path` that no other writer, in this process or another, will also pick.
+///
+/// A FIXED `.tmp` NAME IS SHARED BY EVERY WRITER. The one case [`with_lock`] cannot rule out is a
+/// holder slow enough to have its lock taken, and with one shared name that case was two writers
+/// creating, filling and renaming ONE file, so the second rename found nothing and the write
+/// failed. With a name per writer the same case is a last-rename-wins lost update, which is the
+/// cost `LOCK_PATIENCE` already names and accepts.
+pub(crate) fn temp_beside(path: &Path) -> PathBuf {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let mut s = path.as_os_str().to_owned();
+    s.push(format!(".tmp-{}-{n}", std::process::id()));
+    PathBuf::from(s)
+}
+
 /* =================================================================== locking == */
 
 /// HOW LONG A WRITER WAITS FOR ANOTHER WRITER BEFORE IT TAKES THE LOCK ANYWAY.
@@ -214,6 +229,16 @@ pub const LOCK_PATIENCE: std::time::Duration = std::time::Duration::from_secs(5)
 /// the error path, which is what the guard struct below is for: an early `?` inside `f` must not
 /// leave a lock behind.
 pub fn with_lock<T>(path: &Path, f: impl FnOnce() -> Result<T, Refusal>) -> Result<T, Refusal> {
+    with_lock_patient(path, LOCK_PATIENCE, f)
+}
+
+/// [`with_lock`] with the patience as an argument, so a test can hold it to milliseconds instead
+/// of sleeping through five real seconds.
+fn with_lock_patient<T>(
+    path: &Path,
+    patience: std::time::Duration,
+    f: impl FnOnce() -> Result<T, Refusal>,
+) -> Result<T, Refusal> {
     let lock = {
         let mut s = path.as_os_str().to_owned();
         s.push(".lock");
@@ -223,7 +248,6 @@ pub fn with_lock<T>(path: &Path, f: impl FnOnce() -> Result<T, Refusal>) -> Resu
         std::fs::create_dir_all(d).map_err(|e| io("create", d, &e))?;
     }
 
-    let start = std::time::Instant::now();
     loop {
         match std::fs::OpenOptions::new()
             .write(true)
@@ -232,12 +256,32 @@ pub fn with_lock<T>(path: &Path, f: impl FnOnce() -> Result<T, Refusal>) -> Resu
         {
             Ok(_) => break,
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                if start.elapsed() >= LOCK_PATIENCE {
-                    /* TAKEN, NOT WAITED FOR FOR EVER. See `LOCK_PATIENCE`: at this point the
-                     * holder is a process that died, and the alternative to taking it is that one
-                     * crash disables this bookkeeping permanently. */
+                /* THE AGE OF THE LOCK FILE, NOT HOW LONG THIS WAITER HAS WAITED.
+                 *
+                 * Measured from the waiter's own start, a queue of live writers each holding the
+                 * lock briefly kept a late waiter out past the patience with no holder being slow,
+                 * and the waiter took the lock from one that was still inside: two writers in one
+                 * section, one rename failing (Linux CI, `failed_launches_accumulate_and_a_drawn_
+                 * frame_clears_them`). A busy queue keeps creating fresh lock files; only a holder
+                 * that died leaves one that ages. */
+                let held_for = std::fs::metadata(&lock)
+                    .and_then(|m| m.modified())
+                    .ok()
+                    .and_then(|t| t.elapsed().ok());
+                if held_for.is_some_and(|age| age >= patience) {
+                    /* TAKEN, NOT WAITED FOR FOR EVER. See `LOCK_PATIENCE`: the alternative is that
+                     * one crash disables this bookkeeping permanently.
+                     *
+                     * AND ROUND AGAIN TO CREATE IT, never straight into the section. Breaking here
+                     * ran the write with no lock file at all, so any other writer walked in beside
+                     * it, and the guard below then deleted whatever lock was there on the way out.
+                     *
+                     * STILL NOT PERFECT, SAID PLAINLY: two waiters that both judge the same dead
+                     * lock stale can race between this read and this remove, and the later remove
+                     * can delete the lock the earlier one just created. That needs a holder to have
+                     * died first; the live-queue case that actually failed cannot reach it. */
                     let _ = std::fs::remove_file(&lock);
-                    break;
+                    continue;
                 }
                 std::thread::sleep(std::time::Duration::from_millis(20));
             }
@@ -668,16 +712,19 @@ fn write_current_inner(l: &Layout, c: &Current) -> Result<(), Refusal> {
         path: path.clone(),
         why: e.to_string(),
     })?;
-    let tmp = {
-        let mut s = path.as_os_str().to_owned();
-        s.push(".tmp");
-        PathBuf::from(s)
-    };
+    let tmp = temp_beside(&path);
     /* FLUSHED TO THE DEVICE BEFORE THE RENAME. The rename is what makes the new pointer real,
      * and a rename that lands ahead of the bytes it names is the power-loss case this whole
-     * design exists to remove. */
-    write_durably(&tmp, &body)?;
-    std::fs::rename(&tmp, &path).map_err(|e| io("rename into place", &path, &e))?;
+     * design exists to remove. A failed write removes its own temp file: every writer's name is
+     * its own now, so nothing else would ever overwrite it. */
+    if let Err(e) = write_durably(&tmp, &body) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e);
+    }
+    if let Err(e) = std::fs::rename(&tmp, &path) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(io("rename into place", &path, &e));
+    }
     if let Some(d) = path.parent() {
         sync_dir(d);
     }
@@ -1480,6 +1527,84 @@ mod tests {
             "increments were lost, so two copies of the app writing this file at once can make a \
              broken build look healthy or a healthy one look broken"
         );
+    }
+
+    /// DEFECT THIS PREVENTS: THE LOCK TAKEN FROM A HOLDER THAT IS ALIVE AND WORKING.
+    ///
+    /// Patience used to be measured from when the WAITER started waiting. A queue of writers each
+    /// holding the lock briefly keeps a late waiter out for longer than that without any one holder
+    /// being slow, and the waiter then took the lock from a live holder: two writers inside one
+    /// critical section, both writing the same temp file, and one rename failing with "No such file
+    /// or directory". Measured on the Linux CI runner under a loaded suite, as a failure of
+    /// `failed_launches_accumulate_and_a_drawn_frame_clears_them`. What says a holder died is the
+    /// AGE OF ITS LOCK FILE, which a busy queue keeps renewing and a dead holder never does.
+    ///
+    /// Here patience is one second and each of 64 sections holds the lock for 25 ms, so the late
+    /// writers wait well past the patience behind holders whose lock is never older than 25 ms.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: measure patience from the waiter's own start again.
+    #[test]
+    fn a_queue_of_live_holders_never_has_the_lock_taken_from_under_it() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+        let path = scratch("live-queue").join("guarded.json");
+        let patience = std::time::Duration::from_secs(1);
+        let inside = Arc::new(AtomicUsize::new(0));
+        let most = Arc::new(AtomicUsize::new(0));
+        let writers: Vec<_> = (0..8)
+            .map(|_| {
+                let (path, inside, most) = (path.clone(), inside.clone(), most.clone());
+                std::thread::spawn(move || {
+                    for _ in 0..8 {
+                        with_lock_patient(&path, patience, || {
+                            let now = inside.fetch_add(1, Ordering::SeqCst) + 1;
+                            most.fetch_max(now, Ordering::SeqCst);
+                            std::thread::sleep(std::time::Duration::from_millis(25));
+                            inside.fetch_sub(1, Ordering::SeqCst);
+                            Ok(())
+                        })
+                        .expect("the section ran");
+                    }
+                })
+            })
+            .collect();
+        for w in writers {
+            w.join().expect("a writer finished");
+        }
+        assert_eq!(
+            most.load(Ordering::SeqCst),
+            1,
+            "two writers were inside the section at once: a waiter took the lock from a holder that \
+             was alive and working"
+        );
+    }
+
+    /// DEFECT THIS PREVENTS: A TAKEN LOCK THAT NOBODY HOLDS.
+    ///
+    /// The taker used to delete the stale lock and walk into the section WITHOUT creating its own,
+    /// so for the whole of its write there was no lock file and any other writer went straight in
+    /// beside it; its guard then deleted whatever lock file was there on the way out, which by then
+    /// could belong to the next holder.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: `break` out of the wait after removing the stale lock instead
+    /// of going round again to create one.
+    #[test]
+    fn a_dead_holders_lock_is_taken_and_the_taker_really_holds_it() {
+        let path = scratch("dead-holder").join("guarded.json");
+        let lock = {
+            let mut s = path.as_os_str().to_owned();
+            s.push(".lock");
+            PathBuf::from(s)
+        };
+        std::fs::write(&lock, b"").expect("a lock nobody will ever release");
+        let patience = std::time::Duration::from_millis(100);
+        std::thread::sleep(patience * 3);
+        let held = with_lock_patient(&path, patience, || Ok(lock.exists())).expect("taken");
+        assert!(
+            held,
+            "the stale lock was removed and the section ran with no lock file at all"
+        );
+        assert!(!lock.exists(), "the taker did not release the lock it took");
     }
 
     /// DEFECT THIS PREVENTS: THE BYTES THAT RUN NOT BEING THE BYTES THAT WERE CHECKED.

@@ -594,6 +594,9 @@ mod tests {
         p
     }
 
+    /* The next three helpers serve only the two persistence tests, which need DPAPI and are
+     * Windows only, so they are too; ungated they are dead code on the Linux CI runner. */
+    #[cfg(windows)]
     fn tokens(refresh: &str) -> Tokens {
         Tokens {
             access: "ACCESS".to_owned(),
@@ -688,6 +691,7 @@ mod tests {
     }
 
     /// Wait briefly for the auth thread to remove a file.
+    #[cfg(windows)]
     fn gone(p: &std::path::Path) -> bool {
         for _ in 0..300 {
             if !p.exists() {
@@ -729,6 +733,7 @@ mod tests {
     ///
     /// A wall clock in a test is a flake generator. This one cannot be removed (the thing under
     /// test IS a background thread) so it is made too big to lose instead of tuned to a machine.
+    #[cfg(windows)]
     fn settles(a: &Auth, want: AuthView) -> bool {
         for _ in 0..1_000 {
             if a.view() == want {

@@ -24,4 +24,10 @@ jobs:
         with:
           key: ${{ hashFiles('Cargo.lock') }}
       - name: Run CI script
+        # The wiki corpus at crates/grimoire-desktop/data is deliberately not committed (reasons in
+        # .gitignore), so the runner has none. The tests that read it FAIL when it is absent rather
+        # than pass on nothing; this flag is the operator saying the absence is on purpose, and each
+        # of them prints SKIPPED ON PURPOSE. release.yml runs its gate the same way.
+        env:
+          GRIMOIRE_NO_DATA: "1"
         run: bash ci.sh

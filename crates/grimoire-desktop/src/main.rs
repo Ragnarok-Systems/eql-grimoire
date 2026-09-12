@@ -3938,8 +3938,7 @@ mod tests {
                     grimoire_desktop::settings::YOUTUBE_HANDLE,
                 ),
             };
-            let mut settings = Settings::default();
-            let mut ingest = Ingest::new(&settings);
+            let (mut settings, mut ingest) = settled_ingest();
             let mut screens = Screens::default();
             let mut cx = Cx {
                 data: None,
@@ -4107,6 +4106,8 @@ mod tests {
     /// sections until the Bazaar became a heading with six plain rows. A named test would now be
     /// asserting about a destination that no longer exists, or worse, quietly passing over an empty
     /// list; the count assertion at the end is what stops that.
+    ///
+    /// BOTH PAINTS READ A SETTLED INGEST, AND THEY USED TO RACE. See [`settled_ingest`].
     #[test]
     fn a_section_that_is_a_screen_draws_that_screen() {
         let ctx = egui::Context::default();
@@ -4122,8 +4123,7 @@ mod tests {
                     grimoire_desktop::settings::YOUTUBE_HANDLE,
                 ),
             };
-            let mut settings = Settings::default();
-            let mut ingest = Ingest::new(&settings);
+            let (mut settings, mut ingest) = settled_ingest();
             let mut screens = Screens::default();
             let mut cx = Cx {
                 data: None,
@@ -4189,6 +4189,43 @@ mod tests {
              consumer and this test proved nothing"
         );
     }
+
+    /// AN INGEST WHOSE BOOTSTRAP HAS LANDED, OVER AN EMPTY LOGS FOLDER, for tests that paint.
+    ///
+    /// `Ingest::new` resolves the Logs folder and loads the roster on a worker, and every page
+    /// that reports on either says `Reading` (or leaves the line out) until that lands. A test that
+    /// builds one and paints at once is racing that worker, and a test that paints twice and
+    /// compares is racing it twice. Measured on the Linux CI runner, where there is no usual log
+    /// folder and the scan finishes in microseconds: `a_section_that_is_a_screen_draws_that_screen`
+    /// failed 8 runs in 12 ("No Logs folder is set" in one paint, "still being read" in the other)
+    /// and `a_railed_screen_does_not_offer_its_sections_twice` failed on "Mob roster not loaded"
+    /// appearing in only one. Both passed on the owner's machine only because his real 163 MB log
+    /// kept every paint on `Reading`.
+    ///
+    /// THE FOLDER IS NAMED AND EMPTY, so the machine's own EverQuest install is not an input: the
+    /// same state on a CI runner, a contributor's laptop and the owner's desktop. Created and never
+    /// removed during the run, because tests in this binary share it on parallel threads.
+    fn settled_ingest() -> (Settings, Ingest) {
+        let logs = std::env::temp_dir().join(format!(
+            "grimoire-main-tests-empty-logs-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&logs).expect("an empty logs folder");
+        let settings = Settings {
+            log_dir: Some(logs.clone()),
+            ..Settings::default()
+        };
+        let mut ingest = Ingest::new(&settings);
+        for _ in 0..1_000 {
+            let _ = ingest.tail();
+            if !ingest.scanning() {
+                return (settings, ingest);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        panic!("the bootstrap never landed over {}", logs.display());
+    }
+
     /// THREE DESTINATIONS SHARE THE PARSER SCREEN AND EACH FIXES IT TO ITS OWN VIEW.
     ///
     /// THIS TEST EXISTS BECAUSE ITS ABSENCE WAS MEASURED. Deleting `on_view`'s Log Parser arm left

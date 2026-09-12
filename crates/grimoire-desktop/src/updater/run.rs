@@ -601,19 +601,21 @@ fn write_state_inner(l: &Layout, p: &Persisted) -> Result<(), Refusal> {
         path: path.clone(),
         why: e.to_string(),
     })?;
-    let tmp = {
-        let mut s = path.as_os_str().to_owned();
-        s.push(".tmp");
-        PathBuf::from(s)
-    };
-    {
+    /* A TEMP NAME OF THIS WRITER'S OWN. See `install::temp_beside`: a shared `.tmp` turned a
+     * taken lock into a rename that fails, and a failed write removes what it left. */
+    let tmp = install::temp_beside(&path);
+    let written = (|| {
         use std::io::Write as _;
         let mut f = std::fs::File::create(&tmp).map_err(|e| super::io("create", &tmp, &e))?;
         f.write_all(&body)
             .map_err(|e| super::io("write", &tmp, &e))?;
         f.sync_all().map_err(|e| super::io("flush", &tmp, &e))?;
+        std::fs::rename(&tmp, &path).map_err(|e| super::io("rename into place", &path, &e))
+    })();
+    if written.is_err() {
+        let _ = std::fs::remove_file(&tmp);
     }
-    std::fs::rename(&tmp, &path).map_err(|e| super::io("rename into place", &path, &e))
+    written
 }
 
 /// RECORD THAT THE TRAMPOLINE WENT BACK, so the version it fled is not offered again on its own.
