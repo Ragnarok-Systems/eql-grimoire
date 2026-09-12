@@ -1,8 +1,7 @@
 //! The engine, for the browser.
 //!
 //! No `wasm-bindgen`, no build tooling, no npm. The boundary is three C functions and a
-//! forty-line loader, which keeps the whole client a static file on a CDN — the thing
-//! `HOSTING.md` says must stay true.
+//! forty-line loader, which keeps the whole client a static file on a CDN.
 //!
 //! ```sh
 //! rustup target add wasm32-unknown-unknown

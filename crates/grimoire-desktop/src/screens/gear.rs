@@ -682,10 +682,9 @@ impl Catalogue {
 /// own files. That sentence is gone rather than reworded, because no such derivation exists here
 /// and a sourcing claim a reader cannot follow is worse than an admitted gap.
 ///
-/// `docs/COMBAT-PARSER.md` already states the rule this table is owed: a closed enumeration
-/// belongs in a generated `const`, emitted from a checked-in source, with a test asserting that
-/// regeneration reproduces the committed bytes. Until that exists, treat every number below as
-/// unverified.
+/// The rule this table is owed: a closed enumeration belongs in a generated `const`, emitted from a
+/// checked-in source, with a test asserting that regeneration reproduces the committed bytes. Until
+/// that exists, treat every number below as unverified.
 ///
 /// It is kept in its unverified state because deleting it fails in a silent direction: with no
 /// table at all a missing cap reads as a cap of ZERO, so every point of AC on every item is

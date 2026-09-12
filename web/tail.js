@@ -13,9 +13,8 @@
 // THE CURSOR RULE IS NOT THIS FILE'S. G1-02 owns it for the whole board and states it once.
 // This is a second implementation of that one rule, in a language the Rust one cannot reach,
 // and that is the only reason it is allowed to exist. Where the two disagree, G1-02 is right.
-// `COMBAT-PARSER.md` §7 hazard H22 is the register of what goes wrong when it is got wrong,
-// and two of the hazards it records are the two this file is shaped to avoid: a padded short
-// read, and a remainder held as a decoded string.
+// Two ways of getting it wrong are what this file is shaped to avoid: a padded short read, and a
+// remainder held as a decoded string.
 //
 // NOTHING LEAVES THE PAGE. This file performs no network call of any kind. The bytes it reads
 // go to the engine in the page and nowhere else. That is a property of this source and

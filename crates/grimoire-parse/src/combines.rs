@@ -344,8 +344,8 @@ mod tests {
 
     #[test]
     fn buckets_carry_no_item_names_or_identity() {
-        // The privacy claim in HOSTING.md is that only a summary crosses the wire. That has
-        // to be true of the type, not just the intention.
+        // The privacy claim is that only a summary crosses the wire. That has to be true of the
+        // type, not just the intention.
         let h = harvest(&log(&[
             "You have fashioned the items together to create something new: Bracelet.",
             "You have become better at Jewelry Making! (73)",

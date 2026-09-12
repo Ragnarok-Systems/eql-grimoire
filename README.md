@@ -104,8 +104,7 @@ Wrong DPS numbers count as a serious bug. Please report them.
 ## Contributing
 
 Grimoire is open source. To build it from source or send a change, read
-[CONTRIBUTING.md](CONTRIBUTING.md). How the crafting engine and its command line work is in
-[docs/CRAFTING-ENGINE.md](docs/CRAFTING-ENGINE.md).
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 

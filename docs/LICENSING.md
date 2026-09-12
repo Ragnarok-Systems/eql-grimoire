@@ -39,13 +39,11 @@ table states:
 
 **Game data.** Item, quest, zone and wiki data the desktop app reads is third-party content. It
 is loaded at runtime from a data directory and never compiled into the binary; the loader is
-documented in `crates/grimoire-desktop/README.md`, under "The data path rule". Its source is
-eqlwiki.com, and it is attributed to eqlwiki.
+`crates/grimoire-desktop/src/data/mod.rs`. Its source is eqlwiki.com, and it is attributed to
+eqlwiki.
 
-**The terms that data ships under are NOT settled in this repository, and this file does not
-settle them.** Two documents in this tree disagree. `crates/grimoire-desktop/README.md` describes
-the snapshot as CC BY-SA 4.0; `docs/SPEC.md` section 4.3 records that eqlwiki publishes no
-robots.txt and declares no licence at all. Both cannot be true. Recording either one here as the
-answer would publish a licence claim the repository itself contradicts, so what is recorded here
-is the disagreement. Settling it is the data pass's work, and the answer belongs in this file on
-the day it exists.
+**The terms that data ships under are NOT settled, and this file does not settle them.** Earlier
+notes in this repository disagreed: one described the data as CC BY-SA 4.0, another recorded that
+eqlwiki publishes no robots.txt and declares no licence at all. Both cannot be true, so what is
+recorded here is the open question. Settling it is the data pass's work, and the answer belongs in
+this file on the day it exists.

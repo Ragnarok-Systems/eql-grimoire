@@ -42,7 +42,7 @@ function binary() {
   return p;
 }
 
-/* 2. A corpus. Cut from `data/` exactly as README.md documents, with the binary from step 1. */
+/* 2. A corpus. Cut from `data/` with `grimoire corpus`, using the binary from step 1. */
 function corpus(bin) {
   const out = join(WEB, "corpus.grim");
   if (existsSync(out)) { say("corpus present"); return out; }
