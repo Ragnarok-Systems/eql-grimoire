@@ -495,8 +495,6 @@ mod tests {
     use super::*;
     use crate::account::challenge_for;
     use std::collections::{BTreeMap, VecDeque};
-    use std::io::{Read, Write};
-    use std::net::TcpStream;
 
     const BASE: &str = "https://accounts.test/account";
     const TOKEN: &str = "rsa_Zm9vYmFyYmF6cXV4cXV1eHF1dXhxdXV4cXV1eHF1dXg";
@@ -609,22 +607,10 @@ mod tests {
             .unwrap_or_default()
     }
 
-    /// A GET on the loopback, played the way a browser plays it, and the whole response.
+    /// A GET on the loopback, played the way a browser plays it, and the whole response. Through
+    /// `loopback::test_browser`, so this file never names `std::net`: see the note there.
     fn visit(port: u16, target: &str) -> String {
-        match TcpStream::connect(("127.0.0.1", port)) {
-            Ok(mut s) => {
-                /* See `loopback::tests::visit`: a broken listener must fail a test, not hang it. */
-                let _ = s.set_read_timeout(Some(Duration::from_secs(10)));
-                let _ = write!(
-                    s,
-                    "GET {target} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
-                );
-                let mut out = String::new();
-                let _ = s.read_to_string(&mut out);
-                out
-            }
-            Err(e) => format!("refused: {e}"),
-        }
+        crate::account::loopback::test_browser::visit(port, target)
     }
 
     /// A browser that, once opened, visits each target on the loopback in turn. `{state}` in a
@@ -688,7 +674,7 @@ mod tests {
     }
 
     fn port_closed(port: u16) -> bool {
-        eventually(|| TcpStream::connect(("127.0.0.1", port)).is_err())
+        eventually(|| crate::account::loopback::test_browser::refuses(port))
     }
 
     /// THE WHOLE SIGN-IN, THROUGH A REAL LOOPBACK SOCKET, ENDS SIGNED IN AS THE ACCOUNT.

@@ -405,23 +405,25 @@ fn page(status: u16, title: &str, line: &str) -> String {
     )
 }
 
+/// THE BROWSER, PLAYED BY TESTS, AND THE ONLY WAY A TEST OUTSIDE THIS FILE REACHES THE SOCKET.
+///
+/// Here because this is the account module's only file that `grimoire-forge/tests/purity.rs` lets
+/// name `std::net` (the others are `chat.rs` and `irc.rs`, for the IRC socket). `session.rs`
+/// drives the whole flow through a real listener and needs to play the browser too;
+/// giving it its own `TcpStream` would have put a second file on that allow list for test code,
+/// and the list is only worth anything while it stays short.
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::Arc;
-
-    const STATE: &str = "Qm9rZW4tU3RvaWMtc3RhdGUtdmFsdWUtZm9yLXRlc3Q";
-
-    fn state() -> Hidden {
-        Hidden::new(STATE.to_owned())
-    }
+pub(crate) mod test_browser {
+    use std::io::{Read, Write};
+    use std::net::{Ipv4Addr, TcpStream};
+    use std::time::Duration;
 
     /// Play the browser: one GET, and the whole response back.
     ///
     /// A READ TIMEOUT, SO A BROKEN LISTENER FAILS A TEST RATHER THAN HANGING IT. A wait that ends
     /// too early leaves the rest of a test's visits connected to a backlog nobody accepts, and a
     /// client with no timeout would block there for ever: measured, with `ct_eq` forced true.
-    fn visit(port: u16, target: &str) -> String {
+    pub fn visit(port: u16, target: &str) -> String {
         match TcpStream::connect((Ipv4Addr::LOCALHOST, port)) {
             Ok(mut s) => {
                 let _ = s.set_read_timeout(Some(Duration::from_secs(10)));
@@ -435,6 +437,24 @@ mod tests {
             }
             Err(e) => format!("refused: {e}"),
         }
+    }
+
+    /// Whether nothing is listening on `port` any more: a connection attempt is refused.
+    pub fn refuses(port: u16) -> bool {
+        TcpStream::connect((Ipv4Addr::LOCALHOST, port)).is_err()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_browser::visit;
+    use super::*;
+    use std::sync::Arc;
+
+    const STATE: &str = "Qm9rZW4tU3RvaWMtc3RhdGUtdmFsdWUtZm9yLXRlc3Q";
+
+    fn state() -> Hidden {
+        Hidden::new(STATE.to_owned())
     }
 
     /// Visit each target in order on a thread; the join hands back every response.

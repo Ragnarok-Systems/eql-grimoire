@@ -9,12 +9,19 @@
 //! those folders from the environment and the executable's own location (`env`), and it ages the
 //! live pill and debounces the settings writes against a clock (`time`).
 //!
-//! `net` IS ALLOWED IN TWO NAMED FILES AND NOWHERE ELSE, and the narrowness is the point.
+//! `net` IS ALLOWED IN THREE NAMED FILES AND NOWHERE ELSE, and the narrowness is the point.
 //! Twitch's chat is IRC over TLS, which is a raw socket: `ureq` speaks HTTP and cannot carry it,
-//! so `chat.rs` and `irc.rs` genuinely need `std::net::TcpStream`. Granting the whole CRATE `net`
-//! to say that would retire the rule, because a bare socket appearing in a SCREEN is exactly the
-//! change this gate exists to fail on. `FILE_ALLOW` names the two files instead; a third file
-//! naming `std::net` still fails, and so does a new namespace in either of these two.
+//! so `chat.rs` and `irc.rs` genuinely need `std::net::TcpStream`. The account sign-in's
+//! `loopback.rs` genuinely needs `std::net::TcpListener`, because RFC 8252's browser redirect comes
+//! back to a port the app listens on. Granting the whole CRATE `net` to say that would retire the
+//! rule, because a bare socket appearing in a SCREEN is exactly the change this gate exists to
+//! fail on. `FILE_ALLOW` names the files instead; a fourth file naming `std::net` still fails,
+//! and so does a new namespace in any of these three.
+//!
+//! IT CAUGHT THE THIRD FILE THE SAME WAY IT CAUGHT THE FIRST TWO: `loopback.rs` and the tests in
+//! `session.rs` were gated with `cargo test -p grimoire-desktop`, and only the workspace run in
+//! `ci.sh` (a WSL clone, 2026-09-12) went red. The listener got an entry; the tests did not, and
+//! reach the socket through `loopback::test_browser` instead.
 //!
 //! THIS GATE CAUGHT ITS OWN CASE AND THE CATCH WAS LATE. The IRC socket was written without the
 //! table being told, and it sat red for a while because that work was checked with
@@ -54,11 +61,18 @@ const ALLOW_TABLE: &[(&str, &[&str])] = &[
 /// WHERE A NAMESPACE IS ALLOWED IN ONE FILE RATHER THAN ONE CRATE: (crate, file name, namespace).
 ///
 /// A FILE NAME AND NOT A PATH, because the scan already knows which crate it is in and a path
-/// would break the first time a module moved into a directory. Two entries, both the same reason:
-/// Twitch chat is IRC over TLS and needs a socket.
+/// would break the first time a module moved into a directory. Three entries, two reasons:
+///
+/// * `chat.rs` and `irc.rs`: Twitch chat is IRC over TLS and needs a socket.
+/// * `loopback.rs`: the Ragnarok account sign-in is RFC 8252's loopback redirect. The browser comes
+///   back to `http://127.0.0.1:<port>/callback`, so the app must LISTEN on a local port, and
+///   `ureq` is a client that cannot. It is the only file that opens that listener; the flow in
+///   `session.rs` reaches it through `Loopback`, and its tests play the browser through
+///   `loopback::test_browser`, so neither names `std::net` and neither needs an entry.
 const FILE_ALLOW: &[(&str, &str, &str)] = &[
     ("grimoire-desktop", "chat.rs", "net"),
     ("grimoire-desktop", "irc.rs", "net"),
+    ("grimoire-desktop", "loopback.rs", "net"),
 ];
 
 /// Whether `file` in `crate_name` is one of the named exceptions for `ns`.
