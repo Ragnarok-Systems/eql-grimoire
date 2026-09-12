@@ -1,210 +1,117 @@
-# EQL Grimoire
+# Grimoire
 
-Tradeskill broker for EverQuest Legends. Reads your logs and your inventory on your own
-machine, prices a job honestly, and remembers who did what.
+A companion app for the games you play. **This is the EverQuest Legends edition.**
 
-**Read [PLAN.md](PLAN.md) first.** It explains why the core of this repo is four pieces (a
-crafting parser, one crate of maths, a static corpus and a thin hosted worker): crafting is the
-part of EverQuest Legends the log records and no tool measures, and those four pieces are what it
-takes to measure it.
+Grimoire reads the log file the game writes on your own PC and turns it into a DPS parser, overlays
+you can keep on top of the game, dashboards of your nights, and a record of your character. It also
+carries a searchable offline compendium of the game, and the Broken Stoic stream and videos.
+
+**Website and download: [ragnarok.systems/grimoire](https://ragnarok.systems/grimoire)**
 
 ---
 
-## What's here
+## Install
 
-| Crate | What it is |
+1. Download Grimoire from [ragnarok.systems/grimoire](https://ragnarok.systems/grimoire).
+2. Put the downloaded `.exe` wherever you want it to live, and run it. There is no installer. Pin it to
+   your taskbar or Start menu if you like: that file keeps working through every update.
+3. **Windows may warn you** with "Windows protected your PC", because the app is not yet signed with a
+   code signing certificate. Click **More info**, then **Run anyway**.
+
+Grimoire runs on 64-bit Windows.
+
+## Set up the game
+
+In EverQuest Legends, type:
+
+```
+/log on
+```
+
+The game only writes a log while logging is on, and Grimoire can only show what the log records.
+
+Grimoire looks for the logs in the default install folder:
+
+```
+C:\Users\Public\Daybreak Game Company\Installed Games\EverQuest Legends\Logs
+```
+
+If you installed the game somewhere else, open **Settings** and point **LOG FOLDER** at your game's
+`Logs` folder.
+
+For the inventory and gear pages, type `/outputfile inventory` in game whenever you want Grimoire to see
+what you are carrying.
+
+## What's in it
+
+The menu on the left is grouped the way the app is:
+
+| Section | What it is |
 |---|---|
-| `grimoire-core` | The domain and the maths. Combine odds, quoting, regard, order lifecycle. No I/O, no Discord, no HTTP. |
-| `grimoire-parse` | Reads `eqlog_*.txt` and `*-Inventory.txt`. The only EQL parser that reads **crafting**. |
-| `grimoire-corpus` | Content-addressed, range-readable static artifact. Akashic RFC 42 shaped. |
-| `grimoire-wasm` | The engine for the browser: JSON in, JSON out, over a plain C ABI. No wasm-bindgen, no npm. |
-| `grimoire-forge` | `grimoire` — the command line that ties them together. |
-| `web/` | `app.html` — the designed UI on the real engine — plus `grimoire.js` and `bench.html`. |
+| **Chronicle** | The **Log Parser**: live DPS, every fight, dashboards of a night, and reports. **GINA** triggers are coming. |
+| **My Legend** | Your character: inventory, gear, exaltations, loadouts, plans, hunt and loot journals, Plane of Sky, lockouts |
+| **Compendium** | The game itself, offline and searchable: zones, bestiary, items, loot tables, quests, spells, crafting |
+| **The Bazaar** | Crafting orders, priced from the game's own combine odds |
+| **The Tavern** | Groups, guild and schedule |
+| **Broken Stoic** | Watch the stream live, the videos, and chat |
 
-```
-cargo test --workspace     # 139 tests
-cargo build --release
-```
+Some pages are still being built. Those say so on the page, and say what they are waiting on.
 
-**Run it.** Double-click `run.cmd` on Windows, or `./run.sh` anywhere else. Then open:
+### Overlays
 
-### → http://127.0.0.1:8787/app.html
+The DPS **Pill**, **Meter** and **Coach** are small windows that stay on top of the game. Open them from
+**Log Parser → Overlays**, drag them where you want them, and they open there next time.
 
-No wasm build needed for this path. Or by hand:
+The dot on an overlay tells you where the fight is:
 
-```
-cargo run --release -p grimoire-forge -- serve
-```
+- **Green**: you are fighting.
+- **Gold**: the fight just ended, and the encounter is held open for a few seconds in case another mob
+  joins.
+- **Red**: the encounter is over. The numbers from it stay up until the next fight starts.
 
-`grimoire serve` answers on `POST /engine` with the same `grimoire_wasm::dispatch` the wasm
-module wraps — the same code behind a different door, not a second implementation. It exists
-because `wasm32-unknown-unknown` cannot be installed everywhere, and a UI nobody can click is
-a UI nobody has tested.
+## Updates
 
-**Ship it.** The browser build has no server at all:
+Grimoire updates itself. When a new version is out it downloads, checks the download's signature, and
+installs, with nothing for you to click. If a new version ever fails to start, Grimoire goes back to the
+one that worked.
 
-```
-rustup target add wasm32-unknown-unknown
-cargo build --release -p grimoire-wasm --target wasm32-unknown-unknown
-cp target/wasm32-unknown-unknown/release/grimoire_wasm.wasm web/
-```
+To get new features early, open **Settings → UPDATES** and switch the channel to **beta**. Beta builds
+are newer and less tested.
 
-`web/app.test.js` and `web/bench.test.js` drive those pages in a real browser against real
-engine output — piped through `grimoire dispatch` instead of wasm — so the UI is tested even
-where the wasm target will not install:
+## Your data
 
-```
-node web/app.test.js --shots
-node web/bench.test.js
-```
+Your logs are read where the game writes them, on your PC. Grimoire keeps its own files in:
 
-Four themes ship: **Grimoire**, **Guild hall**, **Stone**, **System**. They were already
-written in the mockup's CSS and never applied; the switcher is the swatch row under the nav.
+- `%APPDATA%\eql-grimoire`: your settings and the fights it has saved
+- `%LOCALAPPDATA%\eql-grimoire`: the installed app versions
+- `%LOCALAPPDATA%\EQLGrimoire`: cached images and the stream player's data
 
----
+Grimoire goes online to check for updates, to play the Broken Stoic stream and videos, and when you sign
+in to Twitch.
 
-## The command line
+**To uninstall**, delete the Grimoire `.exe` you downloaded and those three folders.
 
-```
-grimoire combines <eqlog.txt>...      read crafting out of a log
-grimoire inventory <dump.txt>         read an /outputfile inventory dump
-grimoire wiki <page.wikitext>...      turn a wiki recipe table into recipes
-grimoire corpus <out.grim>            cut a corpus artifact
-grimoire check <corpus.grim>          open an artifact and verify it
-grimoire quote <corpus.grim> <item>   price a job
-grimoire quotes <corpus.grim> <item>  the same job across a band of skills
-grimoire dispatch                     the browser's engine API on stdin/stdout
-```
+## Help and bugs
 
-Cutting a corpus from scratch:
+Found something wrong? [Open an issue](https://github.com/Ragnarok-Systems/eql-grimoire/issues) with:
 
-```sh
-grimoire combines "…/Logs/eqlog_Reviir_qeynos.txt" --csv data/trivials.csv
-grimoire wiki data/wiki/Jewelcrafting.crafters.wikitext \
-    --metals data/wiki/Jewelcrafting.metals.wikitext \
-    --trivials data/trivials-measured.csv --out data/recipes-jewelcrafting.json
-grimoire wiki data/wiki/Alchemy.recipes.wikitext --skill Alchemy \
-    --prices data/wiki/Alchemy.reagents.wikitext --out data/recipes-alchemy.json
-grimoire corpus web/corpus.grim --from data --trivials data/trivials-measured.csv
-```
+- what you expected, and what happened
+- your Grimoire version (it's in the title bar)
+- the log lines where it went wrong, **with other players' names and chat removed**
 
-**294 recipes today** — 141 jewelcrafting, 153 alchemy — of which 195 are fully priced.
+Wrong DPS numbers count as a serious bug. Please report them.
 
-Logs live in `<EverQuest Legends>\Logs\eqlog_<char>_<server>.txt`. Inventory dumps land beside
-the client as `<Char>_<server>-Inventory.txt` after `/outputfile inventory`.
+## Contributing
 
-Against a real 160 MB log, in half a second:
-
-```
-  1840 combine attempts      67 items     9 tradeskills
-
-  trivials this log pins exactly
-    Electrum Malachite Bracelet              74     76 attempts     47% landed
-    Potion of Accuracy                       83    106 attempts     39% landed
-    Gold Malachite Bracelet                 146     98 attempts     79% landed
-    …
-
-  the combine model against this log  (343 attempts at pinned trivials)
-    skill−trivial      n   observed   model
-      -99…-40        40      0.12    0.21
-      -40…-25        68      0.50    0.45
-      -25…-15        56      0.59    0.58
-      -15…-5         67      0.69    0.70
-       -5…99        112      0.72    0.76
-    overall             343      0.58    0.59   model holds
-```
-
----
-
-## What a quote looks like
-
-```
-Gold Malachite Bracelet x10
-  Jewelry Making · trivial 146 · a hand of skill 146 cons it grey and lands 88% of the time
-  10 combines wanted, 11.4 attempts expected
-
-  materials
-      12 x Gold Bar                          139p 9s
-      12 x Malachite                           6g 9s
-
-  materials            139p 7g 8s
-  his work            1p 1g 3s 6c
-  risk                         7c
-  ------------------------------
-  subtotal          140p 9g 2s 3c
-  guild courtesy    −21p 1g 3s 8c   −15%
-  total             119p 7g 8s 5c
-```
-
-Twelve bars for ten bracelets is the whole argument: a hand who fails buys the difference, and
-`grimoire quotes` shows what a worse one costs you.
-
-```
-Greater Potion of Accuracy x20 — trivial 150
-  skill   con          lands   attempts        total
-     90   yellow         29%     69.0    2617p 6g 7s
-    110   white          49%     40.8   1555p 3g 5s 3c
-    130   blue           69%     29.0   1100p 1g 2s 2c
-    150   grey           89%     22.5   872p 3g 8s 3c
-    170   grey           95%     21.1   834p 3g 5s 9c
-```
-
----
-
-## Four things the code knows that no wiki does
-
-**The trivial is in your log.** `You can no longer advance your skill from making this item.`
-fires exactly when skill reaches trivial, and the neighbouring skill-up line stamps the
-number. Craft something from under trivial to over it and the log has told you its trivial
-exactly. Eleven of them fell out of one character's logs.
-
-**The combine formula is the classic EverQuest one, and it is now tested rather than assumed.**
-`skill − 0.75·trivial + 51.5`, clamped 5–95%. Log-likelihood −200.4 across 343 real attempts,
-against −202.5 for a two-parameter curve fitted to that same data — a formula with no free
-parameters beat one with two. `grimoire combines` re-runs that check against any log and says
-**MODEL HAS DRIFTED** if it stops holding.
-
-**The inventory dump has a second table.** After the inventory it emits a three-column keyring
-of collected augmentations, clickies and equipment. It is not stock — you can't hand a crafter
-an augmentation you've merely collected — but it is exactly what a collection checklist wants.
-
-**Gem prices are derivable, and nowhere written down.** The wiki publishes a per-recipe `Cost*`
-and a per-bar metal price, never a gem price. A piece is one bar plus one gem, so the gem is
-the difference — and every recipe using that gem agrees on it. 28 gem prices fall out, taking
-jewelcrafting from 0 fully-priced recipes to 140. Derived, not transcribed, and marked so.
-
----
-
-## Still assumed, and marked as such in the code
-
-- **Mastery does nothing.** `Mastery::bonus()` returns zero on purpose. One crafter's logs mean
-  AA rank never varied, so the term cannot be measured yet. A guess here would sit inside every
-  price the app quotes.
-- **The 95% ceiling.** No observation in the dataset is above trivial.
-- **Failed combines destroy components.** `Disposition::PerAttempt` assumes classic behaviour.
-  The log prints no component-loss line either way, so this needs an inventory diff across a
-  known failure. If EQL returns materials on failure, every quote here is too high.
-- **Grey does not mean safe.** At skill exactly equal to trivial the classic formula gives
-  `0.25·trivial + 51.5` percent, so a maxed hand on a trivial-83 potion still fails better than
-  one time in four. Counter-intuitive, measured, and pinned by a test so nobody "fixes" it.
-- **`Source::Unknown` is treated as un-buyable.** A component with no known vendor price gets
-  handed to the buyer to find rather than silently billed. Ten of eleven measured trivials
-  matched the wiki exactly, so the wiki is trustworthy — but silence in it is not evidence.
-
----
-
-## Nothing uploads
-
-Logs and inventory dumps are read where they sit. What a crafting summary would send is
-`(trivial, skill, attempts, successes)` — a few hundred bytes, no item names, no character
-name. There is a test asserting the bucket type cannot carry an item name.
-
----
+Grimoire is open source. To build it from source or send a change, read
+[CONTRIBUTING.md](CONTRIBUTING.md). How the crafting engine and its command line work is in
+[docs/CRAFTING-ENGINE.md](docs/CRAFTING-ENGINE.md).
 
 ## Licence
 
-GNU Affero General Public Licence v3 (`AGPL-3.0-only`), held by James McMenamin. Full text:
-[`LICENSE`](LICENSE). Contributions are covered by [`CLA.md`](CLA.md); see
-[`CONTRIBUTING.md`](CONTRIBUTING.md). Third-party material in the tree
-(the bundled fonts, and the game data the desktop app loads at runtime):
-[`docs/LICENSING.md`](docs/LICENSING.md).
+GNU Affero General Public Licence v3 (`AGPL-3.0-only`), held by James McMenamin. Full text in
+[LICENSE](LICENSE). Contributions are covered by [CLA.md](CLA.md). Third-party material, including the
+bundled fonts and the game data the app loads, is listed in [docs/LICENSING.md](docs/LICENSING.md).
+
+EverQuest Legends is a trademark of its owner. Grimoire is a fan-made companion and is not affiliated
+with or endorsed by the game's publisher.
