@@ -173,3 +173,12 @@ windows = { version = "0.61", features = [
 # of any kind lives in this repository.
 minisign = "0.7"
 
+# THE DELETE-PENDING STATE, FOR ONE UPDATER TEST ONLY, AND NOT IN THE SHIPPED GRAPH: resolver 2
+# does not unify a dev-dependency's features into a normal build. A lock file being released on
+# Windows passes through a moment where its name is delete pending and `create_new` on it is
+# "Access is denied"; `updater::install::tests::a_lock_mid_release_is_waited_for_not_refused`
+# holds that moment open with `SetFileInformationByHandle`, which std does not wrap, so the test is
+# deterministic instead of a race run thousands of times.
+[target.'cfg(windows)'.dev-dependencies]
+windows = { version = "0.61", features = ["Win32_Storage_FileSystem"] }
+

@@ -201,8 +201,11 @@ pub(crate) fn temp_beside(path: &Path) -> PathBuf {
 /// HOW LONG A WRITER WAITS FOR ANOTHER WRITER BEFORE IT TAKES THE LOCK ANYWAY.
 ///
 /// A POLICY, NOT A MEASUREMENT. The section it guards is a read of a file measured in hundreds of
-/// bytes, a serialize, a flush and a rename, so a lock still held five seconds later is a process
-/// that died holding it rather than one that is busy. Waiting forever would let a crashed copy of
+/// bytes, a serialize, a flush and a rename, so a lock file that has carried ONE holder's token for
+/// five seconds, timed on the waiter's own monotonic clock, belongs to a process that died holding
+/// it rather than one that is busy. Never the wall clock and never the file's modification time:
+/// either moves when the system clock is stepped, and a step forward once made a live holder's lock
+/// look five seconds old. Waiting forever would let a crashed copy of
 /// the app stop every future copy from recording anything; failing instead would turn the same
 /// crash into a permanent inability to write the bookkeeping. Taking it is the only answer that
 /// recovers on its own, and the cost of taking it wrongly is exactly the unsynchronised write this
@@ -225,7 +228,8 @@ pub const LOCK_PATIENCE: std::time::Duration = std::time::Duration::from_secs(5)
 ///
 /// `std::fs` has no advisory locking and the crates that add it would be a new dependency for one
 /// call site. `create_new` is a single atomic filesystem operation on both platforms this builds
-/// for, which is the whole of what a lock needs. The lock is released by deleting it, including on
+/// for, which is the whole of what a lock needs. The holder writes a token of its own into the lock
+/// file, and the lock is released by deleting the file if it still carries that token, including on
 /// the error path, which is what the guard struct below is for: an early `?` inside `f` must not
 /// leave a lock behind.
 pub fn with_lock<T>(path: &Path, f: impl FnOnce() -> Result<T, Refusal>) -> Result<T, Refusal> {
@@ -248,40 +252,109 @@ fn with_lock_patient<T>(
         std::fs::create_dir_all(d).map_err(|e| io("create", d, &e))?;
     }
 
+    let token = lock_token();
+    /* When this waiter was first denied the lock's name, while it still is. See `denied_for`. */
+    let mut denied_since: Option<std::time::Instant> = None;
+    /* The token this waiter last read in the lock file, and when, on the monotonic clock, it first
+     * read that same token. Cleared whenever the token changes or the file is gone. */
+    let mut seen: Option<(Vec<u8>, std::time::Instant)> = None;
     loop {
         match std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(&lock)
         {
-            Ok(_) => break,
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                /* THE AGE OF THE LOCK FILE, NOT HOW LONG THIS WAITER HAS WAITED.
-                 *
-                 * Measured from the waiter's own start, a queue of live writers each holding the
-                 * lock briefly kept a late waiter out past the patience with no holder being slow,
-                 * and the waiter took the lock from one that was still inside: two writers in one
-                 * section, one rename failing (Linux CI, `failed_launches_accumulate_and_a_drawn_
-                 * frame_clears_them`). A busy queue keeps creating fresh lock files; only a holder
-                 * that died leaves one that ages. */
-                let held_for = std::fs::metadata(&lock)
-                    .and_then(|m| m.modified())
-                    .ok()
-                    .and_then(|t| t.elapsed().ok());
-                if held_for.is_some_and(|age| age >= patience) {
-                    /* TAKEN, NOT WAITED FOR FOR EVER. See `LOCK_PATIENCE`: the alternative is that
-                     * one crash disables this bookkeeping permanently.
-                     *
-                     * AND ROUND AGAIN TO CREATE IT, never straight into the section. Breaking here
-                     * ran the write with no lock file at all, so any other writer walked in beside
-                     * it, and the guard below then deleted whatever lock was there on the way out.
-                     *
-                     * STILL NOT PERFECT, SAID PLAINLY: two waiters that both judge the same dead
-                     * lock stale can race between this read and this remove, and the later remove
-                     * can delete the lock the earlier one just created. That needs a holder to have
-                     * died first; the live-queue case that actually failed cannot reach it. */
+            Ok(mut file) => {
+                /* THE TOKEN GOES IN BEFORE THE SECTION RUNS. A holder that cannot write it does not
+                 * run the section with a lock whose release could never recognise it: the file is
+                 * removed and the failure returned. A holder that dies mid-write leaves a partial
+                 * token, which a waiter treats like any other token that never changes. */
+                use std::io::Write as _;
+                if let Err(e) = file.write_all(token.as_bytes()) {
+                    drop(file);
                     let _ = std::fs::remove_file(&lock);
-                    continue;
+                    return Err(io("write", &lock, &e));
+                }
+                break;
+            }
+            /* A NAME STILL BEING RELEASED, NOT A REFUSAL. On Windows, deleting a file sets its
+             * delete disposition on a handle and then closes it, and in between the name is delete
+             * pending: `create_new` on it is "Access is denied" (os error 5), not `AlreadyExists`.
+             * A waiter that arrived while the previous holder's release was mid-flight returned
+             * that as an I/O error and its section never ran. Measured: 8 threads racing
+             * `create_new` against `remove_file` for 5 s were denied 1,475 times in 40,263.
+             *
+             * BOUNDED, because the same error is also a folder nobody may write: see `denied_for`.
+             * Windows only: elsewhere a denied create is a permission, never a release. */
+            Err(e) if cfg!(windows) && e.kind() == std::io::ErrorKind::PermissionDenied => {
+                seen = None;
+                if denied_for(&mut denied_since, patience) {
+                    return Err(io("create", &lock, &e));
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                /* THE SAME TOKEN FOR THE WHOLE PATIENCE ON THIS WAITER'S MONOTONIC CLOCK, AND
+                 * NOTHING ELSE, SAYS THE HOLDER IS DEAD.
+                 *
+                 * Not how long this waiter has waited: measured from the waiter's own start, a
+                 * queue of live writers each holding the lock briefly kept a late waiter out past
+                 * the patience with no holder being slow, and the waiter took the lock from one that
+                 * was still inside (Linux CI, `failed_launches_accumulate_and_a_drawn_frame_clears_
+                 * them`). A busy queue keeps writing new tokens; only a dead holder leaves one that
+                 * stays.
+                 *
+                 * And not the lock file's modification time, which is what replaced that and was
+                 * wrong in its own way: its age is two readings of the wall clock, so a clock
+                 * stepped forward took the lock from live holders (15 of 15 runs of the live-queue
+                 * test on WSL with root stepping the clock two seconds every 150 ms, 0 of 15 left
+                 * alone), and a clock stepped back left a dead holder's lock with an age that could
+                 * not be read, which was never stale, so it was never taken. */
+                match std::fs::read(&lock) {
+                    Ok(now) => {
+                        denied_since = None;
+                        let same_since = seen
+                            .as_ref()
+                            .filter(|(was, _)| *was == now)
+                            .map(|(_, since)| *since);
+                        match same_since {
+                            Some(since) if since.elapsed() >= patience => {
+                                /* TAKEN, NOT WAITED FOR FOR EVER. See `LOCK_PATIENCE`: the
+                                 * alternative is that one crash disables this bookkeeping
+                                 * permanently.
+                                 *
+                                 * AND ROUND AGAIN TO CREATE IT, never straight into the section.
+                                 * Breaking here ran the write with no lock file at all, so any
+                                 * other writer walked in beside it.
+                                 *
+                                 * STILL NOT PERFECT, SAID PLAINLY: a holder that finishes between
+                                 * the read above and this remove, followed by a new holder creating
+                                 * the name in that same gap, loses its lock to this remove. That
+                                 * needs a holder to have sat on one token for the whole patience
+                                 * first; a queue of live holders cannot reach it. */
+                                let _ = std::fs::remove_file(&lock);
+                                seen = None;
+                                continue;
+                            }
+                            Some(_) => {}
+                            None => seen = Some((now, std::time::Instant::now())),
+                        }
+                    }
+                    /* Released between the create and the read: straight round to create it. */
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                        seen = None;
+                        continue;
+                    }
+                    /* Delete pending on Windows reads as denied too, for the reason given above. */
+                    Err(e) if cfg!(windows) && e.kind() == std::io::ErrorKind::PermissionDenied => {
+                        seen = None;
+                        if denied_for(&mut denied_since, patience) {
+                            return Err(io("read", &lock, &e));
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(1));
+                        continue;
+                    }
+                    Err(e) => return Err(io("read", &lock, &e)),
                 }
                 std::thread::sleep(std::time::Duration::from_millis(20));
             }
@@ -291,15 +364,55 @@ fn with_lock_patient<T>(
 
     /* THE RELEASE HAPPENS ON EVERY PATH OUT, INCLUDING A PANIC. `f` is arbitrary caller code and
      * the whole file dance below it is full of `?`; a lock leaked by an early return would be
-     * taken by the next writer only after `LOCK_PATIENCE`, once per failure, for ever. */
-    struct Held(PathBuf);
+     * taken by the next writer only after `LOCK_PATIENCE`, once per failure, for ever.
+     *
+     * AND ONLY OF A LOCK THAT IS STILL THIS HOLDER'S. A holder slow past the patience has had its
+     * lock taken, and the name now belongs to the taker; deleting it unread let the next writer in
+     * beside the taker, turning one wrong take into two. */
+    struct Held {
+        lock: PathBuf,
+        token: String,
+    }
     impl Drop for Held {
         fn drop(&mut self) {
-            let _ = std::fs::remove_file(&self.0);
+            if std::fs::read(&self.lock).is_ok_and(|b| b == self.token.as_bytes()) {
+                let _ = std::fs::remove_file(&self.lock);
+            }
         }
     }
-    let _held = Held(lock);
+    let _held = Held { lock, token };
     f()
+}
+
+/// Has this waiter been denied the lock's name for the whole patience? Starts the count on the
+/// first denial; the caller clears `since` when the name answers anything else.
+///
+/// THE SAME ERROR IS ALSO A FOLDER NOBODY MAY WRITE, which is why a delete pending name is waited
+/// for only so long: denied for the whole patience, counted from this waiter's first denial, it is
+/// that, and the caller returns it.
+fn denied_for(since: &mut Option<std::time::Instant>, patience: std::time::Duration) -> bool {
+    since.get_or_insert_with(std::time::Instant::now).elapsed() >= patience
+}
+
+/// A token no other holder, in this process or another, will also write into a lock file.
+///
+/// THREE PARTS, EACH COVERING WHAT THE OTHERS DO NOT. The process id tells two live processes
+/// apart; the process-wide counter tells two holders in one process apart; the nonce tells this
+/// process from an earlier one that had the same id and died holding a lock. The nonce is the
+/// nanoseconds since this process first asked for a token, on the monotonic clock, hashed with
+/// `RandomState`'s per-process random keys, because the standard library exposes no absolute
+/// monotonic reading and a wall clock reading is exactly what this lock no longer trusts.
+fn lock_token() -> String {
+    use std::hash::BuildHasher as _;
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    static FIRST: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let since = FIRST
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_nanos();
+    let nonce = std::collections::hash_map::RandomState::new().hash_one((n, since));
+    format!("{}-{n}-{nonce:016x}", std::process::id())
 }
 
 /* ================================================================= staging == */
@@ -1536,13 +1649,17 @@ mod tests {
     /// being slow, and the waiter then took the lock from a live holder: two writers inside one
     /// critical section, both writing the same temp file, and one rename failing with "No such file
     /// or directory". Measured on the Linux CI runner under a loaded suite, as a failure of
-    /// `failed_launches_accumulate_and_a_drawn_frame_clears_them`. What says a holder died is the
-    /// AGE OF ITS LOCK FILE, which a busy queue keeps renewing and a dead holder never does.
+    /// `failed_launches_accumulate_and_a_drawn_frame_clears_them`. What says a holder died is ONE
+    /// TOKEN IN ITS LOCK FILE FOR THE WHOLE PATIENCE, which a busy queue keeps replacing and a dead
+    /// holder never does.
     ///
     /// Here patience is one second and each of 64 sections holds the lock for 25 ms, so the late
-    /// writers wait well past the patience behind holders whose lock is never older than 25 ms.
+    /// writers wait well past the patience behind holders whose token never stays for more than
+    /// 25 ms. Run while the wall clock is stepped, this is also the test that caught the file time
+    /// rule taking the lock from live holders.
     ///
-    /// WHAT MUTATION MAKES THIS RED: measure patience from the waiter's own start again.
+    /// WHAT MUTATION MAKES THIS RED: measure patience from the waiter's own start again, or judge a
+    /// lock by its file's modification time while the clock is stepped.
     #[test]
     fn a_queue_of_live_holders_never_has_the_lock_taken_from_under_it() {
         use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1579,6 +1696,79 @@ mod tests {
         );
     }
 
+    /// DEFECT THIS PREVENTS: A LOCK IN THE MIDDLE OF BEING RELEASED REFUSED THE SECTION OUTRIGHT.
+    ///
+    /// On Windows, deleting a file sets its delete disposition on a handle and then closes that
+    /// handle, and between the two the name is DELETE PENDING: `create_new` on it fails with
+    /// "Access is denied" (os error 5), not `AlreadyExists`. `with_lock_patient` treated every
+    /// error but `AlreadyExists` as final, so a waiter that tried to create the lock while the
+    /// previous holder's release was mid-flight returned an I/O error and its section never ran.
+    /// Measured: 8 threads racing `create_new` against `remove_file` for 5 s saw os error 5 on 1,475
+    /// of 40,263 attempts, and the Windows gate on 2026-09-12 failed
+    /// `a_queue_of_live_holders_never_has_the_lock_taken_from_under_it` with it.
+    ///
+    /// THE MOMENT IS HELD OPEN, NOT RACED FOR: a handle with the disposition set keeps the name
+    /// delete pending until the handle closes, 100 ms later.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: returning a denied `create_new` at once again.
+    #[cfg(windows)]
+    #[test]
+    fn a_lock_mid_release_is_waited_for_not_refused() {
+        use std::os::windows::fs::OpenOptionsExt;
+        use std::os::windows::io::AsRawHandle;
+        use windows::Win32::Foundation::HANDLE;
+        use windows::Win32::Storage::FileSystem::{
+            FileDispositionInfo, SetFileInformationByHandle, FILE_DISPOSITION_INFO,
+        };
+        /// `DELETE`, the standard access right a handle needs to set its delete disposition.
+        const DELETE: u32 = 0x0001_0000;
+        /// Read, write and delete sharing, so the pending name is the only thing in the way.
+        const SHARE_ALL: u32 = 0x7;
+
+        let path = scratch("mid-release").join("guarded.json");
+        let lock = PathBuf::from(format!("{}.lock", path.display()));
+        std::fs::write(&lock, b"").expect("the lock the previous holder is releasing");
+        let releasing = std::fs::OpenOptions::new()
+            .access_mode(DELETE)
+            .share_mode(SHARE_ALL)
+            .open(&lock)
+            .expect("a handle that may delete the lock");
+        let info = FILE_DISPOSITION_INFO { DeleteFile: true };
+        // SAFETY: the handle is open and owned by `releasing` for the whole call, and the buffer is
+        // a live FILE_DISPOSITION_INFO whose size is passed with it.
+        unsafe {
+            SetFileInformationByHandle(
+                HANDLE(releasing.as_raw_handle()),
+                FileDispositionInfo,
+                std::ptr::from_ref(&info).cast(),
+                std::mem::size_of::<FILE_DISPOSITION_INFO>() as u32,
+            )
+        }
+        .expect("the lock is marked for deletion");
+        let denied = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&lock)
+            .map(drop)
+            .map_err(|e| e.kind());
+        assert_eq!(
+            denied,
+            Err(std::io::ErrorKind::PermissionDenied),
+            "the name is not delete pending, so what follows proves nothing"
+        );
+
+        let released = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            drop(releasing);
+        });
+        let ran = with_lock_patient(&path, std::time::Duration::from_secs(5), || Ok(()));
+        released.join().expect("the release finished");
+        assert!(
+            ran.is_ok(),
+            "a lock in the middle of being released refused the section: {ran:?}"
+        );
+    }
+
     /// DEFECT THIS PREVENTS: A TAKEN LOCK THAT NOBODY HOLDS.
     ///
     /// The taker used to delete the stale lock and walk into the section WITHOUT creating its own,
@@ -1605,6 +1795,151 @@ mod tests {
             "the stale lock was removed and the section ran with no lock file at all"
         );
         assert!(!lock.exists(), "the taker did not release the lock it took");
+    }
+
+    /// The lock file `with_lock_patient` guards `path` with.
+    fn lock_beside(path: &Path) -> PathBuf {
+        let mut s = path.as_os_str().to_owned();
+        s.push(".lock");
+        PathBuf::from(s)
+    }
+
+    /// DEFECT THIS PREVENTS: THE LOCK TAKEN FROM A LIVE HOLDER BECAUSE THE WALL CLOCK MOVED.
+    ///
+    /// A lock was judged stale by `SystemTime::now()` minus the lock file's modification time, which
+    /// is two readings of the wall clock. A clock stepped forward (a time sync, a resume from sleep,
+    /// an operator) makes a lock written a moment ago look old, and the waiter took it from a holder
+    /// that was still inside. Measured on WSL: `a_queue_of_live_holders_never_has_the_lock_taken_
+    /// from_under_it` failed 15 of 15 runs while root stepped the clock two seconds forward and back
+    /// every 150 ms, and 0 of 15 with the clock left alone. A modification time of 1970 is the same
+    /// jump, held still so that it cannot be missed.
+    ///
+    /// THE HOLDER STAYS WELL INSIDE THE PATIENCE: two seconds of patience, 400 ms in the section. A
+    /// holder that sat on one token past the patience would be taken by design, alive or not, so
+    /// only a holder inside it says anything about the clock.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: judge a lock stale by its file's modification time again.
+    #[test]
+    fn a_live_holder_whose_lock_file_looks_ancient_is_never_taken_from() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+        let path = scratch("ancient-mtime").join("guarded.json");
+        let lock = lock_beside(&path);
+        let patience = std::time::Duration::from_secs(2);
+        let held_for = std::time::Duration::from_millis(400);
+        let inside = Arc::new(AtomicUsize::new(0));
+        let most = Arc::new(AtomicUsize::new(0));
+        let (entered, holding) = std::sync::mpsc::channel();
+        let holder = {
+            let (path, lock, inside, most) =
+                (path.clone(), lock.clone(), inside.clone(), most.clone());
+            std::thread::spawn(move || {
+                with_lock_patient(&path, patience, || {
+                    let now = inside.fetch_add(1, Ordering::SeqCst) + 1;
+                    most.fetch_max(now, Ordering::SeqCst);
+                    std::fs::OpenOptions::new()
+                        .write(true)
+                        .open(&lock)
+                        .and_then(|f| f.set_modified(std::time::UNIX_EPOCH))
+                        .expect("the lock file's time set to 1970");
+                    entered.send(()).expect("the waiter is listening");
+                    std::thread::sleep(held_for);
+                    inside.fetch_sub(1, Ordering::SeqCst);
+                    Ok(())
+                })
+                .expect("the holder's section ran");
+            })
+        };
+        holding.recv().expect("the holder is inside");
+        with_lock_patient(&path, patience, || {
+            let now = inside.fetch_add(1, Ordering::SeqCst) + 1;
+            most.fetch_max(now, Ordering::SeqCst);
+            inside.fetch_sub(1, Ordering::SeqCst);
+            Ok(())
+        })
+        .expect("the waiter's section ran");
+        holder.join().expect("the holder finished");
+        assert_eq!(
+            most.load(Ordering::SeqCst),
+            1,
+            "a waiter took the lock from a live holder whose lock file's time said 1970"
+        );
+    }
+
+    /// DEFECT THIS PREVENTS: A DEAD HOLDER'S LOCK NEVER TAKEN BECAUSE ITS TIME IS IN THE FUTURE.
+    ///
+    /// The other half of the same wall clock rule. A holder that died just before the clock was
+    /// stepped back leaves a lock whose modification time is ahead of now; `elapsed()` on that is an
+    /// error, the age read as unknown, and an unknown age was never stale, so every writer after it
+    /// waited for ever. That is one crash and one clock correction disabling the bookkeeping for
+    /// good, which is the outcome `LOCK_PATIENCE` exists to rule out. A token that has not changed
+    /// for the whole patience is a dead holder whatever the file's time says, and it is not taken any
+    /// sooner than that patience on the waiter's own clock.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: judge a lock stale by its file's modification time again (the
+    /// waiter never returns), or take a lock the first time its token is read (taken early).
+    #[test]
+    fn a_dead_holders_token_is_taken_after_the_patience_whatever_its_file_time_says() {
+        let path = scratch("future-mtime").join("guarded.json");
+        let lock = lock_beside(&path);
+        std::fs::write(&lock, b"a holder that died").expect("a lock nobody will ever release");
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&lock)
+            .and_then(|f| {
+                f.set_modified(
+                    std::time::SystemTime::now() + std::time::Duration::from_secs(86_400),
+                )
+            })
+            .expect("the lock file's time set a day ahead");
+        let patience = std::time::Duration::from_millis(300);
+        let (done, answer) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let started = std::time::Instant::now();
+            let held = with_lock_patient(&path, patience, || {
+                Ok(std::fs::read(lock_beside(&path)).unwrap_or_default())
+            });
+            let _ = done.send((started.elapsed(), held));
+        });
+        let (waited, held) = answer
+            .recv_timeout(std::time::Duration::from_secs(20))
+            .expect("the waiter never took a dead holder's lock whose time is in the future");
+        let held = held.expect("taken");
+        assert!(
+            waited >= patience,
+            "the lock was taken after {waited:?}, before the {patience:?} patience had passed"
+        );
+        assert!(
+            held != b"a holder that died",
+            "the section ran under the dead holder's lock rather than one of its own"
+        );
+    }
+
+    /// DEFECT THIS PREVENTS: A HOLDER WHOSE LOCK WAS TAKEN DELETING THE TAKER'S LOCK ON ITS WAY OUT.
+    ///
+    /// A holder slow past the patience has its lock taken, and the taker creates its own under the
+    /// same name. The release deleted whatever file had that name, so the slow holder's exit removed
+    /// the lock the taker was holding and the next writer walked in beside the taker: one wrong take
+    /// became two. The take is played inside the section here, the lock replaced by one carrying
+    /// another holder's token, which is what a taker's remove and create leave behind.
+    ///
+    /// WHAT MUTATION MAKES THIS RED: remove the lock on release without reading whose token it
+    /// carries.
+    #[test]
+    fn a_holder_whose_lock_was_taken_leaves_the_takers_lock_alone() {
+        let path = scratch("taken-from").join("guarded.json");
+        let lock = lock_beside(&path);
+        with_lock_patient(&path, std::time::Duration::from_secs(5), || {
+            std::fs::remove_file(&lock).expect("the taker removes the stale lock");
+            std::fs::write(&lock, b"the taker's own token").expect("and creates its own");
+            Ok(())
+        })
+        .expect("the section ran");
+        assert_eq!(
+            std::fs::read(&lock).ok().as_deref(),
+            Some(&b"the taker's own token"[..]),
+            "the holder whose lock was taken deleted the taker's lock on release"
+        );
     }
 
     /// DEFECT THIS PREVENTS: THE BYTES THAT RUN NOT BEING THE BYTES THAT WERE CHECKED.
