@@ -189,7 +189,8 @@ fn exchange(ui: &mut Ui, cx: &mut Cx, x: &Exchange) {
     } else {
         ui.label(RichText::new(&x.answer).color(TEXT));
     }
-    if x.sources.is_empty() {
+    /* A decline has no sources worth listing: none of them answered. */
+    if x.sources.is_empty() || x.check.as_ref().is_some_and(|c| c.declined) {
         return;
     }
     let cited = x

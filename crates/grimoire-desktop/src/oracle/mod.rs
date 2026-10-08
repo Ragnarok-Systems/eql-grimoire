@@ -67,8 +67,13 @@ pub fn build_prompt(question: &str, passages: &[&retrieve::Passage]) -> String {
 /// its facts, never at the start of a line. The same stop is in `mnm-lore/src/oracle.js`.
 pub const STOP: &str = "\n[";
 
-/// A citation the model put first ("[1] Fallen Pass is ...") moves to the end of that line.
+/// A citation the model put first ("[1] Fallen Pass is ...") moves to the end of that line, and a
+/// decline is exactly the decline: whatever the model wrote after saying the wiki does not answer
+/// (measured: a line of "[2] mentions a zone but not ...") is not an answer and is not shown.
 pub fn tidy_answer(answer: &str) -> String {
+    if is_decline(answer) {
+        return NOT_FOUND.to_owned();
+    }
     let answer = answer.trim();
     let (first, rest) = match answer.split_once('\n') {
         Some((a, b)) => (a, Some(b)),
@@ -553,6 +558,10 @@ mod tests {
             "Guard Pippi gives it [1]."
         );
         assert_eq!(tidy_answer("[1]"), "[1]");
+        let rambling = "The wiki does not provide the phone number. [2] An ashira supplier mentions a zone but not contact details. [6] No definitive answer available.";
+        assert_eq!(tidy_answer(rambling), NOT_FOUND);
+        let d = check_citations(&tidy_answer(rambling), 5);
+        assert!(d.declined && d.grounded && d.cited.is_empty() && d.invalid.is_empty());
     }
 
     #[test]
