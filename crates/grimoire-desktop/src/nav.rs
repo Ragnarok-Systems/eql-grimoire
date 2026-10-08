@@ -10,9 +10,8 @@
 //!
 //! WHAT CHANGED FROM THE EVERQUEST LEGENDS BUILD. Its rail was built around a combat log and an EQ
 //! data snapshot (CHRONICLE, MY LEGEND, the EQ COMPENDIUM, THE BAZAAR). Monsters & Memories writes
-//! no log, and its data comes from the community wiki bundle, so those rows are gone. The pages
-//! that are planned but not yet written are listed in `UNBUILT`, each saying what it will be and
-//! what it waits on, because "not built" alone tells a reader nothing.
+//! no log, and its data comes from the community wiki bundle, so those rows are gone. Every row
+//! now has a screen.
 
 use crate::chrome::State;
 use crate::screens::Cx;
@@ -130,15 +129,9 @@ pub fn tabs_of(id: ScreenId, section: usize) -> &'static [&'static str] {
         .unwrap_or(&[])
 }
 
-/// The section a screen opens on: the first one that is written.
-pub fn default_section(id: ScreenId) -> usize {
-    sections_of(id)
-        .iter()
-        .position(|(_, inner, _)| match inner {
-            None => true,
-            Some(screen) => unbuilt_why(*screen).is_none(),
-        })
-        .unwrap_or(0)
+/// The section a screen opens on. Every section is written, so the first.
+pub fn default_section(_id: ScreenId) -> usize {
+    0
 }
 
 /// The screen that owns `id` as one of its sections, and where.
@@ -237,8 +230,16 @@ pub fn square(id: ScreenId, f: &Facts) -> State {
         | ScreenId::Items
         | ScreenId::Quests
         | ScreenId::Spells => from_channel(f.lore_loaded, f.lore_wrong),
-        /* Not written yet: there is nothing to have or lack. See `UNBUILT`. */
-        ScreenId::Herald | ScreenId::Oracle => State::Idle,
+        /* Herald reads the recorder's file; whether it has posts is the screen's to say. */
+        ScreenId::Herald => State::Idle,
+        /* Oracle answers from the bundle: it can do nothing without one. */
+        ScreenId::Oracle => {
+            if f.lore_wrong {
+                State::Wrong
+            } else {
+                State::Idle
+            }
+        }
         /* The board is local: settled once it holds an entry. */
         ScreenId::Lfg => {
             if f.lfg_entries {
@@ -253,26 +254,6 @@ pub fn square(id: ScreenId, f: &Facts) -> State {
         ScreenId::Chat => State::Idle,
     }
 }
-
-/* ----------------------------------------------------------------- the unbuilt -- */
-
-/// Rows that are planned and not written yet: what each will be, and what it waits on.
-pub const UNBUILT: &[(ScreenId, &[&str])] = &[
-    (
-        ScreenId::Herald,
-        &[
-            "Everything the Monsters & Memories developers say in the game's Discord, kept and searchable, with the question each answer was replying to.",
-            "It waits on the recorder running on our side; this app will read the posts from ragnarok.systems.",
-        ],
-    ),
-    (
-        ScreenId::Oracle,
-        &[
-            "Ask a question in plain words and get an answer written from the wiki and the developers' posts, with a link to every source. It runs on this PC, on the processor, and costs nothing to use.",
-            "It waits on the wiki bundle and on its answer model, which this app will download from Hugging Face the first time you use it, after asking.",
-        ],
-    ),
-];
 
 /// The Compendium row that shows a kind.
 pub fn screen_of(kind: crate::lore::Kind) -> ScreenId {
@@ -291,14 +272,6 @@ pub fn kind_of(id: ScreenId) -> Option<crate::lore::Kind> {
     crate::lore::Kind::ALL
         .into_iter()
         .find(|k| screen_of(*k) == id)
-}
-
-/// Why a row is not written yet, or None when it is.
-pub fn unbuilt_why(id: ScreenId) -> Option<&'static [&'static str]> {
-    UNBUILT
-        .iter()
-        .find(|(row, _)| *row == id)
-        .map(|(_, why)| *why)
 }
 
 #[cfg(test)]
@@ -321,30 +294,6 @@ mod tests {
     fn all_and_ordinal_agree() {
         for (i, id) in ScreenId::ALL.iter().enumerate() {
             assert_eq!(id.ordinal(), i, "{id:?}");
-        }
-    }
-
-    #[test]
-    fn every_unbuilt_row_says_what_it_will_be_and_what_it_waits_on() {
-        for (id, why) in UNBUILT {
-            assert!(why.len() >= 2, "{id:?} needs a what and a waits-on");
-            assert!(find(*id).is_some(), "{id:?} is unbuilt but not in the rail");
-            for line in *why {
-                assert!(!line.contains('\u{2014}'), "{id:?}: no em dashes in copy");
-            }
-        }
-        for id in [
-            ScreenId::Lfg,
-            ScreenId::Watch,
-            ScreenId::Videos,
-            ScreenId::Chat,
-            ScreenId::Zones,
-            ScreenId::Npcs,
-            ScreenId::Items,
-            ScreenId::Quests,
-            ScreenId::Spells,
-        ] {
-            assert!(unbuilt_why(id).is_none(), "{id:?} is built");
         }
     }
 

@@ -25,12 +25,10 @@ The menu on the left:
 | Section | What it is |
 |---|---|
 | **Compendium** | Zones, NPCs, items, quests and spells from the Monsters & Memories community wiki, offline: search a list, open a record, and follow its links (an item to the NPC that drops it, a zone to its neighbours). Every record credits the wiki and links to its page. |
-| **Herald** | Everything the developers say in the game's Discord, kept and searchable. **Coming.** |
-| **Oracle** | Ask a question in plain words and get an answer from the wiki and the developers' posts, with a link to every source. It runs on your PC and costs nothing to use. **Coming.** |
+| **Herald** | Everything the developers say in the game's Discord, kept and searchable, with the question each answer was replying to. It fills once our Discord recorder is running. |
+| **Oracle** | Ask a question in plain words and get a short answer written from the wiki, with a link to every source. It runs on your PC, on the processor, and costs nothing to use. A small model writes the answers, so check the sources. |
 | **The Tavern** | **Groups**: write the lines you mean to say in game and copy each one ready to paste, as a group or a raid post. |
 | **Streams** | Watch the Broken Stoic stream live, the videos, and chat. |
-
-Pages that are not built yet say so on the page, and say what they are waiting on.
 
 ### Hotkeys
 
@@ -62,12 +60,14 @@ for EverQuest Legends, on purpose: every installed copy finds its updates and se
 names cannot change without stranding them.
 
 - `%APPDATA%\eql-grimoire`: your settings
-- `%LOCALAPPDATA%\eql-grimoire`: the installed app versions
+- `%LOCALAPPDATA%\eql-grimoire`: the installed app versions, the wiki data (`data`), Oracle's engine
+  and model (`oracle`, about 780 MB once downloaded) and Herald's posts (`herald`)
 - `%LOCALAPPDATA%\EQLGrimoire`: cached images and the stream player's data
 
 Grimoire goes online to check for updates, to play the stream and videos, and when you sign in to
-Twitch or to a Ragnarok account. Oracle's answer model, when it arrives, is downloaded from Hugging
-Face the first time you use it, after asking you; it is never part of the app download.
+Twitch or to a Ragnarok account. The first time you use Oracle it asks before downloading its answer
+engine (llama.cpp, from GitHub, 19 MB) and model (LFM2.5 1.2B, from Hugging Face, 731 MB); neither is
+part of the app download. After that, questions are answered offline.
 
 **To uninstall**, delete the Grimoire `.exe` you downloaded and those three folders.
 

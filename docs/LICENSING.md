@@ -36,7 +36,7 @@ table states:
 | `IBMPlexSans-Regular.ttf` | Copyright 2019 IBM Corp. All rights reserved. | `http://scripts.sil.org/OFL` |
 | `IBMPlexMono-Regular.ttf` | Copyright 2017 IBM Corp. All rights reserved. | `http://scripts.sil.org/OFL` |
 
-**Game data.** The zone, NPC, item, quest and spell data the app will load comes from the
+**Game data.** The zone, NPC, item, quest and spell data the app loads comes from the
 Monsters & Memories community wiki, https://monstersandmemories.miraheze.org, by its contributors,
 licensed under **CC BY-SA 4.0** (https://creativecommons.org/licenses/by-sa/4.0/). It is built into a
 data bundle outside this repository and delivered at runtime, never compiled into the binary. Every
@@ -50,6 +50,8 @@ databases whose robots.txt asks AI crawlers to stay away.
 **Monsters & Memories** is a trademark of Niche Worlds Cult, LLC, and game content and art are
 © Niche Worlds Cult, LLC. Grimoire is not affiliated with or endorsed by them.
 
-**Oracle's model** (LFM2.5 1.2B Instruct, LFM Open License v1.0) and its engine (llama.cpp, MIT) are
-downloaded by the player's app from their own publishers on first use. Neither is redistributed by
-this project.
+**Oracle's model** (LFM2.5 1.2B Instruct Q4_K_M, LFM Open License v1.0, from LiquidAI on Hugging
+Face) and its engine (llama.cpp build b11476, Windows CPU, MIT, from ggml-org on GitHub) are
+downloaded by the player's app from their own publishers on first use, after the player agrees on
+Oracle's consent card, and each is checked against a pinned sha256 (`src/oracle/fetch.rs`).
+Neither is redistributed by this project.

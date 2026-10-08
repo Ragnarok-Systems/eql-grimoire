@@ -24,7 +24,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use egui::{RichText, ViewportCommand};
+use egui::ViewportCommand;
 use grimoire_desktop::activity::Activity;
 use grimoire_desktop::chat;
 use grimoire_desktop::chrome::{self, nav_row, section, State};
@@ -328,6 +328,8 @@ enum Body {
 struct Screens {
     chat: screens::chat::ChatScreen,
     compendium: screens::compendium::CompendiumScreen,
+    oracle: screens::oracle::OracleScreen,
+    herald: screens::herald::HeraldScreen,
     lfg: LfgScreen,
     watch: WatchScreen,
 }
@@ -1151,21 +1153,13 @@ fn persona_pending(action: PersonaAction) -> Option<Body> {
 
 /* ---------------------------------------------------------------------- the body -- */
 
-/// Paint the body for one screen. A row that is planned but not written draws `unbuilt`, which
-/// says what it will be and what it waits on, from `nav::UNBUILT`.
-fn draw_screen(
-    ui: &mut egui::Ui,
-    id: ScreenId,
-    section: usize,
-    tab: usize,
-    s: &mut Screens,
-    cx: &mut Cx,
-) {
+/// Paint the body for one screen.
+fn draw_screen(ui: &mut egui::Ui, id: ScreenId, section: usize, s: &mut Screens, cx: &mut Cx) {
     /* THE HOP IS `target_of`, which `on_view` also uses, so the screen this paints and the
      * screen the tab row is routed to cannot be two different screens. */
     let inner = target_of(id, section);
     if inner != id {
-        return draw_screen(ui, inner, 0, tab, s, cx);
+        return draw_screen(ui, inner, 0, s, cx);
     }
     match id {
         ScreenId::Lfg => s.lfg.ui(ui, cx),
@@ -1180,60 +1174,9 @@ fn draw_screen(
             let kind = nav::kind_of(id).expect("a Compendium row has a kind");
             s.compendium.ui(ui, cx, kind)
         }
-        ScreenId::Herald | ScreenId::Oracle => unbuilt(
-            ui,
-            id,
-            nav::sections_of(id).get(section).map(|(name, _, _)| *name),
-            nav::tabs_of(id, section).get(tab).copied(),
-        ),
+        ScreenId::Oracle => s.oracle.ui(ui, cx),
+        ScreenId::Herald => s.herald.ui(ui, cx),
     }
-}
-
-/// A row with nothing behind it says so, in words that name what is missing.
-///
-/// THE WORDS ARE NOT KEPT HERE. They live in `nav::UNBUILT`, beside the `nav::square` that decides
-/// the same row's hollow ring, because this function used to hold its own copy and the two came
-/// apart: Standing's reason here blamed a missing THREAD while the rail's reason blamed a missing
-/// TRADING PARTNER, and a comment on this line asserted they "cannot disagree" while nothing made
-/// that true. Now one list answers both, and `nav::unbuilt_why` returning None is itself the
-/// routing bug report.
-/// THE PAGE A ROW WITH NO SCREEN LANDS ON, and it names WHERE you are as well as what is missing.
-///
-/// THE PATH IN THE HEADING IS WHAT MAKES AN UNWRITTEN SUBTREE WALKABLE. Guild is seven sections
-/// and twenty-four tabs of nothing built: without the path every one of them would draw a page
-/// identical to the last, and thirty-one controls that select and change nothing on screen are
-/// thirty-one controls a reader cannot tell from broken ones. With it, pressing Roster changes
-/// the page and pressing Keys & Flags changes it again, so the shape of the thing can be walked
-/// before a line of it exists. `every_section_of_every_destination_reaches_its_view` is what
-/// holds this: a section that leaves the page unchanged fails there.
-fn unbuilt(ui: &mut egui::Ui, id: ScreenId, section: Option<&str>, tab: Option<&str>) {
-    const MISROUTED: &[&str] = &["This row is built; the App routed it here by mistake."];
-    let why: &[&str] = nav::unbuilt_why(id).unwrap_or(MISROUTED);
-    let mut head = nav::label(id).to_ascii_uppercase();
-    for step in [section, tab].into_iter().flatten() {
-        head.push_str(" / ");
-        head.push_str(&step.to_ascii_uppercase());
-    }
-    ui.label(
-        RichText::new(head)
-            .font(fonts::display(16.0))
-            .color(GOLD_HI),
-    );
-    ui.add_space(8.0);
-    ui.label(RichText::new("Not built in this release.").color(TEXT));
-    for line in why {
-        ui.label(RichText::new(*line).color(TEXT_2));
-    }
-    ui.add_space(8.0);
-    /* THIS LINE USED TO SAY `the rail draws this row as a hollow ring for the same reason`, and
-     * the rail does not. `nav::square` answers Idle for every one of these, but `chrome::nav_row`
-     * reads that answer only to decide whether to paint the trailing attention bar, which is for
-     * `You` alone; Idle paints nothing at all. The sentence was describing a leading status
-     * square that was cut from the rail as an invention, and it outlived it. */
-    ui.label(
-        RichText::new("Nothing in the rail marks it, so this page is where a row says so.")
-            .color(TEXT_3),
-    );
 }
 
 /* ------------------------------------------------------------------- the find box -- */
@@ -1834,14 +1777,9 @@ impl eframe::App for App {
                 )
                 .show(ui, |ui| match *body {
                     Body::Settings => settings_screen.ui(ui, &mut cx),
-                    Body::Screen(id) => draw_screen(
-                        ui,
-                        id,
-                        section[id.ordinal()],
-                        tabs[id.ordinal()],
-                        screens,
-                        &mut cx,
-                    ),
+                    Body::Screen(id) => {
+                        draw_screen(ui, id, section[id.ordinal()], screens, &mut cx)
+                    }
                 });
 
             /* THE STAGE IS TAKEN HERE, between the body and the tool windows, and the order is the
@@ -2421,8 +2359,7 @@ mod tests {
     /// reachable value is its absent one, and it is the reason the round-one seal and bell were
     /// deleted.
     ///
-    /// A TEXT FLOOR, and it is one for the same reason `the_unbuilt_route_and_the_unbuilt_list`
-    /// is: the site is inside `App::ui`, which takes an `&mut eframe::Frame` and so cannot be
+    /// A TEXT FLOOR, because the site is inside `App::ui`, which takes an `&mut eframe::Frame` and so cannot be
     /// called from a test at all. It reads the one construction site and asks that the settings
     /// field is filled by calling `settings_state`, whose own answers are pinned below. Its blind
     /// spot is stated plainly: it proves the CALL is there, not that the arguments are the App's
@@ -2513,83 +2450,6 @@ mod tests {
         assert_eq!(parse_smoke(Some("-1")), None, "not a duration");
         assert_eq!(parse_smoke(Some("")), None);
         assert_eq!(parse_smoke(None), None, "unset is the ordinary launch");
-    }
-
-    /// The rows this file routes to `unbuilt` and the rows `nav::UNBUILT` holds words for are one
-    /// set, held to each other here rather than by the comment that used to assert it.
-    ///
-    /// A TEXT FLOOR, AND WHY IT IS ONE. The routing lives in a `match` over `ScreenId`, which
-    /// nothing outside the App can ask about, and turning that arm into a guard (`id if
-    /// nav::is_unbuilt(id)`) would buy this test at the price of exhaustiveness: a `ScreenId` added
-    /// later would stop being a compile error and start silently landing on the unbuilt page. The
-    /// arm therefore stays explicit and this reads it, the way `reach.rs` reads `lib.rs`. Its blind
-    /// spot is the same as that file's: it proves the two LISTS agree, not that the arm it found is
-    /// the one the App reaches.
-    ///
-    /// Drift in either direction is a real defect. A row routed here with no entry paints "routed
-    /// here by mistake" at the reader. A row with an entry and no route has words nothing can
-    /// reach, and the rail's hollow ring then promises a page that never opens.
-    #[test]
-    fn the_unbuilt_route_and_the_unbuilt_list_hold_the_same_rows() {
-        let src = &strip_comments(include_str!("main.rs"));
-        /* THE MARKER IS BUILT RATHER THAN WRITTEN, so it cannot appear in this test`s own source.
-         *
-         * It was the literal `=> unbuilt(ui, id)`, which reads fine until the arm is reformatted:
-         * the call went multi-line, the literal stopped matching the real arm, and the first thing
-         * in the file that still matched was THIS LINE. The test then parsed its own body, found no
-         * screens in it, and reported that the App routes nothing to the unbuilt page. A test that
-         * can match itself is a test that can pass or fail for reasons that have nothing to do with
-         * the code it is about. */
-        let marker = format!("=> {}(", "unbuilt");
-        let end = src
-            .find(&marker)
-            .expect("the App routes every unbuilt row through one arm");
-        /* Back to the end of the previous arm. The patterns in between are `ScreenId::X` joined
-         * by `|`, and no arm PATTERN contains a comma, so the last comma before the marker is the
-         * boundary.
-         *
-         * WHICH IS ONLY TRUE OF CODE, AND THAT IS WHY THE COMMENTS ARE GONE BEFORE WE LOOK.
-         * A comment inside the arm has whatever punctuation prose has, and a single comma in one
-         * silently truncates the arm to whatever follows it: the test then compares half a list
-         * against the whole of `nav::UNBUILT` and reports rows as unrouted that are routed fine.
-         * That happened twice, the second time inside a comment warning about the first. Asking
-         * the author to write comma-free prose was the wrong fix; reading code was the right one. */
-        let start = src[..end].rfind(',').map(|i| i + 1).unwrap_or(0);
-        let arm = &src[start..end];
-
-        let mut routed: Vec<String> = Vec::new();
-        let mut from = 0usize;
-        while let Some(rel) = arm[from..].find("ScreenId::") {
-            let at = from + rel + "ScreenId::".len();
-            let name: String = arm[at..]
-                .chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '_')
-                .collect();
-            assert!(!name.is_empty(), "a bare ScreenId:: in the unbuilt arm");
-            routed.push(name);
-            from = at;
-        }
-        assert!(
-            !routed.is_empty(),
-            "the arm parsed to nothing, so the comparison below would be asserting about an empty \\
-             set; the marker has probably stopped matching the real arm"
-        );
-        routed.sort();
-
-        let mut listed: Vec<String> = nav::UNBUILT
-            .iter()
-            .map(|(id, _)| format!("{id:?}"))
-            .collect();
-        listed.sort();
-
-        assert_eq!(
-            routed, listed,
-            "the rows routed to the unbuilt page and the rows nav::UNBUILT has words for must be one set"
-        );
-        assert!(
-            !routed.is_empty(),
-            "the arm parsed to nothing, so this test is asserting about an empty set"
-        );
     }
 
     /// THE WATCH BODY IS THE ONE SCREEN DRAWN EDGE TO EDGE, AND EVERY OTHER ONE KEEPS ITS MARGIN.
@@ -2727,7 +2587,7 @@ mod tests {
                 ..Default::default()
             };
             let mut out = ctx.run_ui(input, |ui| {
-                draw_screen(ui, id, 0, 0, &mut screens, &mut cx);
+                draw_screen(ui, id, 0, &mut screens, &mut cx);
             });
             out.shapes.clear();
             /* headless: there is no renderer to hand the font atlas to, and epaint panics on a
@@ -2754,9 +2614,6 @@ mod tests {
     }
 
     /// The house forbids both dashes in code, comments and UI strings alike.
-    ///
-    /// This file no longer holds the "not built in this release" reasons; they moved to
-    /// `nav::UNBUILT`, and `nav`'s own guard covers them there.
     #[test]
     fn no_dashes_anywhere_in_this_file() {
         let src = include_str!("main.rs");

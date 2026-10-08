@@ -6,7 +6,9 @@
 //! stale copy of the data and drawing last week's record count over this week's file.
 pub mod chat;
 pub mod compendium;
+pub mod herald;
 pub mod lfg;
+pub mod oracle;
 pub mod videos;
 pub mod watch;
 
