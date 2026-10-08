@@ -2,13 +2,12 @@
 
 ## 1. The licence and the holder
 
-EQL Grimoire is original work: the Rust workspace under `crates/`, the web bundle under `web/`, and
-the documents under `docs/`. It is licensed under the GNU Affero General Public Licence, version 3
+Grimoire is original work: the Rust workspace under `crates/` and the documents under `docs/`. It is licensed under the GNU Affero General Public Licence, version 3
 (`AGPL-3.0-only`). The full text is at [`../LICENSE`](../LICENSE).
 
 **What the AGPL asks of anyone who runs a modified copy over a network:** section 13 means a hosted,
-modified Grimoire has to offer its users the source of that modified version. The app and the web
-bundle therefore carry a visible source link, and [`../CONTRIBUTING.md`](../CONTRIBUTING.md) says so
+modified Grimoire has to offer its users the source of that modified version. The app therefore
+carries a visible source link, and [`../CONTRIBUTING.md`](../CONTRIBUTING.md) says so
 to anyone building on it.
 
 **Contributions** are covered by [`../CLA.md`](../CLA.md): contributors keep their copyright and
@@ -37,13 +36,20 @@ table states:
 | `IBMPlexSans-Regular.ttf` | Copyright 2019 IBM Corp. All rights reserved. | `http://scripts.sil.org/OFL` |
 | `IBMPlexMono-Regular.ttf` | Copyright 2017 IBM Corp. All rights reserved. | `http://scripts.sil.org/OFL` |
 
-**Game data.** Item, quest, zone and wiki data the desktop app reads is third-party content. It
-is loaded at runtime from a data directory and never compiled into the binary; the loader is
-`crates/grimoire-desktop/src/data/mod.rs`. Its source is eqlwiki.com, and it is attributed to
-eqlwiki.
+**Game data.** The zone, NPC, item, quest and spell data the app will load comes from the
+Monsters & Memories community wiki, https://monstersandmemories.miraheze.org, by its contributors,
+licensed under **CC BY-SA 4.0** (https://creativecommons.org/licenses/by-sa/4.0/). It is built into a
+data bundle outside this repository and delivered at runtime, never compiled into the binary. Every
+record keeps the URL of the page it came from, and the app shows that credit wherever the data
+appears. The bundle is an adaptation and is shared under the same licence.
 
-**The terms that data ships under are NOT settled, and this file does not settle them.** Earlier
-notes in this repository disagreed: one described the data as CC BY-SA 4.0, another recorded that
-eqlwiki publishes no robots.txt and declares no licence at all. Both cannot be true, so what is
-recorded here is the open question. Settling it is the data pass's work, and the answer belongs in
-this file on the day it exists.
+Not used, deliberately: monstersandmemories.wiki (a separate fan site whose terms forbid copying it
+into another app; it offers a partner API for lookups only), and the official site and other fan
+databases whose robots.txt asks AI crawlers to stay away.
+
+**Monsters & Memories** is a trademark of Niche Worlds Cult, LLC, and game content and art are
+© Niche Worlds Cult, LLC. Grimoire is not affiliated with or endorsed by them.
+
+**Oracle's model** (LFM2.5 1.2B Instruct, LFM Open License v1.0) and its engine (llama.cpp, MIT) are
+downloaded by the player's app from their own publishers on first use. Neither is redistributed by
+this project.

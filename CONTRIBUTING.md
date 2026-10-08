@@ -1,7 +1,8 @@
-# Contributing to EQL Grimoire
+# Contributing to Grimoire
 
-Thanks for looking. This is an EverQuest Legends companion: a log parser, live overlays and
-dashboards, written in Rust.
+Thanks for looking. This is a Monsters & Memories companion, written in Rust: stream tools, a
+looking-for-group board, and (coming) the community wiki, the developers' posts and a local
+question answerer.
 
 ## Before your first pull request
 
@@ -42,10 +43,11 @@ Clippy warnings are errors here. Keep the workspace warning-free.
 These are the habits the existing code follows. Matching them makes review quick.
 
 - **Say why, not what.** A comment explains the reason a rule exists, ideally with the evidence
-  behind it: what was measured, in which log, and what went wrong without it. Read a few doc
+  behind it: what was measured, where, and what went wrong without it. Read a few doc
   comments before writing one.
-- **Never invent a number.** Every figure on screen comes from the log. If the log cannot state
-  something, the app says so instead of estimating.
+- **Never invent a number.** Every figure on screen comes from a source the app can name (the
+  wiki data, a developer's post, the stream service). If the source cannot state something, the
+  app says so instead of estimating.
 - **A test must be able to fail.** After writing an assertion, break the code it guards, run that
   one test, watch it go red, restore the code, watch it go green. Say in the test's doc what
   mutation makes it red.
@@ -54,8 +56,7 @@ These are the habits the existing code follows. Matching them makes review quick
 - **No em-dashes** in code comments, documentation or anything shown to a user. Commas, colons and
   parentheses do the job.
 - **Personal data stays out.** No real character names, chat, tells or player names in fixtures,
-  tests, comments or screenshots. Use synthetic names. Log fixtures must be cut from combat lines,
-  never from whole logs.
+  tests, comments or screenshots. Use synthetic names.
 - **No machine-specific paths.** Nothing may read or write a path tied to one person's computer.
   Paths come from the OS, from settings, or from beside the executable.
 
@@ -72,7 +73,6 @@ Open an issue with:
 
 - What you expected and what happened.
 - Your app version (it is in the footer).
-- The log lines that triggered it, **with player names and chat removed**.
 - Steps to reproduce.
 
 Security problems: please do not open a public issue. See [SECURITY.md](SECURITY.md) if present, or

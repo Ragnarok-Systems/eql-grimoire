@@ -1,17 +1,17 @@
-# EQL Grimoire Contributor Licence Agreement
+# Grimoire Contributor Licence Agreement
 
 **Draft. Not legal advice, and not yet reviewed by a lawyer.** It follows the widely used Apache
 Individual Contributor Licence Agreement pattern. Have counsel read it before the repository accepts
 its first outside contribution.
 
-**Version:** 1.0 (draft) · **Project:** EQL Grimoire · **Project owner:** <OWNER NAME OR COMPANY>
+**Version:** 1.0 (draft) · **Project:** Grimoire · **Project owner:** <OWNER NAME OR COMPANY>
 ("the Owner")
 
 ---
 
 ## Why this exists
 
-EQL Grimoire is released under the GNU Affero General Public Licence, version 3 (AGPL-3.0-only). For
+Grimoire is released under the GNU Affero General Public Licence, version 3 (AGPL-3.0-only). For
 the Owner to keep publishing the project under that licence, and to offer it under other terms as
 well (for example a commercial licence for someone who cannot comply with the AGPL), the Owner needs
 your permission to use what you contribute. This agreement gives that permission. **You keep the

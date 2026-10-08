@@ -1,12 +1,10 @@
 # Grimoire
 
-A companion app for the games you play. **This is the EverQuest Legends edition.**
+A companion app for **Monsters & Memories**: watch and chat with the stream, find a group, and, as
+it grows, browse the game's community wiki, read what the developers say, and ask questions about
+the game.
 
-Grimoire reads the log file the game writes on your own PC and turns it into a DPS parser, overlays
-you can keep on top of the game, dashboards of your nights, and a record of your character. It also
-carries a searchable offline compendium of the game, and the Broken Stoic stream and videos.
-
-**Website and download: [ragnarok.systems/grimoire](https://ragnarok.systems/grimoire)**
+**Website: [ragnarok.systems/grimoire](https://ragnarok.systems/grimoire)**
 
 ---
 
@@ -20,74 +18,56 @@ carries a searchable offline compendium of the game, and the Broken Stoic stream
 
 Grimoire runs on 64-bit Windows.
 
-## Set up the game
-
-In EverQuest Legends, type:
-
-```
-/log on
-```
-
-The game only writes a log while logging is on, and Grimoire can only show what the log records.
-
-Grimoire looks for the logs in the default install folder:
-
-```
-C:\Users\Public\Daybreak Game Company\Installed Games\EverQuest Legends\Logs
-```
-
-If you installed the game somewhere else, open **Settings** and point **LOG FOLDER** at your game's
-`Logs` folder.
-
-For the inventory and gear pages, type `/outputfile inventory` in game whenever you want Grimoire to see
-what you are carrying.
-
 ## What's in it
 
-The menu on the left is grouped the way the app is:
+The menu on the left:
 
 | Section | What it is |
 |---|---|
-| **Chronicle** | The **Log Parser**: live DPS, every fight, dashboards of a night, and reports. **GINA** triggers are coming. |
-| **My Legend** | Your character: inventory, gear, exaltations, loadouts, plans, hunt and loot journals, Plane of Sky, lockouts |
-| **Compendium** | The game itself, offline and searchable: zones, bestiary, items, loot tables, quests, spells, crafting |
-| **The Bazaar** | Crafting orders, priced from the game's own combine odds |
-| **The Tavern** | Groups, guild and schedule |
-| **Broken Stoic** | Watch the stream live, the videos, and chat |
+| **Compendium** | Zones, NPCs, items, quests, spells and abilities from the Monsters & Memories community wiki. **Coming:** the data is built; loading it into the app is next. |
+| **Herald** | Everything the developers say in the game's Discord, kept and searchable. **Coming.** |
+| **Oracle** | Ask a question in plain words and get an answer from the wiki and the developers' posts, with a link to every source. It runs on your PC and costs nothing to use. **Coming.** |
+| **The Tavern** | **Groups**: write the lines you mean to say in game and copy each one ready to paste, as a group or a raid post. |
+| **Streams** | Watch the Broken Stoic stream live, the videos, and chat. |
 
-Some pages are still being built. Those say so on the page, and say what they are waiting on.
+Pages that are not built yet say so on the page, and say what they are waiting on.
 
-### Overlays
+### Hotkeys
 
-The DPS **Pill**, **Meter** and **Coach** are small windows that stay on top of the game. Open them from
-**Log Parser → Overlays**, drag them where you want them, and they open there next time.
+Hotkeys work while the game has focus:
 
-The dot on an overlay tells you where the fight is:
+| Keys | Opens |
+|---|---|
+| Ctrl+Alt+G | the whole app, shown or hidden |
+| Ctrl+Alt+W | the stream, picture in picture |
+| Ctrl+Alt+C | chat, over the game |
+| Ctrl+Alt+L | looking for group (then R for a raid) |
+| Ctrl+Alt+R | looking for raid |
 
-- **Green**: you are fighting.
-- **Gold**: the fight just ended, and the encounter is held open for a few seconds in case another mob
-  joins.
-- **Red**: the encounter is over. The numbers from it stay up until the next fight starts.
+Change any of them in **Settings → HOTKEYS**.
 
 ## Updates
 
 Grimoire updates itself. When a new version is out it downloads, checks the download's signature, and
-installs, with nothing for you to click. If a new version ever fails to start, Grimoire goes back to the
-one that worked.
+installs, with nothing for you to click. It waits until no stream is playing, so it never cuts one
+off. If a new version ever fails to start, Grimoire goes back to the one that worked.
 
 To get new features early, open **Settings → UPDATES** and switch the channel to **beta**. Beta builds
 are newer and less tested.
 
 ## Your data
 
-Your logs are read where the game writes them, on your PC. Grimoire keeps its own files in:
+Grimoire keeps its own files in these folders. They still carry the name of the app's first edition,
+for EverQuest Legends, on purpose: every installed copy finds its updates and settings there, so the
+names cannot change without stranding them.
 
-- `%APPDATA%\eql-grimoire`: your settings and the fights it has saved
+- `%APPDATA%\eql-grimoire`: your settings
 - `%LOCALAPPDATA%\eql-grimoire`: the installed app versions
 - `%LOCALAPPDATA%\EQLGrimoire`: cached images and the stream player's data
 
-Grimoire goes online to check for updates, to play the Broken Stoic stream and videos, and when you sign
-in to Twitch.
+Grimoire goes online to check for updates, to play the stream and videos, and when you sign in to
+Twitch or to a Ragnarok account. Oracle's answer model, when it arrives, is downloaded from Hugging
+Face the first time you use it, after asking you; it is never part of the app download.
 
 **To uninstall**, delete the Grimoire `.exe` you downloaded and those three folders.
 
@@ -97,9 +77,7 @@ Found something wrong? [Open an issue](https://github.com/Ragnarok-Systems/eql-g
 
 - what you expected, and what happened
 - your Grimoire version (it's in the title bar)
-- the log lines where it went wrong, **with other players' names and chat removed**
-
-Wrong DPS numbers count as a serious bug. Please report them.
+- the steps that led there
 
 ## Contributing
 
@@ -110,7 +88,8 @@ Grimoire is open source. To build it from source or send a change, read
 
 GNU Affero General Public Licence v3 (`AGPL-3.0-only`), held by James McMenamin. Full text in
 [LICENSE](LICENSE). Contributions are covered by [CLA.md](CLA.md). Third-party material, including the
-bundled fonts and the game data the app loads, is listed in [docs/LICENSING.md](docs/LICENSING.md).
+bundled fonts and the game data the app will load, is listed in [docs/LICENSING.md](docs/LICENSING.md).
 
-EverQuest Legends is a trademark of its owner. Grimoire is a fan-made companion and is not affiliated
-with or endorsed by the game's publisher.
+Monsters & Memories is a trademark of Niche Worlds Cult, LLC. Game content and art are © Niche Worlds
+Cult, LLC. Grimoire is a fan-made companion and is not affiliated with or endorsed by Niche Worlds
+Cult.
