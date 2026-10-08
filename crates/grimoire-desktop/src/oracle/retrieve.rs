@@ -281,7 +281,19 @@ impl Index {
         found.sort_by_key(|n| std::cmp::Reverse(n.0.len()));
         let mut kept: Vec<&(String, String)> = Vec::new();
         for n in found {
-            if kept.iter().any(|k| k.0.contains(n.0.as_str())) {
+            /* A longer name that is the shorter one with "a", "an" or "the" in front does not
+             * hide it: in "how does a necromancer get ..." both the NPC "A necromancer" and the
+             * class "Necromancer" are fair readings (measured 2026-10-08). */
+            let article = |long: &str, short: &str| {
+                ["a", "an", "the"].iter().any(|a| {
+                    long.strip_prefix(&format!(" {a}"))
+                        .is_some_and(|rest| rest == short)
+                })
+            };
+            if kept
+                .iter()
+                .any(|k| k.0.contains(n.0.as_str()) && !article(&k.0, &n.0))
+            {
                 continue;
             }
             kept.push(n);
@@ -496,6 +508,28 @@ mod tests {
             vec!["Ail'Vorith"]
         );
         assert_eq!(idx.named_pages("What are the zones?"), vec!["Zones"]);
+        let nec = Index::build(
+            vec![
+                kp(
+                    "A necromancer",
+                    "npc",
+                    "A necromancer stands in Underdocks.",
+                ),
+                kp("Necromancer", "class", "Necromancers raise the dead."),
+                kp("Aashir's Journal", "item", "A journal."),
+                kp("Journal", "item", "A book."),
+            ],
+            vec![],
+        );
+        assert_eq!(
+            nec.named_pages("how does a necromancer get their first pet?"),
+            vec!["A necromancer", "Necromancer"],
+            "a leading article does not hide the shorter name"
+        );
+        assert_eq!(
+            nec.named_pages("where is aashir's journal?"),
+            vec!["Aashir's Journal"]
+        );
         let q = "What is the phone number for Monsters & Memories customer support?";
         assert!(idx.named_pages(q).is_empty());
         assert!(!idx.answerable(q, &idx.retrieve(q, 5, 2)));

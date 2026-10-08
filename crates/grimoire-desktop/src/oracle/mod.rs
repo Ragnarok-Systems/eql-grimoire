@@ -102,7 +102,26 @@ pub fn tidy_answer(answer: &str) -> String {
         out.push('\n');
         out.push_str(r);
     }
-    unmirror(out.trim())
+    unmirror(&drop_trailing_decline(out.trim()))
+}
+
+/// A cited answer that then ends "The wiki doesn't say." keeps the answer. The model adds the
+/// decline when its later sources are off topic (measured: "Mother Gummer in Blind Midden. [1] ...
+/// The wiki doesn't say."); the cited part is what it found. Same as `dropTrailingDecline` in
+/// `mnm-lore/src/oracle.js`.
+pub fn drop_trailing_decline(answer: &str) -> String {
+    let Some(at) = answer.rfind(NOT_FOUND) else {
+        return answer.to_owned();
+    };
+    if at == 0 || !answer[at + NOT_FOUND.len()..].trim().is_empty() {
+        return answer.to_owned();
+    }
+    let before = answer[..at].trim();
+    if check_citations(before, usize::MAX).cited.is_empty() {
+        answer.to_owned()
+    } else {
+        before.to_owned()
+    }
 }
 
 /// The same mirror inside one paragraph: sentence 1 cites [1], sentence 2 cites [2], sentence 3
@@ -642,6 +661,12 @@ mod tests {
         /* A real answer drawing on several sources is left whole. */
         let legit = "It drops in Blind Midden [1]. It also drops in Underdocks [3]. Mother Gummer drops it [2].";
         assert_eq!(tidy_answer(legit), legit);
+        /* A cited answer with a decline tacked on keeps the answer; a bare decline stays one. */
+        assert_eq!(
+            tidy_answer("The Skinsuit drops from Mother Gummer in Blind Midden. [1]\n\nThe wiki doesn't say."),
+            "The Skinsuit drops from Mother Gummer in Blind Midden. [1]"
+        );
+        assert_eq!(tidy_answer(NOT_FOUND), NOT_FOUND);
         let rambling = "The wiki does not provide the phone number. [2] An ashira supplier mentions a zone but not contact details. [6] No definitive answer available.";
         assert_eq!(tidy_answer(rambling), NOT_FOUND);
         let d = check_citations(&tidy_answer(rambling), 5);
