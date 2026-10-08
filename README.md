@@ -61,13 +61,13 @@ names cannot change without stranding them.
 
 - `%APPDATA%\eql-grimoire`: your settings
 - `%LOCALAPPDATA%\eql-grimoire`: the installed app versions, the wiki data (`data`), Oracle's engine
-  and model (`oracle`, about 780 MB once downloaded) and Herald's posts (`herald`)
+  and models (`oracle`, about 790 MB once downloaded) and Herald's posts (`herald`)
 - `%LOCALAPPDATA%\EQLGrimoire`: cached images and the stream player's data
 
 Grimoire goes online to check for updates, to play the stream and videos, and when you sign in to
 Twitch or to a Ragnarok account. The first time you use Oracle it asks before downloading its answer
-engine (llama.cpp, from GitHub, 19 MB) and model (LFM2.5 1.2B, from Hugging Face, 731 MB); neither is
-part of the app download. After that, questions are answered offline.
+engine (llama.cpp, from GitHub, 19 MB), its answer model (LFM2.5 1.2B, 731 MB) and its search model
+(bge-small, 37 MB), both from Hugging Face; none is part of the app download. After that, questions are answered offline.
 
 **To uninstall**, delete the Grimoire `.exe` you downloaded and those three folders.
 

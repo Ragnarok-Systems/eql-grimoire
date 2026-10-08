@@ -51,6 +51,7 @@ databases whose robots.txt asks AI crawlers to stay away.
 © Niche Worlds Cult, LLC. Grimoire is not affiliated with or endorsed by them.
 
 **Oracle's model** (LFM2.5 1.2B Instruct Q4_K_M, LFM Open License v1.0, from LiquidAI on Hugging
+Face), its search model (BAAI bge-small-en-v1.5, MIT, as an 8-bit GGUF by CompendiumLabs on Hugging
 Face) and its engine (llama.cpp build b11476, Windows CPU, MIT, from ggml-org on GitHub) are
 downloaded by the player's app from their own publishers on first use, after the player agrees on
 Oracle's consent card, and each is checked against a pinned sha256 (`src/oracle/fetch.rs`).
