@@ -142,9 +142,19 @@ impl OracleScreen {
             .dirs()
             .is_some_and(|d| d.engine().join(crate::oracle::engine::SERVER_EXE).is_file());
         let mut total = 0;
-        ui.label(RichText::new("Oracle needs two files before its first answer:").color(TEXT));
+        ui.label(RichText::new("Oracle needs these files before its first answer:").color(TEXT));
         ui.add_space(4.0);
-        for (pin, needed) in [(fetch::ENGINE, !have_engine), (fetch::MODEL, true)] {
+        let have = |pin: &fetch::Pin| {
+            self.oracle
+                .dirs()
+                .is_some_and(|d| fetch::have(&d.models(), pin))
+        };
+        let wanted = [
+            (fetch::ENGINE, !have_engine),
+            (fetch::MODEL, !have(&fetch::MODEL)),
+            (fetch::EMBEDDER, !have(&fetch::EMBEDDER)),
+        ];
+        for (pin, needed) in wanted {
             if !needed {
                 continue;
             }

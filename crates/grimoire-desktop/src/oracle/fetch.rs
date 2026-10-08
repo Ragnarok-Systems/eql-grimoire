@@ -49,6 +49,18 @@ pub const MODEL: Pin = Pin {
     licence: "LFM Open License v1.0",
 };
 
+/// The embedder for meaning search: BAAI's bge-small-en-v1.5 (MIT), the model the bundle's vectors
+/// were built with, as an 8-bit GGUF the same engine runs.
+pub const EMBEDDER: Pin = Pin {
+    what: "the bge-small search model",
+    url: "https://huggingface.co/CompendiumLabs/bge-small-en-v1.5-gguf/resolve/d32f8c040ea3b516330eeb75b72bcc2d3a780ab7/bge-small-en-v1.5-q8_0.gguf",
+    file: "bge-small-en-v1.5-q8_0.gguf",
+    bytes: 36_806_944,
+    sha256: "ec38e8da142596baa913124ae50550de284b6916bf59577ef2f0cb9660c2f514",
+    from: "Hugging Face (BAAI bge-small, GGUF by CompendiumLabs)",
+    licence: "MIT",
+};
+
 /// How a download is going: bytes so far of bytes in all.
 pub type Progress<'a> = &'a mut dyn FnMut(u64, u64);
 
@@ -207,7 +219,7 @@ mod tests {
 
     #[test]
     fn pins_are_whole_and_point_at_their_sources() {
-        for p in [ENGINE, MODEL] {
+        for p in [ENGINE, MODEL, EMBEDDER] {
             assert_eq!(p.sha256.len(), 64, "{}", p.what);
             assert!(p
                 .sha256

@@ -76,8 +76,23 @@ fn pick_port(attempt: u32) -> u16 {
 }
 
 impl Engine {
-    /// Start the server on `model` and wait until it answers its health check.
+    /// Start the answer server on `model` and wait until it answers its health check.
     pub fn start(engine_dir: &Path, model: &Path) -> Result<Engine, String> {
+        Engine::launch(engine_dir, model, &["-c", "4096"])
+    }
+
+    /// Start the same server as an embedder: the bge-small model, CLS pooling, for meaning search.
+    /// Its vectors match the bundle's (built with transformers.js) at cosine 0.994 or better, and
+    /// the retrieval check scores the same 15/16 with either (measured 2026-10-08).
+    pub fn start_embedder(engine_dir: &Path, model: &Path) -> Result<Engine, String> {
+        Engine::launch(
+            engine_dir,
+            model,
+            &["--embedding", "--pooling", "cls", "-c", "512", "-ub", "512"],
+        )
+    }
+
+    fn launch(engine_dir: &Path, model: &Path, extra: &[&str]) -> Result<Engine, String> {
         let exe: PathBuf = engine_dir.join(SERVER_EXE);
         if !exe.is_file() {
             return Err(format!("the engine is not at {}", exe.display()));
@@ -95,7 +110,8 @@ impl Engine {
                 .arg("-m")
                 .arg(model)
                 .args(["--host", "127.0.0.1", "--port", &port.to_string()])
-                .args(["-t", &threads().to_string(), "-c", "4096", "--no-webui"])
+                .args(["-t", &threads().to_string(), "--no-webui"])
+                .args(extra)
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null());
@@ -143,6 +159,34 @@ impl Engine {
     /// Whether the server is still running.
     pub fn alive(&mut self) -> bool {
         matches!(self.child.try_wait(), Ok(None))
+    }
+
+    /// One text's embedding, unit length (an embedder started by `start_embedder`).
+    pub fn embed(&self, text: &str) -> Result<Vec<f32>, String> {
+        let resp = self
+            .agent
+            .post(&self.url("/v1/embeddings"))
+            .config()
+            .timeout_global(Some(Duration::from_secs(30)))
+            .build()
+            .send_json(serde_json::json!({ "input": [text] }))
+            .map_err(|e| format!("the embedder refused: {e}"))?;
+        let v: serde_json::Value = resp
+            .into_body()
+            .read_json()
+            .map_err(|e| format!("the embedder's answer could not be read: {e}"))?;
+        let mut out: Vec<f32> = v
+            .pointer("/data/0/embedding")
+            .and_then(|e| e.as_array())
+            .ok_or("the embedder sent no embedding")?
+            .iter()
+            .filter_map(|x| x.as_f64().map(|f| f as f32))
+            .collect();
+        let n = out.iter().map(|x| x * x).sum::<f32>().sqrt();
+        if n > 0.0 {
+            out.iter_mut().for_each(|x| *x /= n);
+        }
+        Ok(out)
     }
 
     /// Ask for an answer, streaming each piece of text to `on_token` as it is written. Returns the

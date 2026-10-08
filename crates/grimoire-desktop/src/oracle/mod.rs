@@ -102,7 +102,42 @@ pub fn tidy_answer(answer: &str) -> String {
         out.push('\n');
         out.push_str(r);
     }
-    out.trim().to_owned()
+    unmirror(out.trim())
+}
+
+/// The same mirror inside one paragraph: sentence 1 cites [1], sentence 2 cites [2], sentence 3
+/// cites [3], each restating its source ("No other zones are listed. [3]"). Three or more
+/// sentences in that exact order is the signature, and the answer is the first sentence. Measured
+/// 2026-10-08: with this cut all 72 answerable eval questions pass (none was a real answer cut
+/// short) and answers average 97 characters. The same cut is `unmirror` in `mnm-lore/src/oracle.js`.
+pub fn unmirror(answer: &str) -> String {
+    use std::sync::OnceLock;
+    static SENTENCE: OnceLock<regex::Regex> = OnceLock::new();
+    static CITE: OnceLock<regex::Regex> = OnceLock::new();
+    let sentence = SENTENCE.get_or_init(|| {
+        regex::Regex::new(r"[^.!?]+[.!?]+(?:\s*\[\d+\])*\s*").expect("sentence pattern")
+    });
+    let cite = CITE.get_or_init(|| regex::Regex::new(r"\[(\d+)\]").expect("citation pattern"));
+    let sentences: Vec<&str> = sentence.find_iter(answer).map(|m| m.as_str()).collect();
+    if sentences.len() < 3 {
+        return answer.to_owned();
+    }
+    let run = sentences
+        .iter()
+        .enumerate()
+        .take_while(|(i, s)| {
+            let cites: Vec<usize> = cite
+                .captures_iter(s)
+                .filter_map(|c| c[1].parse().ok())
+                .collect();
+            cites == [i + 1]
+        })
+        .count();
+    if run >= 3 {
+        sentences[0].trim().to_owned()
+    } else {
+        answer.to_owned()
+    }
 }
 
 /// Whether an answer is the "doesn't say" reply, in any of the ways small models phrase it.
@@ -242,9 +277,13 @@ impl Dirs {
     pub fn model(&self) -> PathBuf {
         self.models().join(fetch::MODEL.file)
     }
+    pub fn embedder(&self) -> PathBuf {
+        self.models().join(fetch::EMBEDDER.file)
+    }
     pub fn ready(&self) -> bool {
         self.engine().join(engine::SERVER_EXE).is_file()
             && fetch::have(&self.models(), &fetch::MODEL)
+            && fetch::have(&self.models(), &fetch::EMBEDDER)
     }
 }
 
@@ -355,27 +394,48 @@ fn download(dirs: &Dirs, shared: &Mutex<Shared>, stop: &AtomicBool) -> Result<()
         fetch::unpack(&zip, &dirs.engine())?;
         let _ = std::fs::remove_file(&zip);
     }
-    let pin = fetch::MODEL;
-    fetch::fetch(
-        &dirs.models(),
-        &pin,
-        &mut |done, total| {
-            set_phase(
-                shared,
-                Phase::Downloading {
-                    what: pin.what,
-                    done,
-                    total,
-                },
-            )
-        },
-        &stopped,
-    )?;
+    for pin in [fetch::MODEL, fetch::EMBEDDER] {
+        fetch::fetch(
+            &dirs.models(),
+            &pin,
+            &mut |done, total| {
+                set_phase(
+                    shared,
+                    Phase::Downloading {
+                        what: pin.what,
+                        done,
+                        total,
+                    },
+                )
+            },
+            &stopped,
+        )?;
+    }
     Ok(())
+}
+
+/// The question's vector for meaning search, starting the embedder if it is not running. None
+/// (keyword and named-page search only) when the index has no vectors or the embedder fails.
+fn query_vector(
+    dirs: &Dirs,
+    idx: &retrieve::Index,
+    emb: &mut Option<engine::Engine>,
+    question: &str,
+) -> Option<Vec<f32>> {
+    if !idx.has_vectors() {
+        return None;
+    }
+    if !emb.as_mut().is_some_and(|e| e.alive()) {
+        *emb = engine::Engine::start_embedder(&dirs.engine(), &dirs.embedder()).ok();
+    }
+    emb.as_ref()?
+        .embed(&format!("{}{question}", idx.query_prefix))
+        .ok()
 }
 
 fn worker(dirs: Dirs, rx: mpsc::Receiver<Cmd>, shared: Arc<Mutex<Shared>>, stop: Arc<AtomicBool>) {
     let mut eng: Option<engine::Engine> = None;
+    let mut emb: Option<engine::Engine> = None;
     let mut index: Option<retrieve::Index> = None;
     while let Ok(cmd) = rx.recv() {
         if stop.load(Ordering::Relaxed) {
@@ -449,7 +509,8 @@ fn worker(dirs: Dirs, rx: mpsc::Receiver<Cmd>, shared: Arc<Mutex<Shared>>, stop:
                 set_phase(&shared, Phase::Answering);
                 let Some(idx) = index.as_ref() else { continue };
                 let Some(e) = eng.as_ref() else { continue };
-                let passages = idx.retrieve(&question, 5, 2);
+                let qvec = query_vector(&dirs, idx, &mut emb, &question);
+                let passages = idx.retrieve_with(&question, qvec.as_deref(), 5, 2);
                 let sources: Vec<Source> = passages
                     .iter()
                     .map(|p| Source {
@@ -464,6 +525,20 @@ fn worker(dirs: Dirs, rx: mpsc::Receiver<Cmd>, shared: Arc<Mutex<Shared>>, stop:
                         x.sources = sources.clone();
                     }
                 });
+                /* NOTHING IN THE WIKI IS ABOUT THIS: say so without asking the model, which would
+                 * invent an answer. See `Index::answerable`. */
+                if !idx.answerable(&question, &passages) {
+                    with(&shared, |s| {
+                        if let Some(x) = s.history.last_mut() {
+                            x.answer = NOT_FOUND.to_owned();
+                            x.check = Some(check_citations(NOT_FOUND, sources.len()));
+                            x.done = true;
+                            x.seconds = t0.elapsed().as_secs_f32();
+                        }
+                        s.phase = Phase::Ready;
+                    });
+                    continue;
+                }
                 let system = system_prompt();
                 let user = build_prompt(&question, &passages);
                 let turns = [
@@ -558,6 +633,15 @@ mod tests {
             "Guard Pippi gives it [1]."
         );
         assert_eq!(tidy_answer("[1]"), "[1]");
+        /* The in-paragraph mirror, as the end-to-end run produced it. */
+        let inline = "Ail'Vorith borders Great Cavern Sea and Blind Midden. [1] The sources confirm these adjacent zones. [2] No other bordering zones are listed. [3] It notes Ail'Vorith is a starting zone. [4]";
+        assert_eq!(
+            tidy_answer(inline),
+            "Ail'Vorith borders Great Cavern Sea and Blind Midden. [1]"
+        );
+        /* A real answer drawing on several sources is left whole. */
+        let legit = "It drops in Blind Midden [1]. It also drops in Underdocks [3]. Mother Gummer drops it [2].";
+        assert_eq!(tidy_answer(legit), legit);
         let rambling = "The wiki does not provide the phone number. [2] An ashira supplier mentions a zone but not contact details. [6] No definitive answer available.";
         assert_eq!(tidy_answer(rambling), NOT_FOUND);
         let d = check_citations(&tidy_answer(rambling), 5);

@@ -35,6 +35,19 @@ const STOP: &[&str] = &[
     "who", "why", "with", "you", "your",
 ];
 
+/// The game's own name: the subject of every question, so it names no page. It matched 7 of 9
+/// unanswerable questions in the eval.
+const GAME_PAGES: &[&str] = &["Monsters & Memories"];
+/// Pages of general prose, as opposed to records of one zone, NPC, item, quest, spell and so on.
+const GENERAL: &[&str] = &["article", "guide"];
+/// Words that shape a question rather than say what it is about.
+const SHAPE: &[&str] = &[
+    "level", "levels", "range", "find", "gives", "give", "quest", "drops", "drop", "zones", "zone",
+    "border", "borders", "class", "gets", "their", "my", "there", "monsters", "memories", "mnm",
+];
+/// Below this share of its own words found in any source, a question naming no page is not answered.
+const MIN_COVERAGE: f64 = 0.5;
+
 fn word_char(c: char) -> bool {
     c.is_alphanumeric() || c == '\''
 }
@@ -80,6 +93,12 @@ pub struct Index {
     /// Every page name (folded) a question can name, with the page it means.
     names: Vec<(String, String)>,
     first_of_page: HashMap<String, usize>,
+    /// `vectors.i8`: passages x `dims` int8, value = round(x * 127), in passage order. Empty when
+    /// the bundle carries none, and then meaning search is simply not a vote.
+    vectors: Vec<i8>,
+    dims: usize,
+    /// What a query is prefixed with before it is embedded (`meta.embedding.query_prefix`).
+    pub query_prefix: String,
 }
 
 const K1: f64 = 1.2;
@@ -127,7 +146,49 @@ impl Index {
             avg,
             names,
             first_of_page,
+            vectors: Vec::new(),
+            dims: 0,
+            query_prefix: String::new(),
         }
+    }
+
+    /// Attach the bundle's passage vectors. Refused (left keyword-only) when the sizes disagree.
+    pub fn with_vectors(mut self, vectors: Vec<i8>, dims: usize, query_prefix: String) -> Index {
+        if dims > 0 && vectors.len() == self.passages.len() * dims {
+            self.vectors = vectors;
+            self.dims = dims;
+            self.query_prefix = query_prefix;
+        }
+        self
+    }
+
+    pub fn has_vectors(&self) -> bool {
+        self.dims > 0
+    }
+
+    /// Cosine of a unit query vector against every passage vector, best first.
+    pub fn vector_search(&self, q: &[f32], limit: usize) -> Vec<Hit> {
+        if self.dims == 0 || q.len() != self.dims {
+            return Vec::new();
+        }
+        let mut hits: Vec<Hit> = self
+            .vectors
+            .chunks_exact(self.dims)
+            .enumerate()
+            .map(|(i, row)| Hit {
+                i,
+                score: row
+                    .iter()
+                    .zip(q)
+                    .map(|(a, b)| *a as f64 * *b as f64)
+                    .sum::<f64>()
+                    / 127.0,
+            })
+            .filter(|h| h.score > 0.0)
+            .collect();
+        hits.sort_by(|a, b| b.score.total_cmp(&a.score).then(a.i.cmp(&b.i)));
+        hits.truncate(limit);
+        hits
     }
 
     /// Read `passages.jsonl` and `redirects.json` from a bundle folder.
@@ -152,7 +213,29 @@ impl Index {
                 .collect(),
             Err(_) => Vec::new(),
         };
-        Ok(Index::build(passages, redirects))
+        let idx = Index::build(passages, redirects);
+        /* The vectors are optional: a bundle without them, or with a meta that does not say how
+         * they were made, still answers on keywords and named pages. */
+        let meta: Option<serde_json::Value> = std::fs::read_to_string(root.join("meta.json"))
+            .ok()
+            .and_then(|t| serde_json::from_str(&t).ok());
+        let dims = meta
+            .as_ref()
+            .and_then(|m| m.pointer("/embedding/dims"))
+            .and_then(|d| d.as_u64())
+            .unwrap_or(0) as usize;
+        let prefix = meta
+            .as_ref()
+            .and_then(|m| m.pointer("/embedding/query_prefix"))
+            .and_then(|p| p.as_str())
+            .unwrap_or("")
+            .to_owned();
+        match std::fs::read(root.join("vectors.i8")) {
+            Ok(bytes) => {
+                Ok(idx.with_vectors(bytes.into_iter().map(|b| b as i8).collect(), dims, prefix))
+            }
+            Err(_) => Ok(idx),
+        }
     }
 
     /// BM25 over passage text, title words counted three times.
@@ -203,25 +286,86 @@ impl Index {
             }
             kept.push(n);
         }
-        let mut pages = Vec::new();
+        let mut pages: Vec<String> = Vec::new();
         for (_, page) in kept {
-            if !pages.contains(page) {
+            if !pages.contains(page) && !GAME_PAGES.contains(&page.as_str()) {
                 pages.push(page.clone());
             }
+        }
+        /* A named record drops the general pages named beside it. Measured: "which zones border
+         * Ail'Vorith?" named the article "Zones", which outranked the zone's own facts. */
+        let general = |p: &String| {
+            self.first_of_page
+                .get(p)
+                .and_then(|&i| self.passages[i].kind.as_deref())
+                .is_some_and(|k| GENERAL.contains(&k))
+        };
+        if pages.iter().any(|p| !general(p)) {
+            pages.retain(|p| !general(p));
         }
         pages
     }
 
-    /// The passages for a question: named pages and keyword hits fused by reciprocal rank, at most
-    /// `per_page` from any one page so an answer draws on several sources.
+    /// Whether the sources could answer the question at all, decided before the model sees it.
+    ///
+    /// A question naming a page always goes to the model. One naming none goes only when at least
+    /// half its own words (shape words aside) appear in some source. Measured 2026-10-08 on the
+    /// eval: every answerable question named a page or scored 1.00; the unanswerable ones naming no
+    /// page scored 0.40 or less. Word overlap misses synonyms ("buy" against "sold"), which is why a
+    /// named page bypasses it. The same rule is `answerable` in `mnm-lore/src/retrieve.js`.
+    pub fn answerable(&self, question: &str, passages: &[&Passage]) -> bool {
+        if !self.named_pages(question).is_empty() {
+            return true;
+        }
+        let mut want: Vec<String> = tokens(question)
+            .into_iter()
+            .filter(|t| !SHAPE.contains(&t.as_str()))
+            .collect();
+        want.sort();
+        want.dedup();
+        if want.is_empty() {
+            return true;
+        }
+        let best = passages
+            .iter()
+            .map(|p| {
+                let have: HashSet<String> = tokens(&format!(
+                    "{} {} {}",
+                    p.page,
+                    p.section.as_deref().unwrap_or(""),
+                    p.text
+                ))
+                .into_iter()
+                .collect();
+                want.iter().filter(|t| have.contains(*t)).count() as f64 / want.len() as f64
+            })
+            .fold(0.0, f64::max);
+        best >= MIN_COVERAGE
+    }
+
+    /// The passages for a question on keywords and named pages alone.
     pub fn retrieve(&self, question: &str, limit: usize, per_page: usize) -> Vec<&Passage> {
+        self.retrieve_with(question, None, limit, per_page)
+    }
+
+    /// The passages for a question: named pages, keyword hits and (given the question's vector)
+    /// meaning hits, fused by reciprocal rank, at most `per_page` from any one page so an answer
+    /// draws on several sources.
+    pub fn retrieve_with(
+        &self,
+        question: &str,
+        qvec: Option<&[f32]>,
+        limit: usize,
+        per_page: usize,
+    ) -> Vec<&Passage> {
         let named: Vec<Hit> = self
             .named_pages(question)
             .iter()
             .filter_map(|p| self.first_of_page.get(p))
             .map(|&i| Hit { i, score: 1.0 })
             .collect();
-        let fused = fuse(&[named, self.search(question, 50)]);
+        let meaning = qvec.map(|q| self.vector_search(q, 50)).unwrap_or_default();
+        let fused = fuse(&[named, self.search(question, 50), meaning]);
         let mut out = Vec::new();
         let mut used: HashMap<&str, usize> = HashMap::new();
         for h in fused {
@@ -317,6 +461,77 @@ mod tests {
             .map(|p| p.page.as_str())
             .collect();
         assert_eq!(got[0], "Fallen Pass");
+    }
+
+    fn kp(page: &str, kind: &str, text: &str) -> Passage {
+        Passage {
+            page: page.into(),
+            kind: Some(kind.into()),
+            section: None,
+            url: None,
+            text: text.into(),
+        }
+    }
+
+    /// DEFECTS THESE PREVENT, both measured 2026-10-08: "which zones border Ail'Vorith?" retrieved
+    /// the article "Zones" ahead of the zone, and questions naming only the game ("phone number for
+    /// Monsters & Memories support") went to the model, which invented an answer.
+    #[test]
+    fn a_named_record_beats_a_general_page_and_an_unrelated_question_is_not_answered() {
+        let idx = Index::build(
+            vec![
+                kp("Zones", "article", "A list of zones: SZUUR, Calafrey."),
+                kp(
+                    "Ail'Vorith",
+                    "zone",
+                    "Ail'Vorith borders Great Cavern Sea and Blind Midden.",
+                ),
+                kp("Monsters & Memories", "article", "An MMORPG."),
+                kp("Fishing Pole", "item", "Sold by Old Brannoc."),
+            ],
+            vec![],
+        );
+        assert_eq!(
+            idx.named_pages("Which zones border Ail'Vorith?"),
+            vec!["Ail'Vorith"]
+        );
+        assert_eq!(idx.named_pages("What are the zones?"), vec!["Zones"]);
+        let q = "What is the phone number for Monsters & Memories customer support?";
+        assert!(idx.named_pages(q).is_empty());
+        assert!(!idx.answerable(q, &idx.retrieve(q, 5, 2)));
+        let buy = "Where can I buy a Fishing Pole?";
+        assert!(
+            idx.answerable(buy, &idx.retrieve(buy, 5, 2)),
+            "a named page always goes on"
+        );
+        let near = "who sold the brannoc pole";
+        assert!(idx.answerable(near, &idx.retrieve(near, 5, 2)));
+    }
+
+    /// The meaning vote finds a passage that shares no word with the question, and a vector file
+    /// whose size disagrees with the passages is refused rather than misread.
+    #[test]
+    fn meaning_search_is_a_third_vote_and_mismatched_vectors_are_refused() {
+        let ps = vec![
+            kp("Bone Chips", "item", "Dropped by skeletons."),
+            kp("Lift Bones", "spell", "Raises a zombie servant."),
+        ];
+        let vectors: Vec<i8> = vec![127, 0, 0, 127];
+        let idx = Index::build(ps.clone(), vec![]).with_vectors(vectors, 2, "q: ".into());
+        assert!(idx.has_vectors());
+        let undead_pet = [0.0f32, 1.0];
+        let got: Vec<&str> = idx
+            .retrieve_with("how do I get an undead pet", Some(&undead_pet), 2, 2)
+            .iter()
+            .map(|p| p.page.as_str())
+            .collect();
+        assert_eq!(got.first(), Some(&"Lift Bones"));
+        assert!(
+            idx.retrieve("how do I get an undead pet", 2, 2).is_empty(),
+            "no keyword hit"
+        );
+        let bad = Index::build(ps, vec![]).with_vectors(vec![1, 2, 3], 2, String::new());
+        assert!(!bad.has_vectors());
     }
 
     #[test]

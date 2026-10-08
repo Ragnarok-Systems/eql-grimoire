@@ -44,6 +44,8 @@ fn download_start_and_answer() {
         "what drops the Acid-Washed Skinsuit?",
         "which zones border Ail'Vorith?",
         "how do I tame a dragon in Ail'Vorith?",
+        "what is the phone number for Monsters & Memories customer support?",
+        "how does a necromancer get their first zombie pet?",
     ];
     for (n, q) in qs.iter().enumerate() {
         o.send(Cmd::Ask((*q).to_owned()));
