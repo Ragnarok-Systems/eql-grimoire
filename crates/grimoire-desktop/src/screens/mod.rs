@@ -4,31 +4,10 @@
 //! than an owner: the App owns the snapshot, the watcher, the settings and the ingest, and a
 //! screen sees them for exactly one frame. That is what keeps a screen from squirrelling away a
 //! stale copy of the data and drawing last week's record count over this week's file.
-pub mod analysis;
 pub mod chat;
-pub mod commission;
-pub mod dashboards;
-pub mod dashgrid;
-pub mod dps;
-pub mod exalt;
-pub mod gear;
-pub mod inventory;
-pub mod items;
 pub mod lfg;
-pub mod live;
-pub mod logs;
-pub mod night;
-pub mod parser;
-pub mod quests;
-pub mod reports;
-pub mod sky;
-pub mod spells;
-pub mod unlocks;
-pub mod valet;
 pub mod videos;
 pub mod watch;
-pub mod widgets;
-pub mod zones;
 
 /// A request one screen makes of the App: go and show this thing on the screen that owns it, or
 /// do the one thing only the App can (poke the watcher).
@@ -41,14 +20,6 @@ pub mod zones;
 pub enum Ask {
     #[default]
     None,
-    /// Open the Zones screen on this zone, by its display name as the snapshot spells it.
-    ShowZone(String),
-    /// Open the Items screen on this item, by its display name as the snapshot spells it.
-    ShowItem(String),
-    /// Open the Quests screen on this quest, by its title.
-    ShowQuest(String),
-    /// Open the Spells screen on this spell, by the name spells.json spells it.
-    ShowSpell(String),
     /// Poll the live status now rather than at the next tick. The watcher belongs to the App;
     /// `Cx` lends its status and nothing else.
     CheckLive,
@@ -117,54 +88,6 @@ pub enum Ask {
     /// the root and asks for the main window to come forward, so the reader ends up standing in
     /// front of the one editor there is, which is exactly the trip the words were describing.
     OpenSettings,
-}
-
-/// What a screen that reads the snapshot shows while the loader thread is still parsing it: the
-/// WORKING square, the directory being read, and how long it has taken against the data module's
-/// budget. Shared by the main window (every snapshot row) and the tool windows (their own copy of
-/// the snapshot), so a load in progress is never drawn as an absence or a failure anywhere.
-pub fn loading_notice(
-    ui: &mut egui::Ui,
-    what: &str,
-    root: &std::path::Path,
-    for_: std::time::Duration,
-) {
-    use crate::theme::{GOLD_HI, TEXT, TEXT_2, TEXT_3, WORKING};
-    use egui::{FontId, RichText, Sense, Vec2};
-    ui.label(
-        RichText::new(what.to_ascii_uppercase())
-            .font(crate::fonts::display(16.0))
-            .color(GOLD_HI),
-    );
-    ui.add_space(8.0);
-    ui.horizontal(|ui| {
-        let (rect, _) = ui.allocate_exact_size(Vec2::splat(10.0), Sense::hover());
-        let sq = egui::Rect::from_center_size(rect.center(), Vec2::splat(6.0));
-        ui.painter().rect_filled(sq, 0.0, WORKING);
-        ui.label(RichText::new("loading the snapshot").color(TEXT));
-    });
-    ui.horizontal(|ui| {
-        ui.add_space(14.0);
-        ui.label(RichText::new("from").color(TEXT_3));
-        ui.label(
-            RichText::new(root.display().to_string())
-                .font(FontId::monospace(11.5))
-                .color(TEXT_2),
-        );
-    });
-    ui.horizontal(|ui| {
-        ui.add_space(14.0);
-        ui.label(
-            RichText::new(format!(
-                "{:.1}s so far; the budget is {}s, and a load past it is reported here as a failure with the file it stopped on",
-                for_.as_secs_f32(),
-                crate::data::LOAD_BUDGET.as_secs()
-            ))
-            .color(TEXT_3),
-        );
-    });
-    ui.ctx()
-        .request_repaint_after(std::time::Duration::from_millis(100));
 }
 
 /* ------------------------------------------------------------------ the surface -- */
@@ -314,10 +237,9 @@ pub struct Cx<'a> {
     /// frame rather than given an instruction, and the next screen that wants to lay itself out
     /// differently beside a rail can read the same field.
     pub railed: bool,
-    /// The loaded snapshot, or None when it could not be found or read (then `data_err` says why).
-    pub data: Option<&'a crate::data::Snapshot>,
-    /// Why `data` is None, in words a person can act on: the path looked at and the reason.
-    pub data_err: Option<&'a str>,
+    /// Whether this is a quiet moment for the updater (no stream playing). The App derives it each
+    /// frame; the Settings screen reads it to say why an update is waiting.
+    pub activity: crate::activity::Activity,
     /// Last known live status of the channels, cheap clone from the watcher.
     pub live: &'a crate::watcher::Status,
     pub settings: &'a mut crate::settings::Settings,
@@ -359,7 +281,6 @@ pub struct Cx<'a> {
     /// The Chat screen asking for the YouTube feed. Out parameter, like `chat_wanted`: `App::ui`
     /// owns the pane and is the only thing that may load a page into it.
     pub yt_wanted: bool,
-    pub ingest: &'a mut crate::ingest::Ingest,
     /// The player surface, to READ, in primitives. What it is doing, whether it could be started at
     /// all, where its profile is, and what the BROWSER says about sound. A screen never drives it:
     /// it asks, through `stage` below. See `crate::player::PlayerView` for why it is a snapshot and

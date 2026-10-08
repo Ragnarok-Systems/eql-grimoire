@@ -517,10 +517,9 @@ impl fmt::Display for Refusal {
                 "the data bundle does not hold {missing}, so it was not installed over the \
                  snapshot that is already there"
             ),
-            Refusal::NotAQuietMoment { pulse } => write!(
-                f,
-                "not now: the encounter is {pulse}, and a download waits until it is closed"
-            ),
+            Refusal::NotAQuietMoment { pulse } => {
+                write!(f, "not now: {pulse}, and a download waits until nothing is")
+            }
             Refusal::Io { doing, path, why } => {
                 write!(f, "could not {doing} {}: {why}", path.display())
             }
@@ -554,14 +553,12 @@ pub(crate) fn io(doing: &'static str, path: &std::path::Path, e: &std::io::Error
 
 /// IS THIS A MOMENT WHEN A DOWNLOAD MAY START?
 ///
-/// # ONLY [`crate::fights::Pulse::Closed`], AND NOT `Ingest::fight_is_live()`
+/// # ONLY [`crate::activity::Activity::Idle`], AND NOT "NOT BUSY"
 ///
-/// `Ingest::fight_is_live()` (`ingest.rs:3119`) is `pulse().fighting()`, so it already answers
-/// false during [`crate::fights::Pulse::Holding`]. Holding is the six seconds after a kill when
-/// the reader is standing in the camp with the next mob on its way (`fights.rs:84-88`). Starting
-/// a download there is still an interruption, so gating on `!fight_is_live()` would interrupt
-/// exactly the case the hold window exists to describe. The gate is the three-state answer, and
-/// only `Closed` passes.
+/// [`crate::activity::Activity::Settling`] is the grace after a stream stops, when it may well
+/// resume. Starting a download there is still an interruption, so gating on `!busy()` would
+/// interrupt exactly the case the grace exists to describe. The gate is the three-state answer,
+/// and only `Idle` passes.
 ///
 /// # WHAT THIS GATES AND WHAT IT DOES NOT
 ///
@@ -569,26 +566,26 @@ pub(crate) fn io(doing: &'static str, path: &std::path::Path, e: &std::io::Error
 /// It does NOT gate the pointer flip, and that is the quiet virtue of the install design in
 /// [`install`]: the flip is one rename of one small file, the running process is not touched by
 /// it, and nothing restarts until the reader closes the app. The risky moment was designed out
-/// rather than scheduled around. Nor does it abort a download already in flight when a fight
-/// opens: the bytes already spent would be wasted and what is left to transfer is the small end
+/// rather than scheduled around. Nor does it abort a download already in flight when a stream
+/// starts: the bytes already spent would be wasted and what is left to transfer is the small end
 /// of it.
-pub fn may_start_download(pulse: crate::fights::Pulse) -> bool {
-    matches!(pulse, crate::fights::Pulse::Closed)
+pub fn may_start_download(pulse: crate::activity::Activity) -> bool {
+    matches!(pulse, crate::activity::Activity::Idle)
 }
 
-/// The name of a pulse, for a refusal a person reads.
-pub(crate) fn pulse_word(pulse: crate::fights::Pulse) -> &'static str {
+/// What the reader is doing, for a refusal a person reads.
+pub(crate) fn pulse_word(pulse: crate::activity::Activity) -> &'static str {
     match pulse {
-        crate::fights::Pulse::Fighting => "still going",
-        crate::fights::Pulse::Holding => "held open for the next mob",
-        crate::fights::Pulse::Closed => "closed",
+        crate::activity::Activity::Busy => "a stream is playing",
+        crate::activity::Activity::Settling => "a stream just stopped",
+        crate::activity::Activity::Idle => "nothing is playing",
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fights::Pulse;
+    use crate::activity::Activity;
 
     /// DEFECT THIS PREVENTS: A REFUSAL WHOSE WIRE WORD DRIFTS WITH A RUST RENAME.
     ///
@@ -841,7 +838,7 @@ mod tests {
     /// DEFECT THIS PREVENTS: A DOWNLOAD STARTING IN THE SIX SECONDS AFTER A KILL.
     ///
     /// The obvious gate is `!ingest.fight_is_live()`, and it is wrong: `fight_is_live` is
-    /// `pulse().fighting()`, which is already false during `Pulse::Holding`. Holding is the
+    /// `pulse().fighting()`, which is already false during `Activity::Settling`. Holding is the
     /// reader standing in the camp with the next mob on its way, which is not a moment to start
     /// pulling ten megabytes.
     ///
@@ -850,12 +847,12 @@ mod tests {
     /// `install.rs`, because a table that invents a `Pulse` value proves nothing about the code
     /// that produces one.
     ///
-    /// WHAT MUTATION MAKES THIS RED: `matches!(pulse, Pulse::Closed | Pulse::Holding)`, which is
+    /// WHAT MUTATION MAKES THIS RED: `matches!(pulse, Activity::Idle | Activity::Settling)`, which is
     /// what writing the gate as `!fighting()` amounts to.
     #[test]
     fn only_a_closed_encounter_is_a_moment_to_download() {
-        assert!(may_start_download(Pulse::Closed));
-        assert!(!may_start_download(Pulse::Holding));
-        assert!(!may_start_download(Pulse::Fighting));
+        assert!(may_start_download(Activity::Idle));
+        assert!(!may_start_download(Activity::Settling));
+        assert!(!may_start_download(Activity::Busy));
     }
 }

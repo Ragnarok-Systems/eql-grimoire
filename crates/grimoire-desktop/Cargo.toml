@@ -19,30 +19,8 @@ eframe = { version = "0.36", default-features = false, features = ["default_font
 egui = "0.36"
 serde_json = "1"
 
-# The SAME dispatch the wasm module wraps and `grimoire serve` answers with. Calling it directly is
-# what makes this desktop app compute exactly what the shipped page computes, rather than a second
-# implementation that agrees until it does not.
-grimoire-wasm = { path = "../grimoire-wasm" }
 
-# The seven rungs of the faction ladder and where an unrated hand starts: `Regard` and
-# `Standing`. The persona footer prints your own standing on the rail, so this crate names the
-# type rather than restating its ladder, and the value it shows is `Standing::UNPROVEN`, the
-# engine's own definition of where a new hand stands, not a number this crate invents.
-#
-# THIS ENTRY WAS ABSENT ON PURPOSE AND CAME BACK WITH THE CODE THAT CALLS IT, which is the order
-# the rule asks for: the earlier comment here said the regard seal was cut, that no line of the
-# crate named the type, and that `grep -rn grimoire_core src/` answered with three comments and no
-# code. That was true and it is no longer: `persona.rs` reads `grimoire_core::Standing` and
-# `main.rs` writes one. A manifest entry no line of the crate uses is still the same defect as a
-# screen drawing a control for a feature that does not exist, and `grep` is still the check.
-grimoire-core = { workspace = true }
 
-# THE COMBAT ENGINE, CALLED RATHER THAN REIMPLEMENTED. `src/fights.rs` is an owned MIRROR of what
-# this crate returns, not a second parser: `grimoire-forge` drives the same `Fights` aggregator from
-# the CLI, and the parity sweep in that module asserts the two agree field by field over the
-# reference capture. This entry arrives WITH the code that calls it, so `grep -rn grimoire_parse src/`
-# answers with code and not with a comment.
-grimoire-parse = { workspace = true }
 
 
 # TLS FOR THE CHAT SOCKET, AND IT COSTS NO NEW PACKAGE. `rustls` 0.23.43 and `webpki-roots` 1.0.9

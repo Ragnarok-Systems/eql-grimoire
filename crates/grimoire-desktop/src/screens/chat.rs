@@ -656,15 +656,12 @@ mod tests {
             watch_on: on,
             ..Default::default()
         };
-        let mut ingest = crate::ingest::Ingest::new(&settings);
         let mut screen = ChatScreen::default();
         let mut cx = Cx {
-            data: None,
             railed: false,
-            data_err: None,
+            activity: Default::default(),
             live: &live,
             settings: &mut settings,
-            ingest: &mut ingest,
             chat: reader.handle(),
             chat_wanted: false,
             auth,

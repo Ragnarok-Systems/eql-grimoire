@@ -435,14 +435,14 @@ fn lock_token() -> String {
 ///    than a verified-looking payload with no proof.
 ///
 /// THE FIGHT GATE IS HERE AND NOT AT THE CALL SITE. A gate written at a call site is a gate the
-/// second call site will not have; see [`super::may_start_download`] for why only `Pulse::Closed`
+/// second call site will not have; see [`super::may_start_download`] for why only `Activity::Idle`
 /// passes.
 pub fn stage<R: Read>(
     l: &Layout,
     version: &Version,
     art: &Artifact,
     body: R,
-    pulse: crate::fights::Pulse,
+    pulse: crate::activity::Activity,
     keys: &[&str],
     progress: &mut dyn FnMut(u64),
 ) -> Result<PathBuf, Refusal> {
@@ -520,25 +520,43 @@ pub fn stage<R: Read>(
 /// asserted by a test: this crate has already shipped a defect where a test double and the real
 /// wire disagreed (`twitch_auth.rs:142-155`), and the defence is to keep the production side thin
 /// enough to check.
+/// HOW LONG A NEW PAYLOAD GETS TO PROVE IT STARTS, ON ITS OWN CLOCK.
+///
+/// The value is the one the EverQuest Legends build measured for being fully up (its data loader
+/// budget, 3 s, with a release-profile load of 115 ms behind it). Monsters & Memories starts with
+/// less work, so the same figure stays a ceiling, not a prediction.
+pub const STARTUP_BUDGET: std::time::Duration = std::time::Duration::from_secs(3);
+
+/// The files a data bundle must hold before it may replace the live one: the Monsters & Memories
+/// wiki bundle (`mnm-corpus`, built by mnm-lore) manifest, records, passages and vectors.
+pub const BUNDLE_FILES: &[&str] = &[
+    "meta.json",
+    "zones.json",
+    "npcs.json",
+    "items.json",
+    "quests.json",
+    "spells.json",
+    "passages.jsonl",
+    "vectors.i8",
+];
+
 pub trait Preflight {
     fn smoke(&self, exe: &Path) -> Result<(), String>;
 }
 
 /// The command a preflight runs.
 ///
-/// THE DEADLINE IS `data::LOAD_BUDGET` AND NOT A NEW NUMBER. That constant is the app's own
-/// measured budget for being fully up (`data/mod.rs:152`, with the measurements in its doc), so
-/// reusing it means this feature introduces no figure nobody measured.
+/// THE DEADLINE IS [`STARTUP_BUDGET`] AND NOT A NEW NUMBER: see its doc for where it was measured.
 pub fn smoke_command(exe: &Path) -> std::process::Command {
     let mut c = std::process::Command::new(exe);
-    c.env(SMOKE_ENV, crate::data::LOAD_BUDGET.as_millis().to_string());
+    c.env(SMOKE_ENV, STARTUP_BUDGET.as_millis().to_string());
     c
 }
 
 /// HOW MUCH LONGER THAN ITS OWN CLOCK THE PARENT GIVES A PREFLIGHT.
 ///
 /// A POLICY, NOT A MEASUREMENT, AND IT IS NOT DRESSED AS ONE. The child's deadline is
-/// `data::LOAD_BUDGET`, which the child starts counting once it is running; the parent's has to
+/// `STARTUP_BUDGET`, which the child starts counting once it is running; the parent's has to
 /// cover process creation, paging in a binary measured at 10,874,880 bytes on 2026-09-11, the
 /// child's own budget, and a clean exit, on a machine that is also running a game. Four times the
 /// child's budget is a ceiling above all of that and is not a prediction of any of it. If it ever
@@ -595,7 +613,7 @@ impl Preflight for Spawn {
             Err(e) => return Err(format!("it would not start at all: {e}")),
         };
 
-        let budget = crate::data::LOAD_BUDGET * PREFLIGHT_GRACE;
+        let budget = STARTUP_BUDGET * PREFLIGHT_GRACE;
         let answer = match wait_within(&mut child, budget) {
             Ok(status) if status.success() => Ok(()),
             Ok(status) => {
@@ -661,11 +679,11 @@ pub fn install_app(
     art: &Artifact,
     keys: &[&str],
     pre: &dyn Preflight,
-    pulse: crate::fights::Pulse,
+    pulse: crate::activity::Activity,
 ) -> Result<Current, Refusal> {
     /* THE FIGHT GATE IS ASKED HERE AND NOT ONLY AT THE BUTTON, for the reason `stage` gives about
      * its own: a gate written at a call site is a gate the second call site will not have. The
-     * preflight below opens a real, undecorated, visible window for `data::LOAD_BUDGET` and
+     * preflight below opens a real, undecorated, visible window for `STARTUP_BUDGET` and
      * registers global hotkeys while it is up, so pressing Install mid-pull puts a second Grimoire
      * window over a fullscreen game and takes focus. The pointer flip that follows needs no gate
      * at all (nothing restarts), but the step that draws does. */
@@ -1057,21 +1075,16 @@ pub fn safe_entry_path(target: &Path, entry: &str, kind: EntryKind) -> Result<Pa
 
 /// Does an extracted tree hold everything the loader needs?
 ///
-/// THE SAME PROBE `data::Snapshot::locate` USES, asked before the swap rather than after. A bundle
+/// Asked before the swap rather than after. A bundle
 /// missing one file would otherwise be installed and then fail at load time on a file name the
 /// reader cannot act on, having already replaced a snapshot that worked.
 pub fn bundle_is_complete(dir: &Path) -> Result<(), Refusal> {
-    for f in crate::data::FILES {
+    for f in BUNDLE_FILES {
         if !dir.join(f).is_file() {
             return Err(Refusal::BundleIncomplete {
                 missing: (*f).to_owned(),
             });
         }
-    }
-    if !dir.join(crate::data::ATLAS_DIR).is_dir() {
-        return Err(Refusal::BundleIncomplete {
-            missing: crate::data::ATLAS_DIR.to_owned(),
-        });
     }
     Ok(())
 }
@@ -1142,7 +1155,7 @@ pub fn restore_previous_data(l: &Layout) -> Result<(), Refusal> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fights::Pulse;
+    use crate::activity::Activity;
     use crate::updater::manifest::{this_arch, this_os, KIND_APP};
     use crate::updater::verify::probe::Signer;
     use sha2::{Digest, Sha256};
@@ -1253,7 +1266,7 @@ mod tests {
             &ver,
             &art,
             &corrupt[..],
-            Pulse::Closed,
+            Activity::Idle,
             &keys,
             &mut |_| {},
         )
@@ -1282,7 +1295,7 @@ mod tests {
                 upto: 12,
                 sent: 0,
             },
-            Pulse::Closed,
+            Activity::Idle,
             &keys,
             &mut |_| {},
         )
@@ -1317,15 +1330,23 @@ mod tests {
          * it on a success, so there is nothing to look at afterwards either way. This is the
          * production name and not one the test constructed. */
         let seen = std::cell::RefCell::new(Vec::<String>::new());
-        stage(&l, &ver, &art, &body[..], Pulse::Closed, &keys, &mut |_| {
-            if seen.borrow().is_empty() {
-                *seen.borrow_mut() = std::fs::read_dir(l.staging(&ver))
-                    .expect("the staging folder")
-                    .flatten()
-                    .map(|e| e.file_name().to_string_lossy().into_owned())
-                    .collect();
-            }
-        })
+        stage(
+            &l,
+            &ver,
+            &art,
+            &body[..],
+            Activity::Idle,
+            &keys,
+            &mut |_| {
+                if seen.borrow().is_empty() {
+                    *seen.borrow_mut() = std::fs::read_dir(l.staging(&ver))
+                        .expect("the staging folder")
+                        .flatten()
+                        .map(|e| e.file_name().to_string_lossy().into_owned())
+                        .collect();
+                }
+            },
+        )
         .expect("the honest download stages");
         let partial = seen
             .borrow()
@@ -1347,8 +1368,16 @@ mod tests {
 
         /* The honest one lands, with its signature beside it, and the signature is written
          * FIRST so a crash never leaves a payload with no proof. */
-        let p = stage(&l, &ver, &art, &body[..], Pulse::Closed, &keys, &mut |_| {})
-            .expect("the honest download stages");
+        let p = stage(
+            &l,
+            &ver,
+            &art,
+            &body[..],
+            Activity::Idle,
+            &keys,
+            &mut |_| {},
+        )
+        .expect("the honest download stages");
         assert_eq!(
             p.file_name().and_then(|n| n.to_str()),
             Some(exe_name().as_str()),
@@ -1362,42 +1391,16 @@ mod tests {
         );
     }
 
-    /// DEFECT THIS PREVENTS: THE UPDATER PULLING TEN MEGABYTES THROUGH THE MIDDLE OF A PULL.
+    /// DEFECT THIS PREVENTS: THE UPDATER PULLING A DOWNLOAD WHILE A STREAM IS PLAYING.
     ///
-    /// # THIS DRIVES THE REAL FOLD AND NOT A `Pulse` VALUE A TEST INVENTED
+    /// The activity is produced by the real fold (`Activity::from_busy`), never set by hand, for
+    /// the three states: a stream playing, one that stopped moments ago, and one long stopped.
     ///
-    /// `still_going` has already shipped one false positive (`ingest.rs:1969-1988`: it tested only
-    /// `last.ended != "the log stopped"`, which the aggregator makes almost always true, so
-    /// `IN COMBAT` burned over a corpse after every kill). A test that set `live_open` by hand
-    /// would have passed against that defect and against its fix, and would prove nothing about
-    /// the code that actually answers. So this plants a log, boots an `Ingest` off it exactly as
-    /// `App::new` does, and asks the real `pulse()`.
-    ///
-    /// The three logs are the three states, separated by the log's own clock: a pull whose last
-    /// line is a blow, the same pull with chat past the combat window, and the same pull with
-    /// chat past the hold window as well.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: gate `stage` on `!ingest.fight_is_live()` (that is
-    /// `!pulse().fighting()`, so the HOLDING case starts downloading); or delete the gate.
+    /// WHAT MUTATION MAKES THIS RED: gate `stage` on `!activity.busy()` (so the settling case starts
+    /// downloading); or delete the gate.
     #[test]
-    fn a_download_waits_for_the_encounter_to_close() {
-        use crate::fights::{probe, COMBAT_SECONDS, HOLD_SECONDS};
-
-        let at = |s: i64| format!("[Wed Jul 15 23:{:02}:{:02} 2026]", 10 + s / 60, s % 60);
-        let blow = |s: i64| {
-            format!(
-                "{} You slash a dry bone skeleton for 20 points of damage.",
-                at(s)
-            )
-        };
-        let chat = |s: i64| format!("{} Losumyda says, 'oom'", at(s));
-        let log = |after: Option<i64>| {
-            let mut s = format!("{}\n{}\n", blow(0), blow(1));
-            if let Some(gap) = after {
-                s.push_str(&format!("{}\n", chat(1 + gap)));
-            }
-            s
-        };
+    fn a_download_waits_for_a_quiet_moment() {
+        use crate::activity::{Activity, SETTLE_SECONDS};
 
         let l = Layout::at(scratch("fight-gate"));
         let signer = Signer::new();
@@ -1406,43 +1409,34 @@ mod tests {
         let art = sealed(&signer, "0.2.0", &body);
 
         let cases = [
-            ("upd-fighting", None, Pulse::Fighting, false),
+            ("upd-busy", true, Some(0), Activity::Busy, false),
             (
-                "upd-holding",
-                Some(COMBAT_SECONDS + 1),
-                Pulse::Holding,
+                "upd-settling",
+                false,
+                Some(SETTLE_SECONDS - 1),
+                Activity::Settling,
                 false,
             ),
             (
-                "upd-closed",
-                Some(COMBAT_SECONDS + HOLD_SECONDS + 2),
-                Pulse::Closed,
+                "upd-idle",
+                false,
+                Some(SETTLE_SECONDS + 1),
+                Activity::Idle,
                 true,
             ),
         ];
-        for (tag, after, want, may) in cases {
-            let dir = probe::planted(tag, &log(after));
-            let ing = probe::booted(&dir);
+        for (tag, busy, since, want, may) in cases {
+            let now = Activity::from_busy(busy, since);
             assert_eq!(
-                ing.pulse(),
-                want,
-                "{tag}: the real fold answered {:?}, so this case is not testing what it says",
-                ing.pulse()
+                now, want,
+                "{tag}: the real fold answered {now:?}, so this case is not testing what it says"
             );
             assert_eq!(
-                super::super::may_start_download(ing.pulse()),
+                super::super::may_start_download(now),
                 may,
                 "{tag}: the gate disagrees with the encounter"
             );
-            let got = stage(
-                &l,
-                &v("0.2.0"),
-                &art,
-                &body[..],
-                ing.pulse(),
-                &keys,
-                &mut |_| {},
-            );
+            let got = stage(&l, &v("0.2.0"), &art, &body[..], now, &keys, &mut |_| {});
             if may {
                 got.expect("a closed encounter is a moment to download");
             } else {
@@ -1469,10 +1463,19 @@ mod tests {
         let body = b"MZ a payload".to_vec();
         let art = sealed(&signer, "0.2.0", &body);
         let ver = v("0.2.0");
-        stage(&l, &ver, &art, &body[..], Pulse::Closed, &keys, &mut |_| {}).expect("staged");
+        stage(
+            &l,
+            &ver,
+            &art,
+            &body[..],
+            Activity::Idle,
+            &keys,
+            &mut |_| {},
+        )
+        .expect("staged");
 
         let no =
-            install_app(&l, &ver, &art, &keys, &No, Pulse::Closed).expect_err("it does not start");
+            install_app(&l, &ver, &art, &keys, &No, Activity::Idle).expect_err("it does not start");
         assert_eq!(no.code(), "PreflightFailed");
         assert!(
             read_current(&l).is_none(),
@@ -1480,10 +1483,10 @@ mod tests {
         );
 
         /* AND THE INSTALL IS AS MUCH A MOMENT AS THE DOWNLOAD IS. The preflight opens a real,
-         * visible window for `data::LOAD_BUDGET`, so pressing Install mid-pull puts a second
+         * visible window for `STARTUP_BUDGET`, so pressing Install mid-pull puts a second
          * Grimoire over a fullscreen game. The gate is asked here and not only at the button, for
          * the reason `stage` gives about its own. */
-        let no = install_app(&l, &ver, &art, &keys, &Yes, Pulse::Fighting)
+        let no = install_app(&l, &ver, &art, &keys, &Yes, Activity::Busy)
             .expect_err("an install started during a fight");
         assert_eq!(no.code(), "NotAQuietMoment");
         assert!(
@@ -1493,7 +1496,7 @@ mod tests {
 
         /* And the same inputs with a preflight that passes DO flip the pointer, so the assertion
          * above is about the preflight and not about the fixture. */
-        let c = install_app(&l, &ver, &art, &keys, &Yes, Pulse::Closed).expect("it installs");
+        let c = install_app(&l, &ver, &art, &keys, &Yes, Activity::Idle).expect("it installs");
         assert_eq!(c.version, "0.2.0");
         assert_eq!(read_current(&l).expect("a pointer").version, "0.2.0");
     }
@@ -1520,9 +1523,9 @@ mod tests {
             let body = format!("payload for {ver}").into_bytes();
             let art = sealed(&signer, ver, &body);
             let vv = v(ver);
-            stage(&l, &vv, &art, &body[..], Pulse::Closed, &keys, &mut |_| {}).expect("staged");
+            stage(&l, &vv, &art, &body[..], Activity::Idle, &keys, &mut |_| {}).expect("staged");
             installed
-                .push(install_app(&l, &vv, &art, &keys, &Yes, Pulse::Closed).expect("installed"));
+                .push(install_app(&l, &vv, &art, &keys, &Yes, Activity::Idle).expect("installed"));
         }
         let now = installed.last().expect("three installs");
         assert_eq!(now.version, "0.3.0");
@@ -1984,8 +1987,16 @@ mod tests {
         let body = b"MZ the payload the publisher signed".to_vec();
         let art = sealed(&signer, "0.2.0", &body);
         let ver = v("0.2.0");
-        let staged = stage(&l, &ver, &art, &body[..], Pulse::Closed, &keys, &mut |_| {})
-            .expect("the honest download stages");
+        let staged = stage(
+            &l,
+            &ver,
+            &art,
+            &body[..],
+            Activity::Idle,
+            &keys,
+            &mut |_| {},
+        )
+        .expect("the honest download stages");
 
         /* SOMEBODY ELSE'S PROGRAM, WRITTEN OVER THE VERIFIED ONE. The signature beside it is left
          * exactly as the download wrote it, which is the realistic case: an attacker with write
@@ -1994,7 +2005,7 @@ mod tests {
         std::fs::write(&staged, b"MZ a program nobody signed").expect("the swap");
 
         let ran = Arc::new(AtomicUsize::new(0));
-        let no = install_app(&l, &ver, &art, &keys, &Counted(ran.clone()), Pulse::Closed)
+        let no = install_app(&l, &ver, &art, &keys, &Counted(ran.clone()), Activity::Idle)
             .expect_err("a swapped staging file was installed");
         assert_eq!(
             ran.load(Ordering::SeqCst),
@@ -2012,7 +2023,7 @@ mod tests {
         /* AND THE HONEST BYTES STILL INSTALL, so the refusal above is about the swap and not about
          * the fixture. The preflight is reached exactly once. */
         std::fs::write(&staged, &body).expect("put the real payload back");
-        install_app(&l, &ver, &art, &keys, &Counted(ran.clone()), Pulse::Closed)
+        install_app(&l, &ver, &art, &keys, &Counted(ran.clone()), Activity::Idle)
             .expect("the payload the manifest named installs");
         assert_eq!(ran.load(Ordering::SeqCst), 1);
     }
@@ -2224,14 +2235,14 @@ mod tests {
     fn a_bundle_is_checked_before_it_replaces_one_and_a_lost_swap_heals_itself() {
         let l = Layout::at(scratch("data-swap"));
         let plant = |dir: &Path, mark: &str, whole: bool| {
-            std::fs::create_dir_all(dir.join(crate::data::ATLAS_DIR)).expect("the atlas dir");
             let files: Vec<&str> = if whole {
-                crate::data::FILES.to_vec()
+                BUNDLE_FILES.to_vec()
             } else {
-                crate::data::FILES[1..].to_vec()
+                BUNDLE_FILES[1..].to_vec()
             };
+            std::fs::create_dir_all(dir).expect("the bundle folder");
             for f in files {
-                std::fs::write(dir.join(f), mark.as_bytes()).expect("a snapshot file");
+                std::fs::write(dir.join(f), mark.as_bytes()).expect("a bundle file");
             }
         };
 
@@ -2240,7 +2251,7 @@ mod tests {
         let no = swap_data(&l).expect_err("an incomplete bundle");
         assert_eq!(no.code(), "BundleIncomplete");
         assert_eq!(
-            std::fs::read_to_string(l.data_dir().join(crate::data::FILES[0]))
+            std::fs::read_to_string(l.data_dir().join(BUNDLE_FILES[0]))
                 .expect("the old snapshot is untouched"),
             "the old snapshot"
         );
@@ -2249,11 +2260,11 @@ mod tests {
         plant(&l.data_incoming(), "the new snapshot", true);
         swap_data(&l).expect("a whole bundle installs");
         assert_eq!(
-            std::fs::read_to_string(l.data_dir().join(crate::data::FILES[0])).expect("live"),
+            std::fs::read_to_string(l.data_dir().join(BUNDLE_FILES[0])).expect("live"),
             "the new snapshot"
         );
         assert_eq!(
-            std::fs::read_to_string(l.data_previous().join(crate::data::FILES[0]))
+            std::fs::read_to_string(l.data_previous().join(BUNDLE_FILES[0]))
                 .expect("one generation back"),
             "the old snapshot"
         );
@@ -2267,7 +2278,7 @@ mod tests {
             "it did nothing"
         );
         assert_eq!(
-            std::fs::read_to_string(l.data_dir().join(crate::data::FILES[0])).expect("live again"),
+            std::fs::read_to_string(l.data_dir().join(BUNDLE_FILES[0])).expect("live again"),
             "the old snapshot",
             "the generation that was set aside is what comes back"
         );
@@ -2317,7 +2328,7 @@ mod tests {
         );
         assert_eq!(
             set[0].1.and_then(|v| v.to_str()),
-            Some(crate::data::LOAD_BUDGET.as_millis().to_string().as_str()),
+            Some(STARTUP_BUDGET.as_millis().to_string().as_str()),
             "the deadline must be the app's own measured load budget and not a new number"
         );
     }

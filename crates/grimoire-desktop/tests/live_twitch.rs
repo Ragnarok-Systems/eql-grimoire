@@ -152,15 +152,12 @@ fn the_screen_drawn_against_a_live_socket() {
         ),
     };
     let mut settings = grimoire_desktop::settings::Settings::default();
-    let mut ingest = grimoire_desktop::ingest::Ingest::new(&settings);
     let mut screen = grimoire_desktop::screens::chat::ChatScreen::default();
     let mut cx = grimoire_desktop::screens::Cx {
-        data: None,
         railed: false,
-        data_err: None,
+        activity: Default::default(),
         live: &live,
         settings: &mut settings,
-        ingest: &mut ingest,
         chat: reader.handle(),
         chat_wanted: false,
         auth: Default::default(),

@@ -291,7 +291,9 @@ fn every_field_behind_a_masking_derive_is_read_in_production() {
         prod.push('\n');
     }
     assert!(
-        structs.len() >= 60,
+        /* 28 after the EverQuest Legends modules were removed (2026-10-08); a parser that broke
+         * finds a handful or none, so 20 still tells the two apart. */
+        structs.len() >= 20,
         "found only {} masked structs; the parser broke, not the crate",
         structs.len()
     );

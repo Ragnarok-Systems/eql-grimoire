@@ -1,13 +1,10 @@
-//! The purity gate: `grimoire-core`, `grimoire-parse`, `grimoire-corpus` and `grimoire-wasm`
-//! must never name `std::fs`, `std::net`, `std::env` or `std::time`. The engine is pure maths
-//! and pure `&str -> struct` parsing, so the same code runs natively, in wasm and under test with
-//! no filesystem, socket, environment or clock behind it. This file is the enforcement.
+//! The purity gate: which of `std::fs`, `std::net`, `std::env` and `std::time` each crate in
+//! this workspace may name. Since the Monsters & Memories rebuild (2026-10-08) the workspace is
+//! the desktop app alone; the EverQuest Legends engine crates that had to stay pure are gone.
 //!
-//! TWO CRATES ARE ALLOWED SOME OF THE FOUR, AND EACH SAYS WHICH.
-//! `grimoire-forge` is the I/O crate and takes all four. `grimoire-desktop` is the native
-//! application: it reads the game's log folder and the snapshot from disk (`fs`), it resolves
-//! those folders from the environment and the executable's own location (`env`), and it ages the
-//! live pill and debounces the settings writes against a clock (`time`).
+//! `grimoire-desktop` may use `fs` (settings, the updater's files, the data bundle), `env` (the
+//! smoke and entry-point switches, the executable's own location) and `time` (debounces, the
+//! live pill, the updater's clock).
 //!
 //! `net` IS ALLOWED IN THREE NAMED FILES AND NOWHERE ELSE, and the narrowness is the point.
 //! Twitch's chat is IRC over TLS, which is a raw socket: `ureq` speaks HTTP and cannot carry it,
@@ -32,10 +29,9 @@
 //! A crate under `crates/` with no entry at all fails too: the table has to be told what a new
 //! crate may do before that crate can pass.
 //!
-//! It lives here, under `grimoire-forge/tests/`, because reading the source tree is I/O and
-//! `grimoire-forge` is the one crate permitted to do it. The scan does not cover this directory,
-//! only each crate's `src/`, so this file naming all four namespaces in the allow table below is
-//! not itself a violation.
+//! It lives under `grimoire-desktop/tests/`. The scan covers each crate's `src/` and not this
+//! directory, so this file naming all four namespaces in the allow table below is not itself a
+//! violation.
 //!
 //! This is a text scan over source lines, not a compiler-level guarantee. Two known blind spots:
 //! it does not track block-comment state, so a `/* ... */` block spanning lines that mentions a
@@ -49,11 +45,6 @@ use std::path::{Path, PathBuf};
 /// One crate directory under `crates/`, and the banned namespaces it may use.
 /// This table is the purity rule, stated as data instead of prose.
 const ALLOW_TABLE: &[(&str, &[&str])] = &[
-    ("grimoire-core", &[]),
-    ("grimoire-parse", &[]),
-    ("grimoire-corpus", &[]),
-    ("grimoire-wasm", &[]),
-    ("grimoire-forge", &["fs", "net", "env", "time"]),
     /* The native application. See the module note for why these three and why not `net`. */
     ("grimoire-desktop", &["fs", "env", "time"]),
 ];
@@ -92,12 +83,9 @@ const PARTIAL_CRATES: &[(&str, &[&str])] = &[("grimoire-desktop", &["net"])];
 
 const NAMESPACES: [&str; 4] = ["fs", "net", "env", "time"];
 
-const PURE_CRATES: &[&str] = &[
-    "grimoire-core",
-    "grimoire-parse",
-    "grimoire-corpus",
-    "grimoire-wasm",
-];
+/// No crate in this workspace is pure any more: the Monsters & Memories build is the desktop app
+/// alone. Kept as a named empty list so a pure crate added later has an obvious home.
+const PURE_CRATES: &[&str] = &[];
 
 #[derive(Debug)]
 struct Violation {
@@ -128,12 +116,12 @@ fn violations_report(violations: &[Violation]) -> String {
         .join("\n")
 }
 
-/// `CARGO_MANIFEST_DIR` is `.../crates/grimoire-forge`; two levels up is the workspace root,
+/// `CARGO_MANIFEST_DIR` is `.../crates/grimoire-desktop`; two levels up is the workspace root,
 /// so the answer does not depend on the directory `cargo test` was invoked from (EDGE-002).
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
-        .expect("crates/grimoire-forge has a parent")
+        .expect("crates/grimoire-desktop has a parent")
         .parent()
         .expect("crates/ has a parent")
         .to_path_buf()
@@ -385,22 +373,6 @@ fn fixture_clean_none() {
         hits.is_empty(),
         "clean fixture should have no violations, found: {hits:?}"
     );
-}
-
-#[test]
-fn no_pure_crate_names_forge() {
-    let root = workspace_root();
-    for name in PURE_CRATES {
-        let manifest_path = root.join("crates").join(name).join("Cargo.toml");
-        let text = fs::read_to_string(&manifest_path)
-            .unwrap_or_else(|e| panic!("reading {}: {e}", manifest_path.display()));
-        assert!(
-            !text.contains("grimoire-forge"),
-            "{name}'s manifest at {} names grimoire-forge, the only crate allowed I/O; \
-             a pure crate may not depend on it",
-            manifest_path.display()
-        );
-    }
 }
 
 /// Every crate that is allowed SOME of the four namespaces still has the rest denied, and the

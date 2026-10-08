@@ -24,40 +24,25 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use egui::{Align, FontId, Layout, RichText, Stroke, Vec2, ViewportCommand};
+use egui::{RichText, ViewportCommand};
+use grimoire_desktop::activity::Activity;
 use grimoire_desktop::chat;
 use grimoire_desktop::chrome::{self, nav_row, section, State};
-use grimoire_desktop::data::{self, DataError, Hit, HitKind, Snapshot};
 use grimoire_desktop::hotkeys::{self, Hotkeys};
-use grimoire_desktop::ingest::Ingest;
 use grimoire_desktop::nav::{self, ScreenId};
 use grimoire_desktop::persona::{self, Persona, PersonaAction, PersonaFooter};
 use grimoire_desktop::player;
-use grimoire_desktop::screens::commission::CommissionScreen;
-use grimoire_desktop::screens::exalt::ExaltScreen;
-use grimoire_desktop::screens::gear::GearScreen;
-use grimoire_desktop::screens::inventory::InventoryScreen;
-use grimoire_desktop::screens::items::ItemsScreen;
 use grimoire_desktop::screens::lfg::LfgScreen;
-use grimoire_desktop::screens::parser::ParserScreen;
-use grimoire_desktop::screens::quests::QuestsScreen;
-use grimoire_desktop::screens::sky::SkyScreen;
-use grimoire_desktop::screens::spells::SpellsScreen;
-use grimoire_desktop::screens::unlocks::UnlocksScreen;
-use grimoire_desktop::screens::valet::ValetScreen;
 use grimoire_desktop::screens::watch::WatchScreen;
-use grimoire_desktop::screens::zones::ZonesScreen;
 use grimoire_desktop::screens::{self, Ask, Cx};
 use grimoire_desktop::settings::{Settings, SettingsScreen};
 use grimoire_desktop::theme::*;
 use grimoire_desktop::titlebar;
 use grimoire_desktop::twitch_auth::{self, AuthView};
 use grimoire_desktop::watcher::{Status, Watcher};
-use grimoire_desktop::windows::{self, LfgMode, Tool, Windows};
+use grimoire_desktop::windows::{self, Tool, Windows};
 use grimoire_desktop::ytchat;
 use grimoire_desktop::{fonts, theme};
-use std::path::PathBuf;
-use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::{Duration, Instant};
 
 /// Set this to a number of milliseconds and the app closes itself after that long, printing
@@ -309,180 +294,6 @@ fn parse_smoke(raw: Option<&str>) -> Option<Duration> {
 
 /* ------------------------------------------------------------------- the snapshot -- */
 
-/// The snapshot, in the four states it can be in. Decision D6 says 21MB is not `include_bytes!`;
-/// it is also not a frame, so the parse runs on its own thread and the rail draws that state as
-/// WORKING rather than as absent or failed, because it is neither.
-enum Data {
-    /// No candidate directory held gear-data.json. The words list every directory tried.
-    Absent(String),
-    Loading {
-        root: PathBuf,
-        rx: Receiver<Result<Snapshot, DataError>>,
-        since: Instant,
-    },
-    /// Boxed: the loaded snapshot is several hundred bytes of vectors and indexes, and clippy
-    /// rightly objects to an enum that pads every variant to that.
-    Loaded(Box<Snapshot>),
-    /// A root was found and a file in it could not be read or parsed; the words name the file.
-    Failed(String),
-}
-
-impl Data {
-    /// Start a load for the root the settings name (or `Snapshot::locate` finds). Returns at once.
-    fn start(settings: &Settings) -> Data {
-        let Some(root) = settings.effective_data_root() else {
-            return Data::Absent(no_data_words(settings));
-        };
-        let (tx, rx) = mpsc::channel();
-        let path = root.clone();
-        let spawned = std::thread::Builder::new()
-            .name("grimoire-snapshot".to_owned())
-            .spawn(move || {
-                let _ = tx.send(Snapshot::load(&path));
-            });
-        match spawned {
-            Ok(_) => Data::Loading {
-                root,
-                rx,
-                since: Instant::now(),
-            },
-            Err(e) => Data::Failed(format!("could not start the snapshot loader thread: {e}")),
-        }
-    }
-
-    /// Collect a finished load. Never blocks.
-    fn poll(&mut self) {
-        let next = match self {
-            Data::Loading { rx, root, since } => match rx.try_recv() {
-                Ok(Ok(snapshot)) => {
-                    let r = snapshot.report();
-                    log::info!(
-                        "snapshot: {} items, {} zones, {} drops, {} sky items, {} quests from {} in {:?}",
-                        r.items,
-                        r.zones,
-                        r.drops,
-                        r.sky_items,
-                        r.quests,
-                        root.display(),
-                        since.elapsed()
-                    );
-                    Some(Data::Loaded(Box::new(snapshot)))
-                }
-                Ok(Err(e)) => Some(Data::Failed(format!(
-                    "the snapshot at {} could not be read. {e}",
-                    root.display()
-                ))),
-                Err(TryRecvError::Empty) => None,
-                Err(TryRecvError::Disconnected) => Some(Data::Failed(format!(
-                    "the snapshot loader thread for {} ended without answering",
-                    root.display()
-                ))),
-            },
-            _ => None,
-        };
-        if let Some(n) = next {
-            *self = n;
-        }
-    }
-
-    fn snapshot(&self) -> Option<&Snapshot> {
-        match self {
-            Data::Loaded(s) => Some(s),
-            _ => None,
-        }
-    }
-
-    /// The words for `Cx::data_err`: only an absent or failed snapshot is an error. While it loads
-    /// the screens see neither data nor error; the App draws the loading notice instead of ANY
-    /// screen that reads the snapshot, snapshot rows and character rows alike (see `reads_data`).
-    fn err(&self) -> Option<&str> {
-        match self {
-            Data::Absent(w) | Data::Failed(w) => Some(w),
-            _ => None,
-        }
-    }
-
-    fn loading(&self) -> Option<(&std::path::Path, Duration)> {
-        match self {
-            Data::Loading { root, since, .. } => Some((root, since.elapsed())),
-            _ => None,
-        }
-    }
-
-    /// The footer's one line about the data. Counts only once they were counted.
-    fn footer_line(&self) -> String {
-        match self {
-            /* THE HEADING IT NAMES HAS TO BE ONE THE RAIL HAS. `FIND` was one of seven sections
-             * in the D5 rail and that rail is gone; a reader following it opens the app and
-             * finds no such heading. Settings is where a snapshot is pointed at, and it is
-             * reachable from the persona footer two lines below this one. */
-            Data::Absent(_) => "snapshot: absent, see Settings".to_owned(),
-            Data::Loading { since, .. } => {
-                format!("snapshot: loading {:.1}s", since.elapsed().as_secs_f32())
-            }
-            Data::Loaded(s) => {
-                let r = s.report();
-                format!(
-                    "snapshot: {} items · {} zones · {} drops · {} sky · {} quests",
-                    r.items, r.zones, r.drops, r.sky_items, r.quests
-                )
-            }
-            /* SETTINGS AND NOT `FIND`, for the reason the Absent arm above says: there is no
-             * FIND heading in this rail and has not been for some time. Both arms were written
-             * together and only one of them was corrected. */
-            Data::Failed(_) => "snapshot: failed, see Settings".to_owned(),
-        }
-    }
-}
-
-/// What the FIND screens print when there is nothing to read: every directory that was tried, in
-/// the order it was tried, and what to put there.
-fn no_data_words(settings: &Settings) -> String {
-    let mut tried: Vec<String> = Vec::new();
-    if let Some(p) = &settings.data_root {
-        tried.push(format!("{} (from Settings)", p.display()));
-    }
-    tried.extend(data::candidates().iter().map(|p| p.display().to_string()));
-    format!(
-        "No snapshot found. Looked for {} in: {}. Put the data folder ({}, and the {}/ directory) at \
-         the first of those, or name its path on the Settings screen.",
-        data::GEAR_FILE,
-        tried.join("; "),
-        data::FILES.join(", "),
-        data::ATLAS_DIR
-    )
-}
-
-/// The rows whose screens read `Cx::data`, so a load in progress is shown as the loading notice
-/// on every one of them and never as "no snapshot loaded, put gear-data.json in data/" while the
-/// file is being parsed. The rail's square is a separate question (`nav::square`): a CHARACTER
-/// row's square follows the dump, but its BODY still wants the item records.
-fn reads_data(id: ScreenId) -> bool {
-    /* SPELLS WAS MISSING, AND IT IS THE MOST EMPHATIC PAGE IN THE APP ABOUT NOT HAVING DATA.
-     *
-     * `SpellsScreen::ui` falls through to `items::no_data` when `cx.data` is `None`, and
-     * `Data::err` answers `None` while the snapshot is Loading, so `no_data` takes its
-     * there-was-no-error branch: NO SPELL DATA LOADED in gold display type, over a bar reading
-     * "No snapshot is loaded and the loader reported no error. Nothing has been read yet.",
-     * over the list of places to go and put gear-data.json. All of it while the footer of the
-     * same window prints `snapshot: loading 0.4s` and the file is being parsed on a worker.
-     *
-     * THAT IS A PAGE TELLING A READER HIS INSTALL IS BROKEN WHILE IT WORKS. This list is the
-     * gate that swaps the body for `screens::loading_notice` until the load lands, and a screen
-     * missing from it gets its own empty state in the meantime. */
-    matches!(
-        id,
-        ScreenId::Items
-            | ScreenId::Zones
-            | ScreenId::Quests
-            | ScreenId::Spells
-            | ScreenId::Inventory
-            | ScreenId::Gear
-            | ScreenId::Exalt
-            | ScreenId::Sky
-    )
-}
-
 /* ------------------------------------------------------------------------ the App -- */
 
 /// What the central panel shows. Settings is not a D5 row (the nav test holds NAV to exactly the
@@ -516,28 +327,8 @@ enum Body {
 #[derive(Default)]
 struct Screens {
     chat: screens::chat::ChatScreen,
-    commission: CommissionScreen,
-    parser: ParserScreen,
-    /// The fight in progress. See [`screens::live`].
-    live: crate::screens::live::LiveScreen,
-    /// A session rolled up across fights. See `screens::reports`.
-    reports: crate::screens::reports::ReportsScreen,
-    /// The landing page, by role. See `screens::dashboards`.
-    dashboards: crate::screens::dashboards::DashboardsScreen,
-    /// Which log is being read, and what was skipped. See `screens::logs`.
-    logs: crate::screens::logs::LogsScreen,
-    items: ItemsScreen,
-    zones: ZonesScreen,
-    quests: QuestsScreen,
-    inventory: InventoryScreen,
-    gear: GearScreen,
-    valet: ValetScreen,
-    exalt: ExaltScreen,
-    sky: SkyScreen,
-    unlocks: UnlocksScreen,
     lfg: LfgScreen,
     watch: WatchScreen,
-    spells: SpellsScreen,
 }
 
 struct Smoke {
@@ -563,36 +354,6 @@ struct Smoke {
  * rail is theirs to arrange. The scroll bar is the answer to a long list, not a rule about how
  * much of your own navigation you are allowed to look at. */
 
-/// The find, D6: one search over every list with the `i:` `z:` `d:` `q:` prefixes. Its hits come
-/// from `Snapshot::search`; picking one routes to the FIND screen that owns the record, exactly as
-/// a cross-screen link does.
-///
-/// # IT WAS A BOX ON THE CONTEXT HEADER AND IT IS A PALETTE NOW
-///
-/// A 240 pixel text field sat on the right of the context bar on every screen in the app, taking
-/// header room from the page under it and offering a search most of those pages have their own
-/// box for. The owner asked for it off that row.
-///
-/// OFF THE ROW IS NOT DELETED, AND THE DIFFERENCE MATTERS. `data::search`, `data::parse_query`,
-/// `HitKind` and `SEARCH_CAP` are a real capability with their own tests; removing their last
-/// caller to tidy a header would leave a tested library function nothing in the app can reach,
-/// which is this tree's signature defect arriving through the front door. So the same search is
-/// the same function, drawn over the page instead of in the header, on Ctrl+K and off on Escape.
-#[derive(Default)]
-struct Finder {
-    query: String,
-    /// IS THE PALETTE UP? False until Ctrl+K, and false again on Escape or on a pick.
-    ///
-    /// A FLAG AND NOT `!query.is_empty()`, because an empty palette is a real state: it is what
-    /// the reader sees for as long as it takes him to type the first letter, and a palette that
-    /// vanished when he cleared the box would be a control that closes under the cursor.
-    open: bool,
-}
-
-/// How many hits the dropdown shows. `data::SEARCH_CAP` bounds the search; a dropdown is read,
-/// not scrolled, so it shows the first few and says how many more there are.
-const FINDER_ROWS: usize = 12;
-
 struct App {
     /// Which sections stand open in the wide rail, in the order they were opened.
     ///
@@ -615,7 +376,6 @@ struct App {
     section: [usize; ScreenId::ALL.len()],
     settings: Settings,
     settings_screen: SettingsScreen,
-    data: Data,
     /// Dropping it stops the poll thread, so it lives as long as the App.
     watcher: Watcher,
     /// THE SELF-UPDATER: one per process, beside the watcher and for the same reasons.
@@ -640,7 +400,6 @@ struct App {
     restart_at_exit: bool,
     /// The watcher's status, cloned once per frame so every panel this frame agrees.
     live: Status,
-    ingest: Ingest,
     /// The embedded player surface, and the process's one `wry::WebContext`.
     ///
     /// OWNED BY THE APP AND BY NOTHING ELSE, for two reasons that both bite. The context reads its
@@ -685,7 +444,6 @@ struct App {
     /// build raises the alert whose ring is the original's one animation) and is owned here anyway,
     /// so the day one of its fields gets a source there is somewhere for the state to live.
     persona: PersonaFooter,
-    finder: Finder,
     /// HAS THE WINDOW BEEN PUT AT ITS QUADRANT YET? See [`App::fit_to_quadrant`].
     ///
     /// A LATCH AND NOT A COUNTER, and it is what makes the quadrant a DEFAULT rather than a policy:
@@ -711,6 +469,8 @@ struct App {
     /// first drawn frame, and clearing before it would call a crash a success.
     passes: u64,
     smoke: Option<Smoke>,
+    /// When a stream was last seen playing, for the updater's quiet moment (`activity`).
+    busy_at: Option<Instant>,
 }
 
 impl App {
@@ -745,10 +505,8 @@ impl App {
                 Err(e) => log::warn!("could not put the previous data back: {e}"),
             }
         }
-        let data = Data::start(&settings);
         let watcher = Watcher::start();
         let live = watcher.status();
-        let mut ingest = Ingest::new(&settings);
         /* On the main thread, inside eframe's creator: RegisterHotKey delivers to the thread that
          * pumps window messages, and this is it. D4: the overrides Settings carries are applied
          * here, so a rebound chord is the one registered from the first frame. */
@@ -758,18 +516,12 @@ impl App {
         let updater_settings = settings.updater.clone();
         let mut settings_screen = SettingsScreen::default();
         settings_screen.set_bindings(hotkeys.bindings());
-        let mut screens = Screens::default();
-        /* The corpus read starts now, not on the first visit to the Tradeskill Hall, so the rail's
-         * square for that row is true from the first frame (`nav::Facts::corpus`). */
-        screens.commission.start();
-        /* THE ONE PLACE THE FIGHT STORE IS OPENED. `Ingest` never reaches for it itself: see
-         * `Ingest::use_store` for the accident that rule prevents. */
-        ingest.use_store(grimoire_desktop::store::Store::app_data());
+        let screens = Screens::default();
         let mut me = App {
             open: nav::default_open(),
 
             /* THE PARSER IS WHAT YOU WANT WITH THE GAME RUNNING. */
-            body: Body::Screen(ScreenId::Parser),
+            body: Body::Screen(ScreenId::Watch),
             tabs: [0; ScreenId::ALL.len()],
             /* EVERY DESTINATION STARTS ON THE SECTION IT CAN DRAW, not on index 0. See
              * `nav::default_section`. THIS COMMENT USED TO EXPLAIN THE RULE WITH A PARSER WHOSE
@@ -787,7 +539,6 @@ impl App {
             },
             settings,
             settings_screen,
-            data,
             watcher,
             /* NOT CONSTRUCTED IN A PREFLIGHT, AND `install::Spawn` RECORDS WHY WHERE IT BITES. A
              * preflight is a second process that the installer started, with `GRIMOIRE_SMOKE_MS`
@@ -805,7 +556,6 @@ impl App {
             },
             restart_at_exit: false,
             live,
-            ingest,
             /* Before any webview, once per process. Building it costs a path and a mkdir, not a
              * browser: the webview itself is created on the first frame that asks for one, and
              * most launches never open the Watch screen. */
@@ -821,7 +571,6 @@ impl App {
             /* NOT `PersonaFooter::default()`: on a unit struct that is
              * `clippy::default_constructed_unit_structs`, which is deny here. */
             persona: PersonaFooter,
-            finder: Finder::default(),
             sized: false,
             frames: 0,
             passes: 0,
@@ -830,6 +579,7 @@ impl App {
                 since: Instant::now(),
                 fired: false,
             }),
+            busy_at: None,
         };
 
         /* THE FIRST SCREEN ARRIVES THE SAME WAY EVERY LATER ONE DOES.
@@ -852,6 +602,16 @@ impl App {
 
     /// The smoke clock: print the frame count and close when the deadline passes, and keep the
     /// frame loop awake until it does so an idle window still reaches it.
+    /// What the reader is doing, for the updater's quiet moment: busy while a stream plays, then
+    /// settling for `activity::SETTLE_SECONDS`, then idle.
+    fn activity(&mut self) -> Activity {
+        let busy = self.player.view().playing;
+        if busy {
+            self.busy_at = Some(Instant::now());
+        }
+        Activity::from_busy(busy, self.busy_at.map(|t| t.elapsed().as_secs()))
+    }
+
     fn smoke(&mut self, ctx: &egui::Context) {
         let Some(s) = &mut self.smoke else { return };
         if s.fired {
@@ -911,22 +671,6 @@ impl App {
                     }
                 }
                 self.reveal(id);
-            }
-            Ask::ShowZone(name) => {
-                screens::zones::jump_to(&name);
-                self.reveal(ScreenId::Zones);
-            }
-            Ask::ShowItem(name) => {
-                screens::items::jump_to(&name);
-                self.reveal(ScreenId::Items);
-            }
-            Ask::ShowQuest(title) => {
-                screens::quests::jump_to(&title);
-                self.reveal(ScreenId::Quests);
-            }
-            Ask::ShowSpell(name) => {
-                screens::spells::jump_to(&name);
-                self.reveal(ScreenId::Spells);
             }
             Ask::CheckLive => self.watcher.refresh(),
             Ask::StopPlayer => self.player.stop(),
@@ -988,56 +732,8 @@ fn enter(
     }
 }
 
-/// ARRIVING AT A DESTINATION: put the screen behind it into the state the row and its section
-/// name. Two tiers, applied in that order, and the order is the whole of the function.
-///
-/// THIS USED TO BE ONE MATCH ON `(id, tab)` AND NINE OF ITS TEN ARMS WERE TIER 3 IN HIDING.
-/// `Islands` set the sky screen's Boss view, `Motes` set the group finder's Motes mode: a rail
-/// ROW, which is a destination, was the only way to reach a VIEW, which is a section. The rows
-/// that were the only door to a view keep their arm below, because they are still real
-/// destinations in the rail; what changed is that the screens they share now also carry a
-/// section list (`nav::SECTIONS`) and an inner rail to pick from it.
-///
-/// TIER 2 FIRST AND TIER 3 SECOND, because tier 3 is the finer answer and must win. Entering
-/// `Log Parser` runs no tier 2 arm and lands on whichever section that destination was left on;
-/// entering `Loot Journal`, which is a destination of its own with no sections, runs its arm and
-/// stops there. Reversing these would let a stale section overrule the row you just pressed.
 fn on_view(id: ScreenId, section: usize, tab: usize, s: &mut Screens) {
-    match id {
-        /* THREE DESTINATIONS SHARE THE PARSER SCREEN AND EACH FIXES IT TO ONE VIEW.
-         *
-         * `Log Parser` gained its arm when it lost its section list: it used to list Kills, Loot
-         * and Fights, which named the other two destinations' views a second time, so the rail
-         * lit differently depending on which door you came through. It is the fights
-         * destination now and nothing else, which is what the sitemap asks for in as many words.
-         *
-         * `Islands`, `Raid` and `Motes` had arms here and are gone entirely: each was a row that
-         * existed only to reach a view, and each of those views is a section of its own
-         * destination now. */
-        ScreenId::Parser => s.parser.show(screens::parser::View::Fights),
-        ScreenId::KillTracker => s.parser.show(screens::parser::View::Kills),
-        ScreenId::Loot => s.parser.show(screens::parser::View::Loot),
-        _ => {}
-    }
     on_section(id, section, s);
-    /* THE TAB GOES TO THE SCREEN THE SECTION OPENS, AND NOT TO THE BODY.
-     *
-     * # THE FIRST FIX FOR THE DEAD TAB ROW DID NOT WORK, AND ITS TEST SAID IT DID
-     *
-     * `on_tab` grew arms for `ParserDashboards` and `ParserReports` and was called as
-     * `on_tab(id, tab, s)`. `id` here is the BODY, and the body is never either of those: `NAV`
-     * carries one Log Parser row and it is `ScreenId::Parser`. A sub-row click sets
-     * `ask.section = (Parser, i)` and the page is reached by `draw_screen`'s recursion, which
-     * hops to the section's inner screen WITHOUT changing the body. So `on_tab` was always
-     * handed `ScreenId::Parser` and fell straight through its `_ => {}`.
-     *
-     * THE EFFECT WAS THE DEFECT UNCHANGED: eleven context-bar tabs that filled and turned FLARE
-     * when pressed while the body did not move a pixel, and on Reports the Personal and
-     * Encounters bodies were unreachable in the shipped binary. The doc above `on_tab` said the
-     * opposite in as many words.
-     *
-     * SO THIS MAKES THE SAME HOP `draw_screen` MAKES, out of the same table, and the two now
-     * answer with the same screen for the same (body, section). */
     on_tab(target_of(id, section), tab, s);
 }
 
@@ -1093,84 +789,11 @@ fn crumb_of(body: Body, section: &[usize; ScreenId::ALL.len()]) -> Vec<&'static 
     }
 }
 
-/// TIER 4: the context bar's tab row, which used to reach nothing at all.
-///
-/// # THE TABS WERE DRAWN, THEY LIT WHEN PRESSED, AND THE PAGE DID NOT MOVE
-///
-/// This function's body was `let _ = tab;` under a comment saying "TIER 4 REACHES NO SCREEN IN
-/// THIS BUILD". That was true when it was written and stopped being true the day the parser's
-/// four sections got screens: `nav::SECTIONS` still listed a tab row under each of them, the
-/// shell still drew every entry as a real `egui::Button` that repaints itself in FLARE when
-/// clicked, and nothing between the button and the body read the number.
-///
-/// WORSE ON DASHBOARDS, WHICH DREW ITS OWN ROW AS WELL. The owner's screenshot has DPS, Healer,
-/// Tank, Pet, Solo, Group, Raid Leader and Custom on it TWICE, once in the context bar and once
-/// six pixels below, the top row inert and the bottom one live. A reader cannot tell which of
-/// two identical rows is the one that works except by pressing both.
-///
-/// SO THE OUTER ROW IS THE CONTROL AND THE INNER ONE IS GONE. Every parser page that has tabs
-/// now takes them from here, and `nav::SECTIONS` lists exactly the tabs the page can honour:
-/// `the_parser_tab_rows_are_the_pages_own` is what holds those two lists together, and Live and
-/// Logs carry no tab row at all because neither page has views to switch between.
-///
-/// DASHBOARDS IS NO LONGER ONE OF THEM, and its arm is gone rather than kept as a no-op. Its
-/// eight roles were removed (a role is a claim about the person reading and no log line makes
-/// one), the section carries no tab row, and the page is a grid of tiles the reader arranges. An
-/// arm here for a section with no tabs would be a route nothing can take, which is the shape this
-/// whole function was written to remove.
-fn on_tab(id: ScreenId, tab: usize, s: &mut Screens) {
-    if id == ScreenId::ParserReports {
-        s.reports.show(tab);
-    }
-}
+/// No screen in this build has tabs.
+fn on_tab(_id: ScreenId, _tab: usize, _s: &mut Screens) {}
 
-/// TIER 3: put the screen into the section the inner rail is pointing at.
-///
-/// EVERY ARM IS A VIEW THE SCREEN ALREADY HAD. Nothing here is a new capability; the indices are
-/// positions in `nav::SECTIONS` and `the_sections_and_their_arms_are_one_list` is what stops the
-/// two lists drifting apart, because an index that names no arm is a rail row that does nothing
-/// when pressed and looks exactly like one that works.
-fn on_section(id: ScreenId, section: usize, s: &mut Screens) {
-    /* THE LOG PARSER'S SECTIONS ARE MATCHED BY NAME AND NOT BY INDEX.
-     *
-     * The Sky arms below are literal indices and the comment on them records what that costs:
-     * `these indices are positions in nav::SECTIONS and nothing else, so inserting a section
-     * shifts every arm after it`. The parser's section list has already moved once in this tree
-     * and has just grown by two, so its arms are looked up rather than counted.
-     *
-     * WITHOUT THIS THE VIEW NEVER MOVED AT ALL. Fights, Analysis and Overlays are all views of
-     * ONE body screen, so entering LOG PARSER / Analysis drew whatever view `ParserScreen`
-     * happened to be on, which after a fresh launch is Kills. The rail lit `Analysis` and the
-     * page showed the kill tracker. */
-    if id == ScreenId::Parser {
-        let name = nav::sections_of(id).get(section).map(|(n, _, _)| *n);
-        match name {
-            Some("Fights") => s.parser.show(screens::parser::View::Fights),
-            Some("Analysis") => s.parser.show(screens::parser::View::Analysis),
-            Some("Overlays") => s.parser.show(screens::parser::View::Overlays),
-            /* Dashboards, Live, Reports and Logs are screens of their own: `target_of` hops to
-             * them and they hold their own state, so there is no view here to set. */
-            _ => {}
-        }
-        return;
-    }
-    match (id, section) {
-        (ScreenId::Sky, 0) => s.sky.set_view(screens::sky::View::Giver),
-        (ScreenId::Sky, 1) => s.sky.set_view(screens::sky::View::Boss),
-        (ScreenId::Sky, 2) => s.sky.set_view(screens::sky::View::Keys),
-        /* 4 AND NOT 3, BECAUSE ACHIEVEMENTS SITS AT 3 AND IS A SCREEN RATHER THAN A VIEW. These
-         * indices are positions in `nav::SECTIONS` and nothing else, so inserting a section shifts
-         * every arm after it; the guard below is what catches that rather than a reader. */
-        (ScreenId::Sky, 4) => s.sky.set_view(screens::sky::View::Cleanout),
-        (ScreenId::Lfg, 0) => s.lfg.mode = LfgMode::Generic,
-        (ScreenId::Lfg, 1) => s.lfg.mode = LfgMode::Raid,
-        (ScreenId::Lfg, 2) => s.lfg.mode = LfgMode::Motes,
-        /* Gear draws a different SCREEN for its second section rather than a different view of
-         * one, so it is answered in `draw_screen` and there is nothing to set here. */
-        (ScreenId::Gear, _) => {}
-        _ => {}
-    }
-}
+/// No screen in this build has sections; LFG's mode is set by its own chips and by the hotkeys.
+fn on_section(_id: ScreenId, _section: usize, _s: &mut Screens) {}
 
 /// Is this body the Watch screen?
 ///
@@ -1264,85 +887,19 @@ fn folio_margin(body: Body) -> egui::Margin {
     }
 }
 
-/// The tool window a row can pop out into, if it has one (D3: Watch, Parser, Sky, LFG). The
-/// context bar offers "Pop out" for these rows, or "Focus window" when that window is open.
+/// The tool window a screen pops out into, if it has one.
 fn tool_of(id: ScreenId, s: &Screens) -> Option<Tool> {
     match id {
-        ScreenId::Parser | ScreenId::KillTracker | ScreenId::Loot => Some(Tool::Parser),
-        ScreenId::Sky => Some(Tool::Sky),
         ScreenId::Lfg => Some(Tool::Lfg(s.lfg.mode)),
         ScreenId::Watch | ScreenId::Videos => Some(Tool::Watch),
+        ScreenId::Chat => Some(Tool::Chat),
         _ => None,
     }
 }
 
-/// WHICH PAGE A POP-OUT SHOULD ARRIVE ON, given where the reader was standing when he pressed the
-/// picture in picture control.
-///
-/// # DEFECT: POPPING OUT FROM ONE PAGE HANDED YOU A WINDOW SHOWING ANOTHER
-///
-/// [`windows::Windows::open_at`] carries the whole account. In short: `Tool::Lfg` CARRIES its mode
-/// and `Tool::Parser` carries nothing, so the LFG pop-out arrived on the page you left and the
-/// parser pop-out arrived on `ParserWindow::default`, which is Dashboards. Standing on LOG PARSER
-/// / Fights, or on the Hunt Journal, and pressing a control whose hover says "put THIS in its own
-/// window" put something else in a window, and the owner's reason for a pop-out is to keep a page
-/// over the game while he plays, so the page is the entire point of the press.
-///
-/// THE PAGE IS A FACT ABOUT THE PRESS AND ONLY THIS FUNCTION'S CALLER KNOWS IT. A `Tool` is a
-/// hotkey's currency and `Ctrl+Alt+P`, pressed from inside the game, is not pressed from a page at
-/// all; that is why `Windows::open` still exists unchanged for every hotkey caller and why this is
-/// an argument rather than a payload on the variant.
-///
-/// # WHY THIS IS A FUNCTION AND NOT THREE LINES IN THE CLOSURE THAT NEEDS THEM
-///
-/// The same reason `rail_plan`, `rail_list` and `persona_pending` are functions: `App::ui` takes an
-/// `&mut eframe::Frame`, which has no public constructor, so nothing inside it can be called from a
-/// test. A transposition here would open a plausible-looking window on the wrong page and no test
-/// in this crate could see it.
-///
-/// # THE TWO LITERALS, AND WHY THE THIRD ARM IS NOT ONE
-///
-/// Hunt Journal and Loot Journal are rows of MY LEGEND in `nav::NAV` rather than sections of the
-/// parser, and `tool_of` sends all three destinations to `Tool::Parser` because a window is a place
-/// to stand rather than a page. `ParserWindow::PAGES` carries both names verbatim for that reason,
-/// and `the_pop_out_opens_on_a_page_that_window_actually_has` pins the pair together so a rename on
-/// either side is a failing test rather than a pop-out that quietly does not move.
-///
-/// The parser's own arm READS the name out of `nav::SECTIONS` instead of spelling it, because that
-/// list is the only thing that knows the section order and it has moved twice in this tree. A name
-/// and not an index, for the reason `Ask::Open` and `open_at` both give: an index that no longer
-/// names what it named opens the wrong page in silence, while an unknown name leaves the window
-/// where it is.
-///
-/// `None` FOR EVERYTHING ELSE IS AN ANSWER AND NOT A GAP. Sky, LFG and Watch have no page list,
-/// `open_at` ignores the argument for all of them, and a section index out of range answers `None`
-/// rather than panicking, exactly as `nav::tabs_of` does.
-/// DOES THE PAGE BEING STOOD ON OFFER A POP-OUT AT ALL?
-///
-/// NOT ON DASHBOARDS. The owner pressed the pop-out there and got a Log Parser window over his
-/// game, which is not what anybody looking at a dashboard is asking for: the dashboard is a page for
-/// looking back over a night at full size, and what on it belongs in a window over a game is the
-/// overlays, which the Overlays page pops out one widget at a time. Every other page keeps its
-/// pop-out exactly as it was.
-fn offers_pop_out(body: Body, section: &[usize; ScreenId::ALL.len()]) -> bool {
-    match body {
-        Body::Screen(id @ ScreenId::Parser) => !matches!(
-            nav::sections_of(id).get(section[id.ordinal()]),
-            Some((_, Some(ScreenId::ParserDashboards), _))
-        ),
-        _ => true,
-    }
-}
-
-fn pop_out_page_of(body: Body, section: &[usize; ScreenId::ALL.len()]) -> Option<&'static str> {
-    match body {
-        Body::Screen(ScreenId::KillTracker) => Some("Hunt Journal"),
-        Body::Screen(ScreenId::Loot) => Some("Loot Journal"),
-        Body::Screen(id @ ScreenId::Parser) => nav::sections_of(id)
-            .get(section[id.ordinal()])
-            .map(|(n, _, _)| *n),
-        _ => None,
-    }
+/// Every screen with a tool window offers to pop out into it.
+fn offers_pop_out(_body: Body, _section: &[usize; ScreenId::ALL.len()]) -> bool {
+    true
 }
 
 /// What the persona footer's gear is saying: red when the settings file could not be read, the
@@ -1445,9 +1002,7 @@ fn rail_plan(
                     open: is_open,
                     /* A heading with no rows has nothing to open, which today is the launcher. */
                     foldable: !rows.is_empty(),
-                    /* The launcher is lit at all times: it is the primary act rather than a drawer,
-                     * so it does not spend most of its life in shadow like the headings that fold. */
-                    lit: *head == nav::LAUNCHER,
+                    lit: false,
                 },
                 rows: if is_open {
                     rows.iter()
@@ -1584,10 +1139,8 @@ fn persona_pending(action: PersonaAction) -> Option<Body> {
 
 /* ---------------------------------------------------------------------- the body -- */
 
-/// `section` AND NOT `tab`, WHICH IS THE TIER THIS ARGUMENT ALWAYS MEANT. Gear and Keys each
-/// draw a different SCREEN for their second face, so the choice cannot live inside one screen
-/// and has to be made here; a face of a destination is tier 3, and it now arrives from the
-/// inner rail rather than from the context bar.
+/// Paint the body for one screen. A row that is planned but not written draws `unbuilt`, which
+/// says what it will be and what it waits on, from `nav::UNBUILT`.
 fn draw_screen(
     ui: &mut egui::Ui,
     id: ScreenId,
@@ -1596,15 +1149,6 @@ fn draw_screen(
     s: &mut Screens,
     cx: &mut Cx,
 ) {
-    /* A DESTINATION WHOSE SECTIONS ARE SCREENS OF THEIR OWN DRAWS THE ONE YOU ARE IN.
-     *
-     * THE LOG PARSER IS THE ONE THIS MATTERS FOR: four of its five sections are screens, and
-     * the fifth, Fights, is the Parser screen's own body. This comment named the Bazaar, which
-     * is a heading with six plain rows under it and has never taken this path.
-     *
-     * ONE HOP AND NOT A LOOP, because a section's own sections would be tier 4 and this build
-     * has none; if that ever changes this is the line that has to grow a depth guard rather
-     * than recurse until the stack ends. */
     /* THE HOP IS `target_of`, which `on_view` also uses, so the screen this paints and the
      * screen the tab row is routed to cannot be two different screens. */
     let inner = target_of(id, section);
@@ -1612,87 +1156,17 @@ fn draw_screen(
         return draw_screen(ui, inner, 0, tab, s, cx);
     }
     match id {
-        ScreenId::Parser | ScreenId::KillTracker | ScreenId::Loot => s.parser.ui(ui, cx),
-        /* THE FIGHT YOU ARE IN. Built on `Ingest::current_fight`, which is the door
-         * `nav::unbuilt_why` used to say did not exist. */
-        ScreenId::ParserLive => s.live.ui(ui, cx),
-        ScreenId::ParserReports => s.reports.ui(ui, cx),
-        ScreenId::ParserDashboards => s.dashboards.ui(ui, cx),
-        ScreenId::ParserLogs => s.logs.ui(ui, cx),
-        ScreenId::Commission => s.commission.ui(ui, cx),
-        ScreenId::Items => s.items.ui(ui, cx),
-        ScreenId::Zones => s.zones.ui(ui, cx),
-        ScreenId::Quests => s.quests.ui(ui, cx),
-        ScreenId::Inventory => s.inventory.ui(ui, cx),
-        ScreenId::Gear => {
-            if section == 1 {
-                s.valet.ui(ui, cx)
-            } else {
-                s.gear.ui(ui, cx)
-            }
-        }
-        ScreenId::Exalt => s.exalt.ui(ui, cx),
-        ScreenId::Sky => s.sky.ui(ui, cx),
-        /* THE ACHIEVEMENTS DUMP, which was reachable only as the second tab of a `Keys` row and
-         * is a section of PLANE OF SKY now, where a reader looking for sky progress will pass
-         * it. That row is gone: the ladder it drew is `Island ladder`, one of the same
-         * destination's sections. */
-        ScreenId::Achievements => s.unlocks.ui(ui, cx),
         ScreenId::Lfg => s.lfg.ui(ui, cx),
         ScreenId::Watch => s.watch.ui(ui, cx),
-        /* CHAT IS A REAL SCREEN NOW AND IT CONNECTS TO NOTHING. Those are different states and
-         * the unbuilt page could only say the first. What is missing here is a socket rather
-         * than a decision; see the module note for the three things the old page got wrong. */
         ScreenId::Chat => s.chat.ui(ui, cx),
-        /* THE ROW FINALLY SHOWS WHAT IT SAYS. This arm read
-         * `ScreenId::Watch | ScreenId::Videos => s.watch.ui(..)`, which was harmless while the two
-         * rows drew byte-identical pages and became a lie the day the Watch folio became a full
-         * bleed player: clicking Videos opened the TWITCH player under the crumb `stoic/videos`,
-         * and the word VIDEOS appeared nowhere in the main window. `screens::videos` is the
-         * channel's own page on YouTube, on both platform settings; see its module note. It holds
-         * no state, so there is nothing of it in `Screens`. */
         ScreenId::Videos => screens::videos::folio(ui, cx),
-        ScreenId::Spells => s.spells.ui(ui, cx),
-        ScreenId::WorkOrders
-        | ScreenId::Workshop
-        | ScreenId::Trio
-        | ScreenId::Aa
-        | ScreenId::Levelling
-        | ScreenId::SpawnTimers
-        | ScreenId::Standing
-        /* The rows the owner`s rail names that this build has no screen for. Every one of
-         * them says what it would be and what it is waiting on; the words are `nav::UNBUILT`s. */
-        | ScreenId::Gina
-        | ScreenId::CharacterSheet
-        | ScreenId::Loadouts
-        | ScreenId::Theorycraft
-        | ScreenId::Compendium
-        | ScreenId::Guild
-        /* And the nine the Norrath rail added. Same page and the same reason.
-         *
-         * NO COMMA IN THIS COMMENT AND THAT IS NOT AN ACCIDENT. The reachability test below
-         * (`the_unbuilt_route_and_the_unbuilt_list_hold_the_same_rows`) finds this arm by walking
-         * back to the last comma before the marker and reads every screen named after it. A comma
-         * anywhere in here truncates what it reads and the test then compares half an arm against
-         * the whole of `nav::UNBUILT`. It caught exactly that on the first run of this edit. */
-        | ScreenId::Collections
-        | ScreenId::Archive
-        | ScreenId::Bestiary
-        | ScreenId::LootTables
-        | ScreenId::Crafting
-        | ScreenId::RaidTargets
-        | ScreenId::Schedule
-        | ScreenId::RaidHistory
-        | ScreenId::Lockouts
-        | ScreenId::FarmPlan
-        /* The two halves of the Bazaar`s stock. Both wait on a live market price and this app
-         * has no source for one.
-         *
-         * STILL NO COMMA IN HERE. I put one in this exact comment and the reachability test below
-         * went red for the second time: it walks back to the last comma before the marker to find
-         * where the arm starts. The note above says so and I wrote past it anyway. */
-        | ScreenId::TradeGoods
-        | ScreenId::DroppedItems => unbuilt(
+        ScreenId::Zones
+        | ScreenId::Npcs
+        | ScreenId::Items
+        | ScreenId::Quests
+        | ScreenId::Spells
+        | ScreenId::Herald
+        | ScreenId::Oracle => unbuilt(
             ui,
             id,
             nav::sections_of(id).get(section).map(|(name, _, _)| *name),
@@ -1749,137 +1223,6 @@ fn unbuilt(ui: &mut egui::Ui, id: ScreenId, section: Option<&str>, tab: Option<&
 }
 
 /* ------------------------------------------------------------------- the find box -- */
-
-/// The box and its dropdown. Returns the hit that was picked, if one was.
-///
-/// The dropdown is an `Area` in the foreground order under the box, so it floats over the body
-/// without the body having to make room; it stands while the query is non-empty and goes with
-/// What the find box offers, BUILT FROM `HitKind::ALL` RATHER THAN WRITTEN OUT.
-///
-/// That is a fix and not a flourish. The hint was the literal "find: i: z: d: q:", and it was
-/// wrong before this unit touched it: `s:` and `p:` have been accepted prefixes for as long as
-/// the sky list and the spell list have been in the snapshot, and neither was ever offered here.
-/// Deleting `d:` with the Drops screen would have left the same class of lie, one letter shorter.
-/// Derived, the box cannot advertise a letter the parser refuses or hide one it takes.
-fn find_hint() -> String {
-    let prefixes: Vec<String> = data::HitKind::ALL
-        .iter()
-        .map(|k| format!("{}:", k.prefix()))
-        .collect();
-    format!("find: {}", prefixes.join(" "))
-}
-
-/// What the finder says when an unprefixed needle matched nothing: the needle it looked for, and
-/// every kind it looked in. A prefixed query gets the kind's own label instead, from `HitKind`.
-///
-/// NAMED AND NOT INLINE so a test can hold the list to `HitKind::ALL`. English plurals are not
-/// derivable from the labels ("sky" is not "skys"), so the sentence is written and pinned rather
-/// than generated: the test asserts every label appears in it, which is what catches a kind added
-/// or removed while this line kept describing the old set.
-fn nothing_found(needle: &str) -> String {
-    format!("nothing named like \"{needle}\" in items, zones, quests, spells or sky items")
-}
-
-/// Escape or a pick. Rows are the hit's kind, its name and the data module's one computed detail
-/// line, in the monospace face because a person compares names character by character.
-fn finder_ui(ui: &mut egui::Ui, finder: &mut Finder, data: Option<&Snapshot>) -> Option<Hit> {
-    let offered = find_hint();
-    let hint: &str = match data {
-        Some(_) => &offered,
-        None => "find (needs the snapshot)",
-    };
-    let box_resp = ui.add_enabled(
-        data.is_some(),
-        egui::TextEdit::singleline(&mut finder.query)
-            .hint_text(hint)
-            .desired_width(240.0)
-            .font(FontId::monospace(12.0)),
-    );
-    let q = finder.query.trim().to_owned();
-    if q.is_empty() {
-        return None;
-    }
-    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-        finder.query.clear();
-        return None;
-    }
-    let data = data?;
-    let hits = data.search(&q);
-    let mut picked: Option<Hit> = None;
-    let pos = box_resp.rect.left_bottom() + Vec2::new(0.0, 4.0);
-    egui::Area::new(egui::Id::new("grimoire.finder"))
-        .order(egui::Order::Foreground)
-        .fixed_pos(pos)
-        .interactable(true)
-        .show(ui.ctx(), |ui| {
-            egui::Frame::NONE
-                .fill(PANEL)
-                .stroke(Stroke::new(1.0, GOLD_DEEP))
-                .inner_margin(egui::Margin::symmetric(8, 6))
-                .show(ui, |ui| {
-                    ui.set_min_width(420.0);
-                    if hits.is_empty() {
-                        let (kind, needle) = data::parse_query(&q);
-                        let scope = match kind {
-                            Some(k) => format!("no {} named like \"{needle}\"", k.label()),
-                            None => nothing_found(&needle),
-                        };
-                        ui.label(
-                            RichText::new(scope)
-                                .font(FontId::monospace(11.5))
-                                .color(TEXT_2),
-                        );
-                        return;
-                    }
-                    for h in hits.iter().take(FINDER_ROWS) {
-                        let label = format!("{:<5} {}", h.kind.label(), h.name);
-                        let r = ui.add(
-                            egui::Button::new(
-                                RichText::new(label)
-                                    .font(FontId::monospace(11.5))
-                                    .color(TEXT),
-                            )
-                            .fill(egui::Color32::TRANSPARENT)
-                            .stroke(Stroke::NONE),
-                        );
-                        let r = r.on_hover_text(&h.detail);
-                        if r.clicked() {
-                            picked = Some(h.clone());
-                        }
-                    }
-                    let more = hits.len().saturating_sub(FINDER_ROWS);
-                    if more > 0 {
-                        let cap = if hits.len() >= data::SEARCH_CAP {
-                            format!(" (search stops at {})", data::SEARCH_CAP)
-                        } else {
-                            String::new()
-                        };
-                        ui.label(
-                            RichText::new(format!("{more} more; type more of the name{cap}"))
-                                .font(FontId::proportional(11.0))
-                                .color(TEXT_3),
-                        );
-                    }
-                });
-        });
-    if picked.is_some() {
-        finder.query.clear();
-    }
-    picked
-}
-
-/// Where a hit goes: the FIND screen that owns its kind, through the same asks a cross-screen
-/// link makes.
-fn ask_for(h: &Hit) -> Ask {
-    match h.kind {
-        HitKind::Item => Ask::ShowItem(h.name.clone()),
-        HitKind::Zone => Ask::ShowZone(h.name.clone()),
-        HitKind::Quest => Ask::ShowQuest(h.name.clone()),
-        /* A sky piece is an item; the Items screen shows it and says so if gear-data lacks it. */
-        HitKind::SkyItem => Ask::ShowItem(h.name.clone()),
-        HitKind::Spell => Ask::ShowSpell(h.name.clone()),
-    }
-}
 
 /* --------------------------------------------------------------------- the frame -- */
 
@@ -2010,37 +1353,9 @@ impl App {
         }
         self.windows.set_hint(self.hotkeys.leader_hint());
 
-        /* THE LOG IS READ HERE, AND IT USED TO BE READ ONLY WHILE SOMETHING WAS BEING DRAWN.
-         *
-         * # THE DEFECT, IN THE OWNER'S WORDS: "its not updating in real fucking time"
-         *
-         * `Ingest::tail` was called once per frame from `ui`. eframe runs `ui` only while there
-         * is something to draw, and `logic` is the callback it runs when there is not -- the doc
-         * on `logic` says exactly that, and it exists because `Hotkeys::poll` had this same
-         * problem first. So while the reader is IN THE GAME, with this window behind it, `ui`
-         * does not run: the file is never read, `Ingest::live` is never re-folded, and the Live
-         * header, the overlays and every counter sit frozen at whatever they held when the window
-         * last painted. They catch up in one jump the moment it comes forward, which is precisely
-         * how a person notices: the numbers are stale exactly when they are being played over.
-         *
-         * AND AN ALWAYS-ON-TOP OVERLAY IS THE WHOLE POINT OF THIS APP. It is read while the game
-         * has focus, by definition. A meter that only advances when its own window is in front is
-         * a meter that never advances when anybody is using it.
-         *
-         * THE COMMENT AT THE OLD CALL SITE ARGUED ITSELF MOST OF THE WAY HERE -- "or the tail
-         * stops moving whenever another screen is showing" -- and stopped one step short of "or
-         * whenever no screen is showing".
-         *
-         * `heartbeat` IS THE RIGHT HOME BECAUSE IT IS THE ONE THING BOTH CALLBACKS REACH, which
-         * is what its own doc says it is for. `tail` is cheap when nothing is due: it takes an
-         * `Instant` and returns zero inside `TAIL_POLL`. */
-        if self.ingest.tail() > 0 {
-            ctx.request_repaint();
-        }
-
         /* THE UPDATER IS PUMPED HERE FOR THE REASON THE PARAGRAPH ABOVE SPENDS TWENTY LINES ON,
          * and it is the third thing in this file to learn it. `pump` hands the worker the three
-         * facts only the UI thread has: what the encounter is doing, whether the snapshot has
+         * facts only the UI thread has: whether a stream is playing (`activity`), whether the app has
          * finished loading, and what the settings block says. A reader who is IN THE GAME with
          * this window behind it draws no frames at all, and that is exactly the state in which
          * the fight gate matters most: a `pump` in `ui` would leave the worker looking at a
@@ -2049,12 +1364,10 @@ impl App {
          *
          * IT IS CHEAP. Two atomic stores and a mutex that is compared before it is written
          * (`Updater::pump`), never held across a network call or a draw. */
+        let activity = self.activity();
         if let Some(u) = &self.updater {
-            u.pump(
-                self.ingest.pulse(),
-                self.data.loading().is_none(),
-                &self.settings.updater,
-            );
+            /* Nothing in this build loads for seconds at startup, so the app is always "loaded". */
+            u.pump(activity, true, &self.settings.updater);
         }
     }
 }
@@ -2151,13 +1464,6 @@ impl eframe::App for App {
          * watcher's status is a clone from under a mutex, the ingest reads only appended bytes and
          * rate limits itself to once a second, the hotkey receiver is a try_recv, the corpus
          * reader answers on a channel. */
-        self.data.poll();
-        /* The Settings screen's DATA section reads this so a parse in progress is drawn as
-         * WORKING there too, never as "no snapshot loaded" for the length of the parse. */
-        self.settings_screen.data_loading = self
-            .data
-            .loading()
-            .map(|(root, for_)| (root.to_owned(), for_));
         /* AND THE UPDATER'S STATE, THE SAME WAY AND FOR THE SAME REASON. One small struct cloned
          * out from under the worker's mutex, so the UPDATES section draws what is true this frame
          * instead of holding a lock across a draw. `Cx` deliberately carries no updater: a screen
@@ -2168,15 +1474,6 @@ impl eframe::App for App {
         /* THE POLL IS IN `heartbeat` NOW, which both eframe callbacks reach; see the note there.
          * Calling it again here would be harmless (it rate-limits itself) and would say something
          * false about where the work happens. */
-        /* THE CLASS READING, AGAINST THE SNAPSHOT THE APP OWNS. `Ingest` keeps the cast book
-         * because it reads the lines; the corpus that turns spells into classes is the App's,
-         * so the two meet here. It returns at once unless somebody cast something new. */
-        if let Data::Loaded(snap) = &self.data {
-            self.ingest.resolve_classes(&snap.spells);
-        }
-        if self.screens.commission.poll() {
-            ctx.request_repaint_after(Duration::from_millis(100));
-        }
         self.heartbeat(&ctx);
 
         /* The frame proper. Everything the screens draw with is borrowed into one `Cx` for the
@@ -2192,7 +1489,6 @@ impl eframe::App for App {
          * rail has selected. Without this the picture in picture control, whose hover says "put
          * THIS in its own window", handed back `ParserWindow::default`, which is Dashboards, from
          * every page of the parser and from both journals. */
-        let mut pop_out_page: Option<&'static str> = None;
         let stage: Option<player::Stage>;
         /* WHAT THE WATCH SCREEN WOULD PLAY, whichever window ends up playing it. See `Cx::demand`
          * and `player::choose_stage`. */
@@ -2211,26 +1507,21 @@ impl eframe::App for App {
                 section,
                 settings,
                 settings_screen,
-                data,
                 live,
-                ingest,
                 player,
                 windows,
                 screens,
                 persona: persona_foot,
-                finder,
                 chat,
                 auth,
                 ytchat,
                 ..
             } = self;
             let mut cx = Cx {
-                data: data.snapshot(),
                 railed: railed_here(*body),
-                data_err: data.err(),
                 live: &*live,
                 settings,
-                ingest,
+                activity: Activity::default(),
                 /* THE LOG TRAVELS AND THE THREAD DOES NOT. See `chat::ChatHandle`. */
                 chat: chat.handle(),
                 /* THE LOG TRAVELS, THE PANE DOES NOT. See `ytchat::surface::YtHandle`. */
@@ -2248,9 +1539,7 @@ impl eframe::App for App {
             };
             /* The rail's squares, decided once for every row from the same facts. The loader flag
              * and the corpus state are the App's alone: `facts` cannot see either through `Cx`. */
-            let mut facts = nav::facts(&cx);
-            facts.data_loading = data.loading().is_some();
-            facts.corpus = screens.commission.corpus();
+            let facts = nav::facts(&cx);
 
             /* The title strip, full width, first. D8: the live pill lives here; D3: the pin glyph
              * shows the level last pushed to the OS (`Windows::is_pinned`), which mirrors
@@ -2331,9 +1620,13 @@ impl eframe::App for App {
                      *             something is wrong with them. */
                     persona::push_to_floor(ui);
                     let who = Persona {
-                        name: cx.ingest.active_character().map(str::to_owned),
-                        server: cx.ingest.active_log().and_then(|f| f.server.clone()),
-                        standing: grimoire_core::Standing::UNPROVEN,
+                        name: match &settings_screen.account {
+                            Some(grimoire_desktop::account::session::AccountView::In {
+                                name,
+                                ..
+                            }) => Some(name.clone()),
+                            _ => None,
+                        },
                         settings: settings_state(cx.settings, &settings_screen.bindings),
                     };
                     if let Some(next) = persona_pending(persona_foot.ui(ui, &who)) {
@@ -2407,14 +1700,6 @@ impl eframe::App for App {
                 Body::Screen(id) => nav::tabs_of(id, section[id.ordinal()]),
                 Body::Settings => &[],
             };
-            /* WHICH SCREEN THIS TAB ROW BELONGS TO, by the same hop the router and the painter
-             * make. Needed here because the layout controls on the right of this row belong to
-             * ONE screen and the body is not it: LOG PARSER / Dashboards paints
-             * `ParserDashboards` while `Body::Screen` stays `Parser`. */
-            let tabs_for: Option<ScreenId> = match *body {
-                Body::Screen(id) => Some(target_of(id, section[id.ordinal()])),
-                Body::Settings => None,
-            };
             let tab_slot: Option<usize> = match *body {
                 Body::Screen(id) => Some(id.ordinal()),
                 Body::Settings => None,
@@ -2427,7 +1712,6 @@ impl eframe::App for App {
             };
             let watch_body = is_watch(*body);
             let videos_body = is_videos(*body);
-            let mut picked: Option<Hit> = None;
             egui::Panel::top("ctx")
                 .frame(egui::Frame::NONE.fill(INK).inner_margin(egui::Margin::symmetric(0, 8)))
                 .show(ui, |ui| {
@@ -2450,7 +1734,6 @@ impl eframe::App for App {
                             };
                             if chrome::pip(ui, is_open).on_hover_text(tip).clicked() {
                                 pop_out = Some(t);
-                                pop_out_page = pop_out_page_of(*body, section);
                             }
                         }
 
@@ -2474,107 +1757,8 @@ impl eframe::App for App {
                         else if videos_body {
                             screens::videos::header(ui, &mut cx);
                         }
-                        /* THE RIGHT HAND SIDE, WHICH BELONGS TO THE PAGE'S LAYOUT.
-                         *
-                         * ONLY DASHBOARDS DRAWS THESE, and that is not a special case sneaking
-                         * into the shell: they are the controls for a page whose arrangement the
-                         * READER owns, and it is the only such page. Every other screen's layout
-                         * is the build's, so a lock over one of those would be a control with
-                         * nothing to hold.
-                         *
-                         * RIGHT TO LEFT, SO THE LOCK IS THE OUTERMOST, exactly as the owner laid
-                         * it out: a lock on the right, to the left of that a Widgets button. The
-                         * mock has the same pair in the same order, as `Layout locked` and
-                         * `+ Widgets`, and this row is those two controls and no others.
-                         *
-                         * THE HOP IS `target_of`'s AND NOT A GUESS ABOUT THE BODY. `tabs_for` is
-                         * the screen this section actually paints, which for LOG PARSER /
-                         * Dashboards is `ParserDashboards` while the body stays `Parser`. Asking
-                         * the body would have put these on Live, Fights, Reports and Logs too. */
-                        if tabs_for == Some(ScreenId::ParserDashboards) {
-                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                ui.add_space(14.0);
-                                ui.spacing_mut().item_spacing.x = 7.0;
-                                let locked = screens.dashboards.locked();
-                                let tip = if locked {
-                                    "The dashboard is pinned. Unlock it to drag a widget's heading to move it, or any edge or corner to resize it."
-                                } else {
-                                    "The dashboard can be rearranged. Lock it so a stray click cannot move anything."
-                                };
-                                if chrome::lock(ui, locked).on_hover_text(tip).clicked() {
-                                    screens.dashboards.toggle_lock();
-                                }
-                                /* THE FILTER KEY, where the owner asked for it: the corner, not a
-                                 * row of dates across the head. It says what is being looked at
-                                 * on its hover, so the corner still answers the question the
-                                 * chips answered without spending the head on it. */
-                                let filtering = screens.dashboards.filtering();
-                                if chrome::ghost_btn(ui, "Filter", filtering)
-                                    .on_hover_text(
-                                        "Which night, which zone, which mob, and how many of them. A raid night is a night and a zone: nothing in a log line says a fight was a raid.",
-                                    )
-                                    .clicked()
-                                {
-                                    screens.dashboards.toggle_filter();
-                                }
-                                let picking = screens.dashboards.picking();
-                                if chrome::ghost_btn(ui, "+ Widgets", picking)
-                                    .on_hover_text(
-                                        "Every widget this build has, with what each one reads. Add one to the dashboard or take one off. Opening this unlocks the page.",
-                                    )
-                                    .clicked()
-                                {
-                                    screens.dashboards.toggle_picker();
-                                }
-                            });
-                        }
                     });
                 });
-            /* THE FIND PALETTE (D6), OVER THE PAGE AND NOT ON THE HEADER.
-             *
-             * Ctrl+K OPENS IT AND ESCAPE CLOSES IT, which is the shape every editor written in
-             * the last decade uses for exactly this control, and it is why the header does not
-             * have to carry a permanently visible box for a search that is used once an hour.
-             *
-             * `command` AND NOT `ctrl`, because egui folds the platform's own modifier into that
-             * flag; on Windows it IS Ctrl and on a Mac it would be Cmd, which is what a reader on
-             * either machine expects without this file knowing which one he is on.
-             *
-             * THE BOX IS `finder_ui`, UNCHANGED. Same search, same prefixes, same routing through
-             * `ask_for`: what moved is where it is drawn, and nothing about what it does.
-             *
-             * DRAWN HERE AND NOT INSIDE THE BAR because it is no longer part of the bar: an Area
-             * over the body belongs to the frame, and putting it inside the panel's closure would
-             * tie its position to a row it is deliberately not in any more. */
-            if ui.input(|i| i.key_pressed(egui::Key::K) && i.modifiers.command) {
-                finder.open = !finder.open;
-                finder.query.clear();
-            }
-            if finder.open && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-                finder.open = false;
-                finder.query.clear();
-            }
-            if finder.open {
-                let screen = ui.max_rect();
-                egui::Area::new(egui::Id::new("grimoire.palette"))
-                    .order(egui::Order::Foreground)
-                    .fixed_pos(egui::pos2(screen.center().x - 220.0, screen.top() + 110.0))
-                    .show(ui.ctx(), |ui| {
-                        egui::Frame::NONE
-                            .fill(PANEL)
-                            .stroke(Stroke::new(1.0, GOLD_DEEP))
-                            .corner_radius(crate::theme::RADIUS)
-                            .inner_margin(egui::Margin::same(10))
-                            .show(ui, |ui| {
-                                ui.set_min_width(440.0);
-                                picked = finder_ui(ui, finder, cx.data);
-                            });
-                    });
-                if picked.is_some() {
-                    finder.open = false;
-                }
-            }
-
             if let Some(i) = tab_slot {
                 tabs[i] = tab;
             }
@@ -2582,9 +1766,6 @@ impl eframe::App for App {
                 if let Body::Screen(id) = *body {
                     on_view(id, section[id.ordinal()], tab, screens);
                 }
-            }
-            if let Some(h) = &picked {
-                asks.push(ask_for(h));
             }
 
             /* The footer: version, licence, source (D8) and the snapshot's count. NO PILL.
@@ -2621,12 +1802,6 @@ impl eframe::App for App {
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         titlebar::footer_left(ui);
-                        ui.add_space(18.0);
-                        ui.label(
-                            RichText::new(data.footer_line())
-                                .font(FontId::monospace(10.5))
-                                .color(TEXT_3),
-                        );
                     });
                 });
 
@@ -2638,23 +1813,14 @@ impl eframe::App for App {
                 )
                 .show(ui, |ui| match *body {
                     Body::Settings => settings_screen.ui(ui, &mut cx),
-                    Body::Screen(id) => match data.loading() {
-                        /* Every screen that reads the snapshot waits on the loading notice, not
-                         * only the ones whose rail square follows the snapshot: a CHARACTER row
-                         * printing "no snapshot loaded, put gear-data.json in data/" while the
-                         * file is being parsed would be a lie for the length of the parse. */
-                        Some((root, for_)) if reads_data(id) => {
-                            screens::loading_notice(ui, nav::label(id), root, for_)
-                        }
-                        _ => draw_screen(
-                            ui,
-                            id,
-                            section[id.ordinal()],
-                            tabs[id.ordinal()],
-                            screens,
-                            &mut cx,
-                        ),
-                    },
+                    Body::Screen(id) => draw_screen(
+                        ui,
+                        id,
+                        section[id.ordinal()],
+                        tabs[id.ordinal()],
+                        screens,
+                        &mut cx,
+                    ),
                 });
 
             /* THE STAGE IS TAKEN HERE, between the body and the tool windows, and the order is the
@@ -2673,38 +1839,6 @@ impl eframe::App for App {
              * to reach the one place allowed to dial. `Windows::show` ors what its windows asked
              * into `cx.chat_wanted` before it returns. */
             windows.show(&ctx, &mut cx);
-
-            /* WHAT AN OVERLAY WINDOW CHANGED ABOUT ITSELF, WRITTEN BACK.
-             *
-             * A deferred viewport cannot reach Settings: it runs on its own clock holding the
-             * registry lock. So a chip toggling the pin, the OS close flipping open, and a drag
-             * changing the remembered size all land on the window and are collected here, which
-             * is the only pass that holds both the registry and the settings.
-             *
-             * MATCHED BY id. The list may have been reordered or shortened by the Parser page on
-             * the same frame, and a positional write would then land on the wrong overlay.
-             */
-            let edits = windows.overlay_edits();
-            if !edits.is_empty() {
-                /* THE STORED LIST AND NOT THE RESOLVED ONE, AND THAT IS THE WHOLE POINT.
-                 *
-                 * This read `or_default(&cx.settings.overlays)`, which MATERIALISES the shipped
-                 * overlay when the file holds none, and then wrote the result back. A drag, a
-                 * resize, a pin or an OS close therefore froze the shipped widget list into the
-                 * settings file as though the person had chosen it, and from then on no change
-                 * to the shipped default could ever reach him again. Measured on the owner's
-                 * own machine on 2026-09-08 and written out on `overlay::Overlay::widgets`.
-                 *
-                 * AN EDIT FOR AN OVERLAY THE FILE HAS NEVER HEARD OF IS STILL STORED, because
-                 * he really did move that window and it must come back where he put it. It is
-                 * stored with the geometry he chose and `widgets: None`, which is the truth:
-                 * he moved a window, he did not pick its contents. */
-                cx.settings.overlays =
-                    grimoire_desktop::overlay::apply_edits(&cx.settings.overlays, edits);
-                if let Err(err) = cx.settings.save() {
-                    log::warn!("an overlay change was not saved: {err}");
-                }
-            }
 
             /* THE CHAT SOCKET, ASKED FOR BY EITHER WINDOW AND OPENED HERE.
              *
@@ -2812,24 +1946,13 @@ impl eframe::App for App {
             self.answer(ask);
         }
         if let Some(t) = pop_out {
-            /* `open_at` AND NOT `open`, because this caller HAS a page. `open` is `open_at` with
-             * no page and is still the right door for a hotkey, which names a window and nothing
-             * else. Sending the press here is what makes `open_at`'s page argument reachable at
-             * all: until this line it had no production caller, and an argument nothing passes is
-             * this tree's signature defect wearing a tested function's clothes. */
-            self.windows.open_at(t, pop_out_page);
+            self.windows.open(t);
         }
 
         /* What the Settings screen changed. It cannot act on these itself: the snapshot is lent
          * immutably, the ingest's rescan takes no new folder, the watcher has no hot reconfigure,
          * and the hotkey manager lives with the event loop. */
         let changed = self.settings_screen.take_changed();
-        if changed.data_root {
-            self.data = Data::start(&self.settings);
-        }
-        if changed.data_root || changed.log_dir {
-            self.ingest.reconfigure(&self.settings);
-        }
         /* `changed.handles` used to restart the poller here, because Settings carried two text
          * boxes that could repoint it. The handles are constants now, nothing can change them at
          * run time, and a restart nothing can ask for is a branch nothing can enter, so the flag
@@ -2885,17 +2008,6 @@ impl eframe::App for App {
         /* The Settings screen debounces its writes and only runs while drawn; a close from any
          * other screen would otherwise lose the last edit. */
         self.settings_screen.flush(&self.settings);
-        /* AND A FIGHT NOTE TYPED AND NEVER BLURRED, for the same reason one line up.
-         *
-         * `screens::analysis` keeps the note being typed in its own buffer and writes it to
-         * `Settings::fight_notes` when the reader leaves the field or changes fight. Quitting is
-         * neither: nothing draws a frame after this, so the page cannot notice its own close and
-         * the last thing typed went in the bin.
-         *
-         * THE TOOL WINDOW'S COPY IS FLUSHED BY THE REGISTRY, not here. Each Parser window holds
-         * its own `ParserScreen` and therefore its own note buffer, and `windows::Windows` is
-         * what knows one is closing. */
-        self.screens.parser.flush_notes(&mut self.settings);
 
         /* THE RESTART, LAST, AFTER EVERY FLUSH ABOVE IT.
          *
@@ -2936,51 +2048,7 @@ impl eframe::App for App {
 #[cfg(test)]
 mod tests {
     use super::*;
-    /// DEFECT: THE DASHBOARD'S POP-OUT OPENED A LOG PARSER WINDOW OVER THE GAME.
-    ///
-    /// The owner pressed it on Dashboards and got a Log Parser window, which is not what that page
-    /// is for. Every other page of the parser still offers its pop-out, and the header asks before
-    /// it draws one.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: `offers_pop_out` answering yes on Dashboards or no elsewhere,
-    /// or the header drawing the pop-out without asking.
-    #[test]
-    fn the_dashboard_offers_no_pop_out_and_every_other_page_still_does() {
-        let sections = nav::sections_of(ScreenId::Parser);
-        let mut on_dashboards = 0;
-        for (i, (name, id, _)) in sections.iter().enumerate() {
-            let mut at = [0usize; ScreenId::ALL.len()];
-            at[ScreenId::Parser.ordinal()] = i;
-            let offered = offers_pop_out(Body::Screen(ScreenId::Parser), &at);
-            if *id == Some(ScreenId::ParserDashboards) {
-                on_dashboards += 1;
-                assert!(
-                    !offered,
-                    "Dashboards still offers a pop-out onto a Log Parser window"
-                );
-            } else {
-                assert!(offered, "LOG PARSER / {name} lost its pop-out");
-            }
-        }
-        assert_eq!(
-            on_dashboards, 1,
-            "the parser has no Dashboards section to test"
-        );
-        assert!(offers_pop_out(
-            Body::Screen(ScreenId::Sky),
-            &[0usize; ScreenId::ALL.len()]
-        ));
-
-        let whole = strip_comments(include_str!("main.rs"));
-        let src = whole
-            .split("mod tests {")
-            .next()
-            .expect("the file has a body");
-        assert!(
-            src.contains("tool.filter(|_| offers_pop_out(*body, section))"),
-            "the header draws the pop-out without asking whether this page offers one"
-        );
-    }
+    use egui::Vec2;
 
     /* THREE FIXTURES STOOD HERE AND ALL THREE ARE GONE WITH THE TESTS THAT NEEDED THEM.
      *
@@ -3140,63 +2208,6 @@ mod tests {
 
     /* ------------------------------------------------------------------ the find box -- */
 
-    /// EVERY LETTER THE BOX OFFERS IS A LETTER THE PARSER TAKES, AND EVERY KIND IS OFFERED.
-    ///
-    /// The first half is the one that has teeth: it crosses `main`'s hint against `data`'s
-    /// `from_prefix`, so a hint carrying a letter the parser does not know (which is exactly what
-    /// `d:` became the moment the drop table left the search) fails here. The second half reads
-    /// the hint as TEXT rather than trusting the iterator that built it, so a hint that formatted
-    /// its prefixes into a shape a reader cannot type is caught too.
-    #[test]
-    fn the_find_box_offers_every_prefix_the_parser_takes_and_no_others() {
-        let hint = find_hint();
-        assert!(hint.starts_with("find: "), "{hint}");
-        let offered: Vec<&str> = hint["find: ".len()..].split(' ').collect();
-        assert_eq!(
-            offered.len(),
-            data::HitKind::ALL.len(),
-            "the box offers {offered:?} against {} kinds",
-            data::HitKind::ALL.len()
-        );
-        for token in &offered {
-            /* Typed as a query with a needle behind it, which is how a reader would use it. */
-            let (kind, needle) = data::parse_query(&format!("{token}bone"));
-            assert!(
-                kind.is_some(),
-                "the box offers \"{token}\" and the parser does not take it: {hint}"
-            );
-            assert_eq!(needle, "bone", "\"{token}\" ate the needle");
-        }
-        for k in data::HitKind::ALL {
-            assert!(
-                offered.contains(&format!("{}:", k.prefix()).as_str()),
-                "{k:?} is searchable by prefix and the box does not offer it: {hint}"
-            );
-        }
-    }
-
-    /// THE EMPTY LINE NAMES EVERY KIND A BARE NEEDLE IS SEARCHED AGAINST.
-    ///
-    /// It is the sentence a reader gets when nothing matched, so it is the sentence that tells
-    /// them where the app looked. It listed "items, zones, drops or quests" and was wrong in both
-    /// directions at once: drops are no longer searched, and spells and the sky list were being
-    /// searched without being named. Pinned to `HitKind::ALL` by label, which is what a plural
-    /// contains.
-    #[test]
-    fn the_finders_empty_line_names_every_kind_a_bare_needle_searches() {
-        let line = nothing_found("bone");
-        assert!(
-            line.contains("\"bone\""),
-            "the needle is quoted back: {line}"
-        );
-        for k in data::HitKind::ALL {
-            assert!(
-                line.contains(k.label()),
-                "{k:?} is searched and the empty line does not name it: {line}"
-            );
-        }
-    }
-
     /* --------------------------------------------------------------------- the rail -- */
 
     /* ------------------------------------------------------ what the rail actually paints -- */
@@ -3320,131 +2331,6 @@ mod tests {
 
     /* --------------------------------------------------- the pop-out's page -- */
 
-    /// DEFECT: THE PICTURE IN PICTURE CONTROL HANDED BACK A WINDOW SHOWING A DIFFERENT PAGE.
-    ///
-    /// Its hover says "put THIS in its own window". `Tool::Parser` carries no page, so before
-    /// `Windows::open_at` took one there was nothing for the registry to sync and the pop-out came
-    /// up on `ParserWindow::default`, which is Dashboards, from every one of the nine pages that
-    /// press reaches. This is the half that names the page; the registry half is `open_at`'s own.
-    ///
-    /// # EVERY NAME THIS CAN RETURN IS CHECKED AGAINST THE WINDOW'S OWN LIST
-    ///
-    /// `ParserWindow::show_named` moves to a page by NAME and an unknown name leaves the window
-    /// where it is, deliberately: opening Dashboards because a caller misspelled a page would be
-    /// worse than not moving. That is the right rule and it is also silent, so a rename on either
-    /// side would turn this whole fix off with nothing on screen to say so. The membership
-    /// assertion below is what makes that a failing test instead.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: spelling either journal any other way, returning the section
-    /// INDEX or the section's target `ScreenId` label instead of the row name `nav::SECTIONS`
-    /// carries, or dropping an arm so that page pops out onto Dashboards.
-    #[test]
-    fn the_pop_out_opens_on_a_page_that_window_actually_has() {
-        use grimoire_desktop::windows::ParserWindow;
-        let none = [0usize; ScreenId::ALL.len()];
-
-        /* THE TWO JOURNALS, WHICH ARE ROWS OF MY LEGEND AND NOT SECTIONS OF THE PARSER. Their
-         * names have to be `nav::NAV`'s, because that is what the rail calls them and what the
-         * window's page row prints. */
-        assert_eq!(
-            pop_out_page_of(Body::Screen(ScreenId::KillTracker), &none),
-            Some(nav::label(ScreenId::KillTracker)),
-            "the Hunt Journal popped out onto something else"
-        );
-        assert_eq!(
-            pop_out_page_of(Body::Screen(ScreenId::Loot), &none),
-            Some(nav::label(ScreenId::Loot)),
-            "the Loot Journal popped out onto something else"
-        );
-
-        /* EVERY SECTION OF THE PARSER, AND THE INDEX IS THE ONE THE RAIL HOLDS. A fixture that
-         * only checked section 0 would pass for an implementation that ignored `section`
-         * entirely, which is the near miss this loop exists to fail. */
-        let sections = nav::sections_of(ScreenId::Parser);
-        assert!(
-            sections.len() > 1,
-            "the parser has one section, so this loop cannot tell a working lookup from a \
-             constant"
-        );
-        let mut seen = Vec::new();
-        for (i, (name, _, _)) in sections.iter().enumerate() {
-            let mut at = none;
-            at[ScreenId::Parser.ordinal()] = i;
-            let got = pop_out_page_of(Body::Screen(ScreenId::Parser), &at);
-            assert_eq!(
-                got,
-                Some(*name),
-                "standing on LOG PARSER / {name} pops out onto {got:?}"
-            );
-            seen.push(*name);
-        }
-
-        for name in seen.iter().chain(
-            [
-                nav::label(ScreenId::KillTracker),
-                nav::label(ScreenId::Loot),
-            ]
-            .iter(),
-        ) {
-            assert!(
-                ParserWindow::PAGES.contains(name),
-                "{name:?} is not a page of the pop-out, so `show_named` would silently leave the \
-                 window where it was: it has {:?}",
-                ParserWindow::PAGES
-            );
-        }
-
-        /* A SECTION INDEX PAST THE END IS `None` AND NOT A PANIC. `pick_section` resets the slot
-         * with the section, but a shorter `SECTIONS` list on the next build would leave a stale
-         * index behind, and a pop-out that does not move beats a process that stops. */
-        let mut past = none;
-        past[ScreenId::Parser.ordinal()] = sections.len() + 4;
-        assert_eq!(pop_out_page_of(Body::Screen(ScreenId::Parser), &past), None);
-
-        /* AND EVERY OTHER BODY NAMES NO PAGE, which `open_at` ignores for the tools that have no
-         * page list at all. */
-        assert_eq!(pop_out_page_of(Body::Settings, &none), None);
-        assert_eq!(pop_out_page_of(Body::Screen(ScreenId::Sky), &none), None);
-        assert_eq!(pop_out_page_of(Body::Screen(ScreenId::Watch), &none), None);
-    }
-
-    /// AND THE PRESS ACTUALLY HANDS THAT PAGE OVER, which is the half a pure test cannot see.
-    ///
-    /// A TEXT FLOOR, for the same reason `the_app_fills_the_gear_state_by_calling_settings_state`
-    /// is one: both sites live inside `App::ui`, which takes an `&mut eframe::Frame` and has no
-    /// public constructor, so nothing in there can be called from a test. `pop_out_page_of` could
-    /// be perfect and the frame could still call `windows.open(t)` and throw the answer away,
-    /// which is precisely the state this crate was in before this wave: a tested function with no
-    /// production caller.
-    ///
-    /// ITS BLIND SPOT IS STATED PLAINLY. It proves the two calls are written, not that the values
-    /// handed to them are the live body and the live section slot.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: putting `windows.open(t)` back at the pop-out site, or
-    /// dropping the `pop_out_page_of` call so the press stops naming a page.
-    #[test]
-    fn the_pop_out_press_hands_its_page_to_the_registry() {
-        let whole = strip_comments(include_str!("main.rs"));
-        /* EVERYTHING BEFORE THE TEST MODULE, AND THAT IS NOT TIDINESS. The two strings this test
-         * looks for are also written down inside this test, and `strip_comments` keeps a string
-         * literal as code because a comment marker inside one is not a comment. Searching the
-         * whole file would find this function's own words and pass with the production site
-         * deleted, which is a test that proves nothing wearing the costume of one that does. */
-        let src = whole
-            .split("mod tests {")
-            .next()
-            .expect("the file has a body");
-        assert!(
-            src.contains("pop_out_page = pop_out_page_of(*body, section);"),
-            "the picture in picture press no longer works out which page it came from"
-        );
-        assert!(
-            src.contains("self.windows.open_at(t, pop_out_page);"),
-            "the press does not hand its page to the registry, so `open_at`'s page argument has \
-             no production caller and the pop-out comes up on Dashboards"
-        );
-    }
-
     /// AND A SCREEN CAN NOW ASK FOR SETTINGS, WHICH IS THE ONE DESTINATION NO ASK COULD NAME.
     ///
     /// # WHY THIS WAS MISSING AND WHY IT MATTERS MOST WHERE IT IS HARDEST TO TEST
@@ -3480,7 +2366,7 @@ mod tests {
         /* AND THE DOOR ITSELF, DRIVEN. `persona_pending` hands back this exact `Body` and the
          * frame puts it through this exact call, so proving `enter` lands it is proving both
          * routes arrive in the same place. */
-        let mut body = Body::Screen(ScreenId::Parser);
+        let mut body = Body::Screen(ScreenId::Watch);
         let mut tabs = [0usize; ScreenId::ALL.len()];
         let mut section = [0usize; ScreenId::ALL.len()];
         let mut screens = Screens::default();
@@ -3739,7 +2625,11 @@ mod tests {
                 "{id:?} lost the margin that keeps its rows off the rail"
             );
         }
-        assert!(others > 20, "only {others} screens were checked");
+        assert_eq!(
+            others,
+            ScreenId::ALL.len() - 2,
+            "only {others} screens were checked"
+        );
         assert_eq!(
             folio_margin(Body::Settings),
             egui::Margin::same(18),
@@ -3785,15 +2675,12 @@ mod tests {
             };
             live.twitch.live = Some(true);
             let mut settings = Settings::default();
-            let mut ingest = Ingest::new(&settings);
             let mut screens = Screens::default();
             let mut cx = Cx {
-                data: None,
                 railed: false,
-                data_err: None,
+                activity: Default::default(),
                 live: &live,
                 settings: &mut settings,
-                ingest: &mut ingest,
                 chat: grimoire_desktop::chat::ChatHandle::idle(),
                 chat_wanted: false,
                 auth: Default::default(),
@@ -3856,205 +2743,6 @@ mod tests {
             assert!(!line.contains('\u{2013}'), "en dash on line {}", i + 1);
         }
     }
-    /// EVERY SECTION IN THE RAIL DOES SOMETHING WHEN IT IS PRESSED.
-    ///
-    /// THE FAILURE THIS CATCHES IS SILENT AND LOOKS LIKE NOTHING AT ALL. `nav::SECTIONS` names the
-    /// rows and `on_section` answers them by index; add a fourth row to a list and the rail draws
-    /// four, and the fourth selects, and highlights, and leaves the screen showing whatever was
-    /// there. No panic, no warning, no visible mark: a row that is indistinguishable from a working
-    /// one and does nothing.
-    ///
-    /// IT IS DRIVEN THROUGH THE REAL SCREENS, not through a reading of the match. `on_section` is
-    /// called for every index of every list and the screen state is read back after each, so an arm
-    /// that exists but sets the wrong thing fails here too.
-    #[test]
-    fn every_section_of_every_destination_reaches_its_view() {
-        for (id, rows) in nav::SECTIONS {
-            let mut seen: Vec<String> = Vec::new();
-            for (i, (_, inner, _)) in rows.iter().enumerate() {
-                /* A SECTION THAT IS ITS OWN SCREEN IS NOT `on_section`'S TO ANSWER. It routes in
-                 * `draw_screen`, it carries its own `ScreenId`, and `every_screen_appears_
-                 * exactly_once` already proves no two of them are the same one. Feeding it
-                 * through this loop would demand that a screen change some OTHER screen's state
-                 * to prove it exists, which is not a thing it should ever do. */
-                if let Some(inner) = inner {
-                    seen.push(format!("{inner:?}"));
-                    continue;
-                }
-                let mut s = Screens::default();
-                on_section(*id, i, &mut s);
-                seen.push(match id {
-                    ScreenId::Parser => format!("{:?}", s.parser.showing()),
-                    ScreenId::Sky => format!("{:?}", s.sky.showing()),
-                    ScreenId::Lfg => format!("{:?}", s.lfg.mode),
-                    /* GEAR ANSWERS IN `draw_screen` RATHER THAN BY HOLDING STATE, and Guild has
-                     * no screen at all yet, so neither can be distinguished by reading a screen
-                     * back. Recording the index keeps them in the length check above and proves
-                     * nothing else about them, which is why they are covered instead by
-                     * `every_section_and_tab_of_an_unwritten_destination_changes_the_page`,
-                     * which paints them. Saying so here rather than leaving a bare fallback:
-                     * this line is exactly the shape a tautology takes. */
-                    _ => format!("section {i}"),
-                });
-            }
-            let mut uniq = seen.clone();
-            uniq.sort();
-            uniq.dedup();
-            assert_eq!(
-                uniq.len(),
-                rows.len(),
-                "{id:?}: {} sections but only {} distinct results {seen:?}; a row here selects and \
-                 changes nothing",
-                rows.len(),
-                uniq.len()
-            );
-        }
-    }
-    /// A SECTION IS OFFERED ON ONE CONTROL, NEVER TWO.
-    ///
-    /// THE DEFECT THIS EXISTS FOR WAS ON SCREEN AND I SHIPPED IT ONCE. The inner rail listed
-    /// `Kills | Loot | Fights` and the parser went on drawing the same three words in its own row a
-    /// hundred points to the right, both live, both selectable, and nothing keeping them agreed.
-    /// The screens have to keep those rows for the pop-out windows, where there is no rail at all,
-    /// so the answer is `Cx::railed` and this is what holds it.
-    ///
-    /// IT READS PAINTED TEXT, not a flag. Each screen is drawn twice into a real headless frame,
-    /// once as a pop-out would draw it and once as the main window does, and the section names are
-    /// counted in what came out. A version that asked `cx.railed` back would pass on a screen that
-    /// read the field and ignored it.
-    ///
-    /// ONLY THE SCREENS THAT OWN A ROW ARE DRIVEN, and they are named rather than derived, because
-    /// deriving the list from `SECTIONS` would silently pass for the ones that never had a row
-    /// (Gear picks its section in `draw_screen`, Groups shows its mode in the window title) and
-    /// would then be asserting nothing about anything.
-    #[test]
-    fn a_railed_screen_does_not_offer_its_sections_twice() {
-        let ctx = egui::Context::default();
-        fonts::install(&ctx);
-        theme::install(&ctx);
-
-        /* THE SECTION IS AN ARGUMENT NOW, and it has to be. A destination's section 0 is not
-         * necessarily its own screen: Log Parser's first section is Live, which is declared and
-         * unwritten, so `draw_screen` hops straight to the unbuilt page and the parser screen
-         * never runs. This test painted that page twice and compared it with itself, which is a
-         * comparison that cannot fail and reported 5 things against 5.
-         */
-        let words = |id: ScreenId, section: usize, railed: bool| -> Vec<String> {
-            let live = Status {
-                twitch: grimoire_desktop::watcher::Channel::unchecked(
-                    grimoire_desktop::settings::TWITCH_HANDLE,
-                ),
-                youtube: grimoire_desktop::watcher::Channel::unchecked(
-                    grimoire_desktop::settings::YOUTUBE_HANDLE,
-                ),
-            };
-            let (mut settings, mut ingest) = settled_ingest();
-            let mut screens = Screens::default();
-            let mut cx = Cx {
-                data: None,
-                railed,
-                data_err: None,
-                live: &live,
-                settings: &mut settings,
-                ingest: &mut ingest,
-                chat: grimoire_desktop::chat::ChatHandle::idle(),
-                chat_wanted: false,
-                auth: Default::default(),
-                auth_begin: false,
-                auth_cancel: false,
-                yt: Default::default(),
-                yt_wanted: false,
-                player: player::PlayerView::default(),
-                stage: None,
-                demand: None,
-                ask: Ask::None,
-            };
-            let input = egui::RawInput {
-                screen_rect: Some(egui::Rect::from_min_size(
-                    egui::Pos2::ZERO,
-                    egui::vec2(900.0, 700.0),
-                )),
-                ..Default::default()
-            };
-            let mut out = ctx.run_ui(input, |ui| {
-                draw_screen(ui, id, section, 0, &mut screens, &mut cx);
-            });
-            let shapes = std::mem::take(&mut out.shapes);
-            out.drop_without_applying_deltas();
-            let mut said = Vec::new();
-            let mut stack: Vec<egui::Shape> = shapes.into_iter().map(|c| c.shape).collect();
-            while let Some(sh) = stack.pop() {
-                match sh {
-                    egui::Shape::Vec(v) => stack.extend(v),
-                    egui::Shape::Text(t) => said.push(t.galley.text().to_owned()),
-                    _ => {}
-                }
-            }
-            said
-        };
-
-        /* THE TWO SCREENS THAT OWN A SWITCHER, named rather than derived from `nav::SECTIONS`.
-         *
-         * Deriving them would be wrong in both directions now. Log Parser owns a row and has NO
-         * section list: its three views are three destinations in the rail, so a derived list would
-         * skip the one screen this test most needs to cover. Gear has a section list and owns no
-         * row, so a derived list would demand that it drop a control it never drew.
-         *
-         * WHAT IS ASSERTED IS A STRICT SUBSET, not a count of known words. The switcher's labels
-         * are the screens' own and are not in any table here to compare against; what is certainly
-         * true is that drawing beside a rail must paint LESS than drawing alone, and everything it
-         * still paints must be something it painted alone. A screen that ignored `railed` paints
-         * exactly the same set and fails on the first of those.
-         */
-        /* EACH AT THE SECTION THAT REALLY IS ITS OWN BODY, FOUND RATHER THAN COUNTED.
-         *
-         * Log Parser draws itself at Fights, and this said `1` because Fights sat second while
-         * Live led the list. Dashboards moving to the top made that a different section, and a
-         * literal here would have gone on testing whichever page happened to land on index 1
-         * rather than the one this test is about. The position is looked up by name. */
-        let fights = nav::sections_of(ScreenId::Parser)
-            .iter()
-            .position(|(name, _, _)| *name == "Fights")
-            .expect("LOG PARSER has a Fights section");
-        for (id, section) in [(ScreenId::Parser, fights), (ScreenId::Sky, 0)] {
-            let alone = words(id, section, false);
-            let railed = words(id, section, true);
-            assert!(
-                !alone.is_empty() && !railed.is_empty(),
-                "{id:?} painted no text in one of the two passes"
-            );
-            for w in &railed {
-                assert!(
-                    alone.contains(w),
-                    "{id:?} paints {w:?} only when it is beside a rail, which is backwards"
-                );
-            }
-            assert!(
-                railed.len() + 2 <= alone.len(),
-                "{id:?} paints {} things beside the rail and {} alone; a switcher is at least two \
-                 controls, so it is still drawing its own",
-                railed.len(),
-                alone.len()
-            );
-        }
-
-        /* AND EVERY SCREEN IN THE MAIN WINDOW IS TOLD THERE IS A RAIL.
-         *
-         * This is the half a rendering test cannot reach: `words` is handed the flag, so it
-         * exercises its own idea of the rule and never the App's. `railed_here` is the App's, and
-         * it read `!sections_of(id).is_empty()` for one build. Hunt Journal has no sections, so the
-         * flag went false there and the parser drew its three-way row on a page that is Kills by
-         * definition; pressing Loot on it left the rail saying Hunt Journal while the body showed
-         * loot. */
-        for id in ScreenId::ALL {
-            assert!(
-                railed_here(Body::Screen(id)),
-                "{id:?}: the main window has a rail whatever it is showing, and a screen told \
-                 otherwise draws its own switcher beside the one in the rail"
-            );
-        }
-        assert!(railed_here(Body::Settings));
-    }
 
     /// SECTIONS APPEAR UNDER THE DESTINATION YOU ARE ON, AND NOWHERE ELSE.
     ///
@@ -4099,307 +2787,6 @@ mod tests {
             }
         }
     }
-    /// A DESTINATION WHOSE SECTION IS A SCREEN DRAWS THAT SCREEN, AND DRAWS IT WHOLE.
-    ///
-    /// `nav::Section` lets a section be `Some(id)`, meaning a screen of its own standing inside
-    /// another destination, and one `if let` at the top of `draw_screen` is the entire mechanism.
-    /// Everything else about such a section (its square, its label, its place in the rail) is
-    /// asserted elsewhere against tables, and every one of those would still pass if that hop
-    /// opened onto nothing at all.
-    ///
-    /// SO IT IS DRAWN AND READ. Every `Some` section in the table is rendered twice into a real
-    /// headless frame, once through its owner at that index and once as the screen itself, and the
-    /// two must paint the same words. Comparing against the screen's OWN output rather than a fixed
-    /// string keeps it true when that page is rewritten.
-    ///
-    /// DERIVED FROM THE TABLE, NOT NAMED. This test used to name the Bazaar, which was six such
-    /// sections until the Bazaar became a heading with six plain rows. A named test would now be
-    /// asserting about a destination that no longer exists, or worse, quietly passing over an empty
-    /// list; the count assertion at the end is what stops that.
-    ///
-    /// BOTH PAINTS READ A SETTLED INGEST, AND THEY USED TO RACE. See [`settled_ingest`].
-    #[test]
-    fn a_section_that_is_a_screen_draws_that_screen() {
-        let ctx = egui::Context::default();
-        fonts::install(&ctx);
-        theme::install(&ctx);
-
-        let paint = |id: ScreenId, section: usize| -> Vec<String> {
-            let live = Status {
-                twitch: grimoire_desktop::watcher::Channel::unchecked(
-                    grimoire_desktop::settings::TWITCH_HANDLE,
-                ),
-                youtube: grimoire_desktop::watcher::Channel::unchecked(
-                    grimoire_desktop::settings::YOUTUBE_HANDLE,
-                ),
-            };
-            let (mut settings, mut ingest) = settled_ingest();
-            let mut screens = Screens::default();
-            let mut cx = Cx {
-                data: None,
-                railed: true,
-                data_err: None,
-                live: &live,
-                settings: &mut settings,
-                ingest: &mut ingest,
-                chat: grimoire_desktop::chat::ChatHandle::idle(),
-                chat_wanted: false,
-                auth: Default::default(),
-                auth_begin: false,
-                auth_cancel: false,
-                yt: Default::default(),
-                yt_wanted: false,
-                player: player::PlayerView::default(),
-                stage: None,
-                demand: None,
-                ask: Ask::None,
-            };
-            let input = egui::RawInput {
-                screen_rect: Some(egui::Rect::from_min_size(
-                    egui::Pos2::ZERO,
-                    egui::vec2(900.0, 700.0),
-                )),
-                ..Default::default()
-            };
-            let mut out = ctx.run_ui(input, |ui| {
-                draw_screen(ui, id, section, 0, &mut screens, &mut cx);
-            });
-            let shapes = std::mem::take(&mut out.shapes);
-            out.drop_without_applying_deltas();
-            let mut said = Vec::new();
-            let mut stack: Vec<egui::Shape> = shapes.into_iter().map(|c| c.shape).collect();
-            while let Some(sh) = stack.pop() {
-                match sh {
-                    egui::Shape::Vec(v) => stack.extend(v),
-                    egui::Shape::Text(t) => said.push(t.galley.text().to_owned()),
-                    _ => {}
-                }
-            }
-            said.sort();
-            said
-        };
-
-        let mut checked = 0usize;
-        for (owner, rows) in nav::SECTIONS {
-            for (i, (name, inner, _)) in rows.iter().enumerate() {
-                let Some(inner) = inner else { continue };
-                let through_the_door = paint(*owner, i);
-                let direct = paint(*inner, 0);
-                assert!(!direct.is_empty(), "{inner:?} painted nothing at all");
-                assert_eq!(
-                    through_the_door, direct,
-                    "{owner:?} at section {i} ({name}) does not draw {inner:?}"
-                );
-                checked += 1;
-            }
-        }
-        assert!(
-            checked > 0,
-            "no section in the table is a screen of its own, so the hop in `draw_screen` has no \
-             consumer and this test proved nothing"
-        );
-    }
-
-    /// AN INGEST WHOSE BOOTSTRAP HAS LANDED, OVER AN EMPTY LOGS FOLDER, for tests that paint.
-    ///
-    /// `Ingest::new` resolves the Logs folder and loads the roster on a worker, and every page
-    /// that reports on either says `Reading` (or leaves the line out) until that lands. A test that
-    /// builds one and paints at once is racing that worker, and a test that paints twice and
-    /// compares is racing it twice. Measured on the Linux CI runner, where there is no usual log
-    /// folder and the scan finishes in microseconds: `a_section_that_is_a_screen_draws_that_screen`
-    /// failed 8 runs in 12 ("No Logs folder is set" in one paint, "still being read" in the other)
-    /// and `a_railed_screen_does_not_offer_its_sections_twice` failed on "Mob roster not loaded"
-    /// appearing in only one. Both passed on the owner's machine only because his real 163 MB log
-    /// kept every paint on `Reading`.
-    ///
-    /// THE FOLDER IS NAMED AND EMPTY, so the machine's own EverQuest install is not an input: the
-    /// same state on a CI runner, a contributor's laptop and the owner's desktop. Created and never
-    /// removed during the run, because tests in this binary share it on parallel threads.
-    fn settled_ingest() -> (Settings, Ingest) {
-        let logs = std::env::temp_dir().join(format!(
-            "grimoire-main-tests-empty-logs-{}",
-            std::process::id()
-        ));
-        std::fs::create_dir_all(&logs).expect("an empty logs folder");
-        let settings = Settings {
-            log_dir: Some(logs.clone()),
-            ..Settings::default()
-        };
-        let mut ingest = Ingest::new(&settings);
-        for _ in 0..1_000 {
-            let _ = ingest.tail();
-            if !ingest.scanning() {
-                return (settings, ingest);
-            }
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-        panic!("the bootstrap never landed over {}", logs.display());
-    }
-
-    /// THREE DESTINATIONS SHARE THE PARSER SCREEN AND EACH FIXES IT TO ITS OWN VIEW.
-    ///
-    /// THIS TEST EXISTS BECAUSE ITS ABSENCE WAS MEASURED. Deleting `on_view`'s Log Parser arm left
-    /// the whole suite green: the screen defaults to Kills, so Log Parser would have opened on Hunt
-    /// Journal's page under the crumb `chronicle/log-parser`, and every table, square and rail
-    /// assertion would have gone on passing. That is the same defect the Log Parser row had before
-    /// any of this began, when it inherited whichever view the last row had left behind.
-    ///
-    /// EACH IS SEEDED ON A DIFFERENT VIEW FIRST, so an arm that does nothing at all cannot pass by
-    /// landing on the default, and the state is read back off the screen rather than off the match.
-    #[test]
-    fn each_parser_destination_fixes_the_screen_to_its_own_view() {
-        use screens::parser::View;
-        /* (destination, the view it must show, the index that view has in the screen) */
-        let want = [
-            (ScreenId::Parser, View::Fights, 2usize),
-            (ScreenId::KillTracker, View::Kills, 0),
-            (ScreenId::Loot, View::Loot, 1),
-        ];
-        for (id, _, on) in want {
-            for seed in [View::Kills, View::Loot, View::Fights] {
-                let mut s = Screens::default();
-                s.parser.show(seed);
-                on_view(id, 0, 0, &mut s);
-                assert_eq!(
-                    s.parser.showing(),
-                    on,
-                    "{id:?} left the parser on view {} after arriving from {seed:?}",
-                    s.parser.showing()
-                );
-            }
-        }
-
-        /* AND THE THREE DO NOT ALL WANT THE SAME VIEW, which is what makes the loop above mean
-         * anything: a screen stuck on one view would satisfy every assertion in it if they did. */
-        let mut ons: Vec<usize> = want.iter().map(|(_, _, on)| *on).collect();
-        ons.sort();
-        ons.dedup();
-        assert_eq!(ons.len(), want.len());
-    }
-    /// EVERY SECTION AND EVERY TAB OF AN UNWRITTEN DESTINATION CHANGES THE PAGE.
-    ///
-    /// Guild is seven sections and twenty-four tabs with no code behind any of it. That is
-    /// deliberate: the rail is a map, and a design drawn with its unwritten half missing cannot be
-    /// read. But it is only honest while the controls WORK. Thirty-one rows and tabs that each
-    /// select, highlight, and leave the page exactly as it was are thirty-one controls a reader
-    /// cannot tell from broken ones, and that is worse than not drawing them.
-    ///
-    /// SO THE PAGE IS PAINTED AND READ. `main::unbuilt` puts the path in its heading, which is what
-    /// makes each of them do something; this drives every combination through a real headless frame
-    /// and requires the text to differ. Comparing painted output rather than asserting the heading
-    /// string keeps it true if that page is rewritten.
-    #[test]
-    fn every_section_and_tab_of_an_unwritten_destination_changes_the_page() {
-        let ctx = egui::Context::default();
-        fonts::install(&ctx);
-        theme::install(&ctx);
-
-        let paint = |id: ScreenId, section: usize, tab: usize| -> String {
-            let live = Status {
-                twitch: grimoire_desktop::watcher::Channel::unchecked(
-                    grimoire_desktop::settings::TWITCH_HANDLE,
-                ),
-                youtube: grimoire_desktop::watcher::Channel::unchecked(
-                    grimoire_desktop::settings::YOUTUBE_HANDLE,
-                ),
-            };
-            let mut settings = Settings::default();
-            let mut ingest = Ingest::new(&settings);
-            let mut screens = Screens::default();
-            let mut cx = Cx {
-                data: None,
-                railed: true,
-                data_err: None,
-                live: &live,
-                settings: &mut settings,
-                ingest: &mut ingest,
-                chat: grimoire_desktop::chat::ChatHandle::idle(),
-                chat_wanted: false,
-                auth: Default::default(),
-                auth_begin: false,
-                auth_cancel: false,
-                yt: Default::default(),
-                yt_wanted: false,
-                player: player::PlayerView::default(),
-                stage: None,
-                demand: None,
-                ask: Ask::None,
-            };
-            let input = egui::RawInput {
-                screen_rect: Some(egui::Rect::from_min_size(
-                    egui::Pos2::ZERO,
-                    egui::vec2(900.0, 700.0),
-                )),
-                ..Default::default()
-            };
-            let mut out = ctx.run_ui(input, |ui| {
-                draw_screen(ui, id, section, tab, &mut screens, &mut cx);
-            });
-            let shapes = std::mem::take(&mut out.shapes);
-            out.drop_without_applying_deltas();
-            let mut said = Vec::new();
-            let mut stack: Vec<egui::Shape> = shapes.into_iter().map(|c| c.shape).collect();
-            while let Some(sh) = stack.pop() {
-                match sh {
-                    egui::Shape::Vec(v) => stack.extend(v),
-                    egui::Shape::Text(t) => said.push(t.galley.text().to_owned()),
-                    _ => {}
-                }
-            }
-            said.sort();
-            said.join("\u{1f}")
-        };
-
-        let mut walked = 0usize;
-        for (id, rows) in nav::SECTIONS {
-            if nav::unbuilt_why(*id).is_none() {
-                continue;
-            }
-            let mut pages: Vec<String> = Vec::new();
-            for (i, (name, _, tabs)) in rows.iter().enumerate() {
-                /* NO TAB NAMED, so the only thing that can tell these pages apart is the
-                 * SECTION. Painting at tab 0 was the first cut and it passed with the section
-                 * dropped from the heading entirely: the guild's seven sections happen to have
-                 * seven different first tabs, so the tab name alone was carrying the
-                 * distinctness and the assertion proved nothing about the section. An index past
-                 * every list names no tab and isolates the half under test. */
-                pages.push(paint(*id, i, usize::MAX));
-                /* AND EVERY TAB WITHIN THE SECTION, which is the half a section-only sweep would
-                 * miss: a page that named the section and ignored the tab would pass it. */
-                let mut within: Vec<String> = Vec::new();
-                for t in 0..tabs.len() {
-                    within.push(paint(*id, i, t));
-                }
-                let mut uniq = within.clone();
-                uniq.sort();
-                uniq.dedup();
-                assert_eq!(
-                    uniq.len(),
-                    within.len(),
-                    "{id:?} / {name}: {} tabs and {} distinct pages; a tab here selects and \
-                     changes nothing",
-                    within.len(),
-                    uniq.len()
-                );
-                walked += within.len().max(1);
-            }
-            let mut uniq = pages.clone();
-            uniq.sort();
-            uniq.dedup();
-            assert_eq!(
-                uniq.len(),
-                pages.len(),
-                "{id:?}: {} sections and {} distinct pages; a row here selects and changes nothing",
-                pages.len(),
-                uniq.len()
-            );
-        }
-        assert!(
-            walked >= 24,
-            "only {walked} section/tab combinations were walked; the unwritten destinations have \
-             lost their sections and this test is asserting almost nothing"
-        );
-    }
 
     /// A REMEMBERED TAB NEVER INDEXES PAST THE LIST IT LANDS IN.
     ///
@@ -4412,40 +2799,13 @@ mod tests {
     /// every screen takes and the one where a bare `len() - 1` would panic.
     #[test]
     fn a_remembered_tab_never_indexes_past_its_list() {
-        assert_eq!(tab_in_range(0, &[]), 0);
+        assert_eq!(tab_in_range(5, &[]), 0, "no tabs: the index is 0");
         assert_eq!(
-            tab_in_range(9, &[]),
-            0,
-            "an empty list has no index to clamp to"
+            tab_in_range(5, &["a", "b"]),
+            1,
+            "past the end: the last tab"
         );
-
-        let mut lists = 0usize;
-        for (id, rows) in nav::SECTIONS {
-            for (i, (name, _, tabs)) in rows.iter().enumerate() {
-                if tabs.is_empty() {
-                    continue;
-                }
-                lists += 1;
-                for from in 0..12usize {
-                    let on = tab_in_range(from, tabs);
-                    assert!(
-                        tabs.get(on).is_some(),
-                        "{id:?} / {name}: {from} clamped to {on}, which is not a tab it has"
-                    );
-                }
-                assert_eq!(
-                    tab_in_range(0, tabs),
-                    0,
-                    "{id:?} / {name}: an index already in range must be left alone"
-                );
-                assert_eq!(tab_in_range(tabs.len() - 1, tabs), tabs.len() - 1);
-                let _ = i;
-            }
-        }
-        assert!(
-            lists > 0,
-            "no section in the table carries tabs, so this walked nothing"
-        );
+        assert_eq!(tab_in_range(0, &["a", "b"]), 0);
     }
     /// THE HOTKEY HEARTBEAT RUNS WHEN NOTHING IS BEING DRAWN.
     ///
@@ -4624,211 +2984,8 @@ mod tests {
         let app = App::new(None, &egui::Context::default());
         assert_eq!(
             app.body,
-            Body::Screen(ScreenId::Parser),
-            "this test is about the startup body; if that moved, move the expectation with it"
-        );
-        let on = app.screens.parser.showing();
-        assert_eq!(
-            on, 2,
-            "the app opened Log Parser on view {on}, and Log Parser is the fights destination. \
-             View 0 is the kill tracker, which is Hunt Journal's page, drawn under a rail that is \
-             lighting Fights"
-        );
-    }
-
-    /// DEFECT: THIRTEEN TAB BUTTONS THAT LIT WHEN PRESSED AND MOVED NOTHING.
-    ///
-    /// # WHAT THE OWNER SAW
-    ///
-    /// A screenshot of the Dashboards page with `DPS Healer Tank Pet Solo Group Raid Leader
-    /// Custom` on it TWICE, six pixels apart. The top row is the shell's, drawn from
-    /// `nav::SECTIONS`; the bottom was the page's own. Only the bottom one worked, because
-    /// `on_tab` was `let _ = tab;` under a comment reading "TIER 4 REACHES NO SCREEN IN THIS
-    /// BUILD". A reader cannot tell two identical rows apart except by pressing both.
-    ///
-    /// AND THE OTHER THREE SECTIONS WERE WORSE, because they had no working row underneath to
-    /// rescue them. Live offered `Encounter Status`, naming the health bar this app refuses to
-    /// draw for want of a denominator. Logs offered `Raw Log` and `Search & Filters` directly
-    /// above the section explaining that the ingest publishes no lines, so there is nothing to
-    /// show and nothing to filter. Reports offered `Group` and `Raid`, which `reports` has a
-    /// guard specifically to keep off that page.
-    ///
-    /// # WHAT IS ASSERTED
-    ///
-    /// Every tab the rail draws over a parser page is a view that page HAS, named the way the
-    /// page names it. Two sections have rows because they have views; the other two have none.
-    /// A list of literals compared against a list of literals would pass while both were wrong,
-    /// so the one row that has tabs is taken from the page's own vocabulary: `reports::TABS`.
-    ///
-    /// # DASHBOARDS MOVED FROM THE FIRST GROUP TO THE SECOND
-    ///
-    /// It carried eight role tabs and they are gone: a role is a claim about the person reading
-    /// and nothing in a log line makes one, so eight tabs reordered one set of panels and two of
-    /// them refused outright. The page is a grid of tiles the reader arranges. The controls that
-    /// replaced the tabs are a lock and a widget picker, which act on the page's LAYOUT rather
-    /// than switching between views of it, so they are not tabs and are not in this table.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: putting a tab back over Live or Logs, reordering either
-    /// live row, or renaming a tab on one side only.
-    #[test]
-    fn the_parser_tab_rows_are_the_pages_own() {
-        let tabs_of = |name: &str| -> &'static [&'static str] {
-            nav::sections_of(ScreenId::Parser)
-                .iter()
-                .find(|(n, _, _)| *n == name)
-                .map(|(_, _, t)| *t)
-                .unwrap_or_else(|| panic!("LOG PARSER has no {name} section"))
-        };
-
-        /* THE ONE THAT HAS VIEWS, taken from the page rather than retyped. */
-        assert_eq!(
-            tabs_of("Reports"),
-            screens::reports::TABS,
-            "the rail's Reports tabs are not the page's own"
-        );
-
-        /* AND THE THREE THAT HAVE NONE DRAW NONE. */
-        for name in ["Dashboards", "Live", "Logs"] {
-            assert!(
-                tabs_of(name).is_empty(),
-                "{name} has one view and a tab row over it: {:?}",
-                tabs_of(name)
-            );
-        }
-    }
-
-    /// AND PRESSING ONE ACTUALLY MOVES THE PAGE, THROUGH THE DOOR PRODUCTION USES.
-    ///
-    /// # THE FIRST VERSION OF THIS TEST PASSED ON A DEAD PATH
-    ///
-    /// It called `on_tab(ScreenId::ParserReports, want, &mut s)` directly. Nothing in the running
-    /// app ever calls it with that id: `on_view` is only ever handed the BODY, `NAV` has one Log
-    /// Parser row and it is `ScreenId::Parser`, and a section's own screen is reached by
-    /// `draw_screen`'s recursion without the body changing. So the arm this exercised was
-    /// unreachable, the eleven context-bar tabs went on lighting and moving nothing, and this test
-    /// was green through all of it.
-    ///
-    /// A TEST THAT SUPPLIES AN INPUT PRODUCTION CANNOT PRODUCE proves the function works and
-    /// nothing whatever about whether it runs. That is this tree's signature defect wearing a
-    /// green tick, and it was written into the fix for the same defect.
-    ///
-    /// SO IT ENTERS AT `on_view`, WITH A BODY AND A SECTION INDEX, which is the shape `App::update`
-    /// passes and the only shape that exists. The section is looked up by name, for the reason the
-    /// last literal index in this file went: the parser's section order has already moved once.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: `on_tab(id, tab, s)` in `on_view`, which is the defect this
-    /// replaces, or emptying `on_tab`.
-    #[test]
-    fn pressing_a_parser_tab_moves_the_page_it_names() {
-        let at = |name: &str| {
-            nav::sections_of(ScreenId::Parser)
-                .iter()
-                .position(|(n, _, _)| *n == name)
-                .unwrap_or_else(|| panic!("LOG PARSER has no {name} section"))
-        };
-
-        for (name, n) in [("Reports", screens::reports::TABS.len())] {
-            let section = at(name);
-            let mut s = Screens::default();
-            let read = |s: &Screens| s.reports.showing();
-            /* EVERY TAB, AND EACH LANDS ON ITS OWN INDEX. An arm that always set zero would pass
-             * a test that only pressed the first. */
-            for want in 0..n {
-                on_view(ScreenId::Parser, section, want, &mut s);
-                assert_eq!(
-                    read(&s),
-                    want,
-                    "pressing {name} tab {want} did not reach the page"
-                );
-            }
-        }
-    }
-
-    /// AND THE ROUTER AND THE PAINTER AGREE ABOUT WHICH SCREEN A SECTION OPENS.
-    ///
-    /// `draw_screen` hops to a section's own screen and `on_view` routes the tab to one. While
-    /// those were two separate readings of `nav::SECTIONS` they disagreed, silently, for every
-    /// parser section. They are one function now and this is what says so.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: `target_of` returning `id` unconditionally.
-    #[test]
-    fn the_screen_a_section_paints_is_the_screen_its_tabs_are_routed_to() {
-        let mut hops = 0;
-        for (body, sections) in nav::SECTIONS {
-            for (i, (name, inner, _)) in sections.iter().enumerate() {
-                let got = target_of(*body, i);
-                match inner {
-                    Some(screen) => {
-                        hops += 1;
-                        assert_eq!(
-                            got, *screen,
-                            "{body:?} / {name} paints {screen:?} and routes its tabs to {got:?}"
-                        );
-                    }
-                    /* A section with no screen of its own is drawn by the body, so that is where
-                     * its tabs go too. */
-                    None => assert_eq!(got, *body, "{body:?} / {name}"),
-                }
-            }
-        }
-        assert!(
-            hops > 4,
-            "only {hops} sections open a screen of their own, so this is passing by not looking"
-        );
-    }
-
-    /// DEFECT: A HEADER CONTROL DRAWN FOR A SCREEN THAT IS NOT THE ONE SHOWING.
-    ///
-    /// # WHAT THIS REPLACES, AND WHY THE OLD ONE COULD NOT SURVIVE
-    ///
-    /// This slot held `a_tab_that_has_a_reason_can_be_reached_from_the_row_that_draws_it`, which
-    /// pinned the wire between the Dashboards role tabs and the paragraphs `role_hover` carried
-    /// for them. The roles are gone, so the wire it guarded is gone with them.
-    ///
-    /// THE DEFECT IT GUARDED AGAINST IS NOT. The two controls that replaced those tabs, the lock
-    /// and the Widgets button, are drawn by the SHELL and act on ONE screen, and the shell knows
-    /// which screen is showing through `target_of` and not through the body: LOG PARSER /
-    /// Dashboards paints `ParserDashboards` while `Body::Screen` stays `Parser`. Asking the body
-    /// would have put a dashboard's lock on Live, Fights, Reports and Logs as well, on a page
-    /// with no layout to hold.
-    ///
-    /// # WHAT IS ASSERTED
-    ///
-    /// The same predicate the bar builds, over every section of every destination: it is true
-    /// for exactly one of them, and that one is the Dashboards section of the log parser.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: testing the body instead of `target_of`, comparing against
-    /// `ScreenId::Parser`, or dropping the guard so every screen draws the lock.
-    #[test]
-    fn the_layout_controls_are_drawn_for_one_screen_and_it_is_the_dashboard() {
-        let mut found: Vec<(ScreenId, &str)> = Vec::new();
-        for (body, sections) in nav::SECTIONS {
-            for (i, (name, _, _)) in sections.iter().enumerate() {
-                if target_of(*body, i) == ScreenId::ParserDashboards {
-                    found.push((*body, name));
-                }
-            }
-        }
-        assert_eq!(
-            found,
-            vec![(ScreenId::Parser, "Dashboards")],
-            "the lock and the Widgets button are drawn over a screen that does not own a \
-             layout, or over none at all"
-        );
-
-        /* AND THE SECTION THEY BELONG TO CARRIES NO TAB ROW, so the row they sit on is the one
-         * the owner laid out: a crumb and a picture-in-picture on the left, these two on the
-         * right, and nothing in between. */
-        assert!(
-            nav::tabs_of(
-                ScreenId::Parser,
-                nav::sections_of(ScreenId::Parser)
-                    .iter()
-                    .position(|(n, _, _)| *n == "Dashboards")
-                    .expect("the log parser has a Dashboards section")
-            )
-            .is_empty(),
-            "the Dashboards section grew a tab row back, which is the eight roles returning"
+            Body::Screen(ScreenId::Watch),
+            "the app opens on Watch, the stream tool that works with nothing set up"
         );
     }
 
@@ -4843,33 +3000,9 @@ mod tests {
     /// part, or an empty crumb for any body this shell can be in.
     #[test]
     fn the_breadcrumb_is_the_rails_own_words() {
-        let mut section = [0usize; ScreenId::ALL.len()];
+        let section = [0usize; ScreenId::ALL.len()];
 
         /* THE ONE THE OWNER ASKED FOR, BY NAME. */
-        let dash = nav::sections_of(ScreenId::Parser)
-            .iter()
-            .position(|(n, _, _)| *n == "Dashboards")
-            .expect("the log parser has a Dashboards section");
-        section[ScreenId::Parser.ordinal()] = dash;
-        assert_eq!(
-            crumb_of(Body::Screen(ScreenId::Parser), &section),
-            vec!["Log Parser", "Dashboards"],
-            "the crumb the owner asked for is not what the header draws"
-        );
-
-        /* AND IT FOLLOWS THE SECTION rather than naming one place forever. */
-        let logs = nav::sections_of(ScreenId::Parser)
-            .iter()
-            .position(|(n, _, _)| *n == "Logs")
-            .expect("the log parser has a Logs section");
-        section[ScreenId::Parser.ordinal()] = logs;
-        assert_eq!(
-            crumb_of(Body::Screen(ScreenId::Parser), &section),
-            vec!["Log Parser", "Logs"]
-        );
-
-        /* EVERY DESTINATION THE RAIL CAN REACH SAYS SOMETHING, and every word of it is the
-         * rail's own. A crumb that came back empty is a header that silently says nothing. */
         let mut n = 0;
         for (_, rows) in nav::NAV {
             for (name, id) in *rows {
@@ -4889,71 +3022,12 @@ mod tests {
             }
         }
         assert!(
-            n > 20,
+            n == ScreenId::ALL.len(),
             "only {n} rows were looked at, so this is passing by not looking"
         );
 
         /* AND SETTINGS, WHICH IS NOT IN `NAV` AT ALL. */
         assert_eq!(crumb_of(Body::Settings, &section), vec!["Settings"]);
-    }
-
-    /// DEFECT: THE LOG ONLY BEING READ WHILE THE WINDOW WAS BEING DRAWN.
-    ///
-    /// # "its not updating in real fucking time"
-    ///
-    /// `Ingest::tail` was called once per frame from `ui`, and eframe runs `ui` only while there
-    /// is something to draw. `logic` is the callback it runs when there is NOT. So with the game
-    /// in front and this window behind it, the file was never read: the live fold never advanced,
-    /// and the Live header, every overlay and every counter held whatever they had when the window
-    /// last painted, then jumped in one step when it came forward.
-    ///
-    /// AN ALWAYS-ON-TOP OVERLAY IS READ WHILE THE GAME HAS FOCUS BY DEFINITION, so this was the
-    /// app failing in exactly the case it exists for.
-    ///
-    /// # WHY A TEST AND NOT JUST THE MOVE
-    ///
-    /// This is the SECOND time this exact shape has bitten this file: `Hotkeys::poll` lived in
-    /// `ui` for the same reason and had to move to `heartbeat` for the same reason, and the doc on
-    /// `logic` records it. A rule that has been broken twice needs something that says so out loud
-    /// rather than a third comment.
-    ///
-    /// READ OUT OF THE SOURCE, because what is being asserted is WHERE a call lives, and no
-    /// runtime harness can tell `ui` from `logic` without an event loop.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: moving the poll back into `ui`, or dropping it.
-    #[test]
-    fn the_log_is_polled_from_the_callback_that_runs_when_nothing_is_drawn() {
-        let src = include_str!("main.rs");
-
-        let body_of = |name: &str| -> &str {
-            let at = src
-                .find(name)
-                .unwrap_or_else(|| panic!("{name} is gone from this file"));
-            /* To the next item at the same indentation, which is the next `    fn ` or the impl's
-             * closing brace. Crude and enough: these two are short. */
-            let rest = &src[at..];
-            let end = rest[1..]
-                .find("\n    fn ")
-                .map(|i| i + 1)
-                .unwrap_or(rest.len());
-            &rest[..end]
-        };
-
-        let heartbeat = body_of("fn heartbeat(&mut self, ctx: &egui::Context) {");
-        assert!(
-            heartbeat.contains("self.ingest.tail()"),
-            "the log poll is not in `heartbeat`, so it does not run while the window is behind \
-             the game and every live number freezes until it comes forward"
-        );
-
-        /* AND `logic` REACHES IT. The poll is only as good as the callback that carries it. */
-        let logic =
-            body_of("fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {");
-        assert!(
-            logic.contains("self.heartbeat(ctx)"),
-            "the no-draw callback stopped calling `heartbeat`, so nothing polls the log when the \
-             window is not painting"
-        );
     }
 
     /// DEFECT THIS PREVENTS: THE UPDATER BEING PUMPED ONLY WHILE A FRAME IS BEING DRAWN.
@@ -5008,19 +3082,14 @@ mod tests {
         assert!(
             heartbeat.contains("u.pump("),
             "the updater is not pumped from `heartbeat`, so the worker only learns what the \
-             encounter is doing while a frame is being drawn, and a download can start mid-pull \
+             reader is doing while a frame is being drawn, and a download can start mid-stream \
              on a window that is behind the game"
         );
         assert!(
-            heartbeat.contains("self.ingest.pulse()"),
-            "`heartbeat` hands the updater something other than the real pulse; the fight gate is \
-             `Ingest::pulse` and nothing else"
-        );
-        assert!(
-            !heartbeat.contains("fight_is_live"),
-            "the gate is written as `fight_is_live`, which is `pulse().fighting()` and is already \
-             false during `Pulse::Holding`, the six seconds after a kill with the next mob \
-             incoming"
+            heartbeat.contains("let activity = self.activity();")
+                && heartbeat.contains("u.pump(activity,"),
+            "`heartbeat` hands the updater something other than the real activity; the quiet-moment \
+             gate is `App::activity` and nothing else"
         );
 
         let ui_body = body_of("fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {");

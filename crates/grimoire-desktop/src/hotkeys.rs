@@ -76,27 +76,9 @@ pub const DEFAULTS: &[RowDef] = &[
         alias: false,
     },
     RowDef {
-        id: "parser",
-        chord: "Ctrl+Alt+P",
-        tool: Tool::Parser,
-        alias: false,
-    },
-    RowDef {
-        id: "sky",
-        chord: "Ctrl+Alt+S then K",
-        tool: Tool::Sky,
-        alias: false,
-    },
-    RowDef {
         id: "chat",
         chord: "Ctrl+Alt+C",
         tool: Tool::Chat,
-        alias: false,
-    },
-    RowDef {
-        id: "overlays",
-        chord: "Ctrl+Alt+D",
-        tool: Tool::Overlays,
         alias: false,
     },
     RowDef {
@@ -117,15 +99,7 @@ pub const DEFAULTS: &[RowDef] = &[
         tool: Tool::Lfg(LfgMode::Motes),
         alias: false,
     },
-    /* Direct aliases. Ctrl+Alt+K is not in the brief's alias list, which named only R and M, but
-     * one press is better than two for every chord, so Sky gets one too. Resolved against D4's
-     * intent: every tool summonable from the game with the least effort. */
-    RowDef {
-        id: "sky-direct",
-        chord: "Ctrl+Alt+K",
-        tool: Tool::Sky,
-        alias: true,
-    },
+    /* Direct aliases: one press is better than two for every chord. */
     RowDef {
         id: "raid-direct",
         chord: "Ctrl+Alt+R",
@@ -336,10 +310,7 @@ fn hint_name(t: Tool) -> &'static str {
     match t {
         Tool::Companion => "Main window",
         Tool::Watch => "Watch",
-        Tool::Parser => "Parser",
-        Tool::Sky => "Sky",
         Tool::Chat => "Chat",
-        Tool::Overlays => "Overlays",
         Tool::Lfg(LfgMode::Generic) => "LFG",
         Tool::Lfg(LfgMode::Raid) => "Raid",
         Tool::Lfg(LfgMode::Motes) => "Motes",
@@ -1083,23 +1054,15 @@ mod tests {
         let d4: Vec<(&str, Tool)> = vec![
             ("Ctrl+Alt+G", Tool::Companion),
             ("Ctrl+Alt+W", Tool::Watch),
-            ("Ctrl+Alt+P", Tool::Parser),
-            ("Ctrl+Alt+S then K", Tool::Sky),
             /* ADDED TO D4 ON 2026-09-04, in the doc first, as the note above this test requires.
              * Chat over the game is what the owner says the app is FOR, so it is a D4 row rather
              * than an alias appended to the end. */
             ("Ctrl+Alt+C", Tool::Chat),
-            /* ADDED TO D4 ON 2026-09-05, in the doc first, as the note above this test requires.
-             * See D11: the combat overlays are windows in this same registry and DPS is the
-             * first. It sits beside Chat rather than in the aliases because an overlay read
-             * mid-pull is summoned with one press or it is not summoned at all. */
-            ("Ctrl+Alt+D", Tool::Overlays),
             ("Ctrl+Alt+L", Tool::Lfg(LfgMode::Generic)),
             ("Ctrl+Alt+L then R", Tool::Lfg(LfgMode::Raid)),
             ("Ctrl+Alt+L then M", Tool::Lfg(LfgMode::Motes)),
         ];
         let aliases: Vec<(&str, Tool)> = vec![
-            ("Ctrl+Alt+K", Tool::Sky),
             ("Ctrl+Alt+R", Tool::Lfg(LfgMode::Raid)),
             ("Ctrl+Alt+M", Tool::Lfg(LfgMode::Motes)),
         ];
@@ -1188,23 +1151,23 @@ mod tests {
     fn overrides_apply_by_id_and_a_bad_one_keeps_the_default_with_a_reason() {
         let mut o = BTreeMap::new();
         o.insert("watch".to_owned(), "Ctrl+Shift+W".to_owned());
-        o.insert("sky".to_owned(), "not a chord".to_owned());
+        o.insert("lfg-raid".to_owned(), "not a chord".to_owned());
         let t = table(&o);
         let watch = t.iter().find(|r| r.id == "watch").unwrap();
         assert!(watch.overridden);
         assert_eq!(watch.text, "Ctrl+Shift+W");
         assert_eq!(watch.spec.mods, Modifiers::CONTROL | Modifiers::SHIFT);
-        let sky = t.iter().find(|r| r.id == "sky").unwrap();
-        assert!(!sky.overridden, "a broken override is not in force");
-        assert_eq!(sky.text, "Ctrl+Alt+S then K");
-        assert!(sky
+        let raid = t.iter().find(|r| r.id == "lfg-raid").unwrap();
+        assert!(!raid.overridden, "a broken override is not in force");
+        assert_eq!(raid.text, "Ctrl+Alt+L then R");
+        assert!(raid
             .override_problem
             .as_deref()
             .unwrap()
             .contains("does not parse"));
         let hk = Hotkeys::unregistered(&o);
         let b = hk.bindings();
-        let row = b.iter().find(|x| x.id == "sky").unwrap();
+        let row = b.iter().find(|x| x.id == "lfg-raid").unwrap();
         assert!(!row.registered);
         assert!(
             row.conflict.as_deref().unwrap().contains("does not parse"),
@@ -1214,13 +1177,12 @@ mod tests {
     }
 
     #[test]
-    fn globals_are_ten_distinct_keys_with_the_right_actions() {
+    fn globals_are_six_distinct_keys_with_the_right_actions() {
         let (g, clashes) = globals(&defaults());
-        /* TEN SINCE Ctrl+Alt+D JOINED D4 (2026-09-05, D11: the DPS overlay). The count is asserted
-         * rather than derived so that a row silently colliding with an existing key, which
-         * `globals` would fold into one entry, fails here instead of quietly costing the app a
-         * chord. */
-        assert_eq!(g.len(), 10);
+        /* G, W, C, L (a leader), R and M. The count is asserted rather than derived so that a row
+         * silently colliding with an existing key, which `globals` would fold into one entry,
+         * fails here instead of quietly costing the app a chord. */
+        assert_eq!(g.len(), 6);
         assert!(clashes.is_empty());
         let action = |code: Code| {
             g.iter()
@@ -1230,25 +1192,17 @@ mod tests {
         };
         assert_eq!(action(Code::KeyG), Action::Open(Tool::Companion));
         assert_eq!(action(Code::KeyW), Action::Open(Tool::Watch));
-        assert_eq!(action(Code::KeyP), Action::Open(Tool::Parser));
-        assert_eq!(action(Code::KeyS), Action::Arm(ctrl_alt(Code::KeyS)));
         assert_eq!(
             action(Code::KeyL),
             Action::Arm(ctrl_alt(Code::KeyL)),
             "L is a leader even though it is also bound bare"
         );
         assert_eq!(action(Code::KeyC), Action::Open(Tool::Chat));
-        assert_eq!(action(Code::KeyD), Action::Open(Tool::Overlays));
-        assert_eq!(action(Code::KeyK), Action::Open(Tool::Sky));
         assert_eq!(action(Code::KeyR), Action::Open(Tool::Lfg(LfgMode::Raid)));
         assert_eq!(action(Code::KeyM), Action::Open(Tool::Lfg(LfgMode::Motes)));
         assert_eq!(
             seconds_of(&defaults(), ctrl_alt(Code::KeyL)),
             vec![Code::KeyR, Code::KeyM]
-        );
-        assert_eq!(
-            seconds_of(&defaults(), ctrl_alt(Code::KeyS)),
-            vec![Code::KeyK]
         );
         assert!(seconds_of(&defaults(), ctrl_alt(Code::KeyW)).is_empty());
     }
@@ -1256,18 +1210,17 @@ mod tests {
     #[test]
     fn two_bare_rows_on_one_key_report_the_second() {
         let mut o = BTreeMap::new();
-        o.insert("parser".to_owned(), "Ctrl+Alt+W".to_owned());
+        o.insert("chat".to_owned(), "Ctrl+Alt+W".to_owned());
         let hk = Hotkeys::unregistered(&o);
         let b = hk.bindings();
-        let parser = b.iter().find(|x| x.id == "parser").unwrap();
+        let chat = b.iter().find(|x| x.id == "chat").unwrap();
         assert!(
-            parser
-                .conflict
+            chat.conflict
                 .as_deref()
                 .unwrap()
                 .contains("already bound to Watch"),
             "{:?}",
-            parser.conflict
+            chat.conflict
         );
         let watch = b.iter().find(|x| x.id == "watch").unwrap();
         assert!(
@@ -1278,18 +1231,6 @@ mod tests {
     }
 
     /* ---- the chord machine ---- */
-
-    #[test]
-    fn s_then_k_opens_sky() {
-        let t = defaults();
-        let b = t0();
-        let mut c = Chord::new();
-        c.arm(ctrl_alt(Code::KeyS), b);
-        assert_eq!(c.hint(&t).as_deref(), Some("S: K = Sky"));
-        assert_eq!(c.key(Code::KeyK, at(b, 400), &t), Some(Tool::Sky));
-        assert_eq!(c.armed(), None, "completing disarms");
-        assert_eq!(c.hint(&t), None);
-    }
 
     #[test]
     fn s_lapsing_opens_nothing() {
@@ -1393,7 +1334,11 @@ mod tests {
 
     #[test]
     fn cancel_and_rearm() {
-        let t = defaults();
+        /* Two leaders are needed to prove one replaces the other, and the shipped table has one (L).
+         * Chat is rebound onto a chord here, which is a real thing a reader can do on Settings. */
+        let mut o = BTreeMap::new();
+        o.insert("chat".to_owned(), "Ctrl+Alt+S then K".to_owned());
+        let t = table(&o);
         let b = t0();
         let mut c = Chord::new();
         c.arm(ctrl_alt(Code::KeyL), b);
@@ -1414,7 +1359,7 @@ mod tests {
         /* Arming a different leader replaces the pending one without firing it. */
         c.arm(ctrl_alt(Code::KeyL), b);
         c.arm(ctrl_alt(Code::KeyS), at(b, 500));
-        assert_eq!(c.hint(&t).as_deref(), Some("S: K = Sky"));
+        assert_eq!(c.hint(&t).as_deref(), Some("S: K = Chat"));
         assert_eq!(
             c.tick(at(b, 3000), &t),
             None,
@@ -1436,7 +1381,7 @@ mod tests {
     #[test]
     fn a_rebound_chord_completes_on_its_own_keys_and_the_hint_says_so() {
         let mut o = BTreeMap::new();
-        o.insert("sky".to_owned(), "Ctrl+Shift+X then Y".to_owned());
+        o.insert("chat".to_owned(), "Ctrl+Shift+X then Y".to_owned());
         let t = table(&o);
         let leader = HotKey::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyX);
         let (g, _) = globals(&t);
@@ -1444,34 +1389,34 @@ mod tests {
             .iter()
             .any(|(h, a)| *h == leader && *a == Action::Arm(leader)));
         assert!(
-            !g.iter().any(|(h, _)| *h == ctrl_alt(Code::KeyS)),
-            "the old leader is gone"
+            !g.iter().any(|(h, _)| *h == ctrl_alt(Code::KeyC)),
+            "the old key is gone"
         );
         let b = t0();
         let mut c = Chord::new();
         c.arm(leader, b);
-        assert_eq!(c.hint(&t).as_deref(), Some("X: Y = Sky"));
+        assert_eq!(c.hint(&t).as_deref(), Some("X: Y = Chat"));
         assert_eq!(
             c.key(Code::KeyK, at(b, 10), &t),
             None,
             "K no longer completes it"
         );
         c.arm(leader, at(b, 100));
-        assert_eq!(c.key(Code::KeyY, at(b, 110), &t), Some(Tool::Sky));
+        assert_eq!(c.key(Code::KeyY, at(b, 110), &t), Some(Tool::Chat));
     }
 
     #[test]
     fn dedupe_keeps_first_occurrence_and_order() {
         let v = vec![
             Tool::Lfg(LfgMode::Raid),
-            Tool::Sky,
+            Tool::Chat,
             Tool::Lfg(LfgMode::Raid),
             Tool::Watch,
-            Tool::Sky,
+            Tool::Chat,
         ];
         assert_eq!(
             dedupe(v),
-            vec![Tool::Lfg(LfgMode::Raid), Tool::Sky, Tool::Watch]
+            vec![Tool::Lfg(LfgMode::Raid), Tool::Chat, Tool::Watch]
         );
     }
 
@@ -1500,7 +1445,11 @@ mod tests {
             assert!(!row.overridden);
         }
         assert_eq!(hk.leader_hint(), None);
-        assert_eq!(b.iter().filter(|r| r.alias).count(), 3);
+        assert_eq!(
+            b.iter().filter(|r| r.alias).count(),
+            2,
+            "Ctrl+Alt+R and Ctrl+Alt+M"
+        );
     }
 
     #[test]
@@ -1531,24 +1480,23 @@ mod tests {
             "Ctrl+Alt+L",
             "Ctrl+Alt+L then R",
             "Ctrl+Alt+L then M",
-            "Ctrl+Alt+S then K",
             "Ctrl+Alt+G",
         ] {
             assert!(row(chord).registered, "{chord}");
             assert_eq!(row(chord).conflict, None);
         }
-        /* the probe failed for K: the S chord cannot complete from the game and says so; the
-         * direct alias Ctrl+Alt+K is untouched by that */
-        hk.second_outcome.insert(Code::KeyK, Some("the second key K cannot be taken while the leader is armed: K is already owned by another program (the OS does not say which)".into()));
+        /* the probe failed for R: the L chord cannot complete from the game and says so; the
+         * direct alias Ctrl+Alt+R is untouched by that */
+        hk.second_outcome.insert(Code::KeyR, Some("the second key R cannot be taken while the leader is armed: R is already owned by another program (the OS does not say which)".into()));
         let b = hk.bindings();
         let row = |chord: &str| b.iter().find(|x| x.chord == chord).unwrap().clone();
-        assert!(!row("Ctrl+Alt+S then K").registered);
-        assert!(row("Ctrl+Alt+S then K")
+        assert!(!row("Ctrl+Alt+L then R").registered);
+        assert!(row("Ctrl+Alt+L then R")
             .conflict
             .as_deref()
             .unwrap()
-            .contains("second key K"));
-        assert!(row("Ctrl+Alt+K").registered);
+            .contains("second key R"));
+        assert!(row("Ctrl+Alt+R").registered);
     }
 
     #[test]

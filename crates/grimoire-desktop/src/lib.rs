@@ -31,20 +31,14 @@
 /// beside settings, and the driver the Settings screen's ACCOUNT section asks. The contract it
 /// speaks is `docs/RAGNAROK-ACCOUNTS-SIGN-IN-GOAL.md`.
 pub mod account;
-pub mod castmsg;
+pub mod activity;
 pub mod channel_art;
 pub mod chat;
 pub mod chrome;
-pub mod class;
-pub mod data;
-pub mod fights;
 pub mod fonts;
 pub mod hotkeys;
-pub mod hp;
-pub mod ingest;
 pub mod irc;
 pub mod nav;
-pub mod overlay;
 pub mod persona;
 pub mod pin;
 pub mod player;
@@ -55,7 +49,6 @@ pub mod screens;
 pub mod secret;
 pub mod settings;
 pub mod shell;
-pub mod store;
 pub mod theme;
 pub mod titlebar;
 pub mod twitch_auth;

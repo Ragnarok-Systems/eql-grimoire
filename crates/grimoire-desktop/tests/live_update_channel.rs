@@ -114,7 +114,7 @@ fn a_channel_nobody_publishes_is_a_404_and_not_a_silent_empty_answer() {
 /// # IT DRIVES THE PUMP FROM THIS THREAD, EXACTLY AS `App::heartbeat` DOES
 ///
 /// `pump` is what hands the worker the pulse and the "snapshot has finished loading" flag, and
-/// without it nothing is ever due. `Pulse::Closed` is passed because no log is being read here, so
+/// without it nothing is ever due. `Activity::Idle` is passed because no log is being read here, so
 /// there is no encounter; the unit tests are what prove the gate refuses the other two.
 ///
 /// # IT WRITES UNDER A SCRATCH ROOT AND NOT THE OWNER'S INSTALL
@@ -132,7 +132,7 @@ fn a_channel_nobody_publishes_is_a_404_and_not_a_silent_empty_answer() {
 #[test]
 #[ignore = "dials the real update host; run by hand with --ignored"]
 fn the_wired_updater_checks_the_real_channel_and_reports_what_it_found() {
-    use grimoire_desktop::fights::Pulse;
+    use grimoire_desktop::activity::Activity;
     use grimoire_desktop::updater::install::Layout;
     use grimoire_desktop::updater::run::{self, Phase, UpdaterSettings};
     use std::time::{Duration, Instant};
@@ -160,7 +160,7 @@ fn the_wired_updater_checks_the_real_channel_and_reports_what_it_found() {
      * returns the instant the phase settles, so a working host pays none of it. */
     let end = Instant::now() + Duration::from_secs(40);
     while Instant::now() < end {
-        u.pump(Pulse::Closed, true, &settings);
+        u.pump(Activity::Idle, true, &settings);
         if !matches!(u.view().phase, Phase::NeverChecked | Phase::Checking) {
             break;
         }

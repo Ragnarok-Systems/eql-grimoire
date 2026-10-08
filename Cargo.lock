@@ -1588,23 +1588,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "grimoire-core"
-version = "0.1.2-beta.4"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "grimoire-corpus"
-version = "0.1.2-beta.4"
-dependencies = [
- "grimoire-core",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "grimoire-desktop"
 version = "0.1.2-beta.4"
 dependencies = [
@@ -1615,9 +1598,6 @@ dependencies = [
  "egui",
  "env_logger",
  "global-hotkey",
- "grimoire-core",
- "grimoire-parse",
- "grimoire-wasm",
  "image",
  "log",
  "minisign",
@@ -1635,37 +1615,6 @@ dependencies = [
  "windows",
  "windows-core 0.61.2",
  "wry",
-]
-
-[[package]]
-name = "grimoire-forge"
-version = "0.1.2-beta.4"
-dependencies = [
- "grimoire-core",
- "grimoire-corpus",
- "grimoire-parse",
- "grimoire-wasm",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "grimoire-parse"
-version = "0.1.2-beta.4"
-dependencies = [
- "grimoire-core",
- "serde",
-]
-
-[[package]]
-name = "grimoire-wasm"
-version = "0.1.2-beta.4"
-dependencies = [
- "grimoire-core",
- "grimoire-corpus",
- "grimoire-parse",
- "serde",
- "serde_json",
 ]
 
 [[package]]

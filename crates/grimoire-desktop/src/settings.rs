@@ -56,7 +56,6 @@
 
 use crate::chrome::State;
 use crate::hotkeys::Binding;
-use crate::ingest::Source;
 use crate::screens::Cx;
 use crate::theme::*;
 use crate::windows::{LfgMode, Tool};
@@ -279,10 +278,6 @@ pub struct WindowPrefs {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(default)]
 pub struct Settings {
-    /// Overrides `data::Snapshot::locate()` when set. None means "use what locate finds".
-    pub data_root: Option<PathBuf>,
-    /// The EverQuest Legends Logs folder. None means the ingest has nowhere to look.
-    pub log_dir: Option<PathBuf>,
     /// Whether the main window starts pinned above other windows. D3.
     pub always_on_top: bool,
     /// Which platform the live pill reports, and where an unqualified click on the channel goes.
@@ -308,68 +303,6 @@ pub struct Settings {
     /// stop using. See `windows::Slot::pin_default`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub windows: BTreeMap<String, WindowPrefs>,
-    /// EVERY COMBAT OVERLAY THE OWNER HAS, IN HIS ORDER. D11 stage two.
-    ///
-    /// THE WHOLE LIST AND NOT JUST THE DIFFERENCES, unlike `windows` and `hotkeys` above. Those
-    /// two record deviations from a table that lives in the code, so an absent key can sensibly
-    /// mean "follow the build". An overlay has no such table: it IS the owner's, invented by him,
-    /// and there is nothing in the code for an absent entry to fall back to. `overlay::or_default`
-    /// handles the one case that matters, an empty list on a fresh install.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub overlays: Vec<crate::overlay::Overlay>,
-    /// THE DASHBOARD THE OWNER ARRANGED: which tiles, in his order, at his widths.
-    ///
-    /// THE WHOLE LIST AND NOT JUST THE DIFFERENCES, exactly as `overlays` above it and for the
-    /// same reason: there is no table in the code for an absent entry to fall back to, because
-    /// the list IS the arrangement. `screens::dashboards::layout` handles the one case that
-    /// matters, an empty list on a fresh install, by drawing the shipped dashboard.
-    ///
-    /// A TILE IS SAVED BY ITS STRING ID AND NOT AS AN ENUM, which is the whole reason
-    /// `Placement` exists. A settings file written by a build with a tile this one does not have
-    /// must still load: a serde enum would fail the entire file on an unknown variant, taking the
-    /// reader`s hotkeys and log folder down with a widget. See `screens::dashboards::Tile::id`.
-    ///
-    /// THE GRID POSITION IS THREE MORE FIELDS BEHIND `serde(default)`, so a file from the build
-    /// that packed tiles by span alone loads with them at zero and `dashgrid::resolve` places
-    /// those tiles under everything that has a position. See `screens::dashgrid::Placement`.
-    ///
-    /// AN `Option`, BECAUSE `NEVER ARRANGED` AND `DELIBERATELY EMPTY` ARE DIFFERENT FILES. As a
-    /// bare `Vec` the two were the same empty list, so taking the last card off the dashboard
-    /// put all thirteen back on the next frame. `None` is a fresh install and every settings
-    /// file written before this field existed (a missing key deserialises to `None`, so the
-    /// migration is free); `Some(vec![])` is a reader who emptied it and means it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub dashboard: Option<Vec<crate::screens::dashgrid::Placement>>,
-    /// WHAT A PERSON WROTE ABOUT A FIGHT, keyed on the fight own start stamp.
-    ///
-    /// THE STAMP AND NOT AN INDEX. The history list is rebuilt on every rescan and a fight can
-    /// leave the 40MB tail entirely; an index would slide a note onto a different pull. The stamp
-    /// is the log own text and never moves.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub fight_notes: BTreeMap<String, String>,
-    /// THE KILL TRACKER'S COUNTING FILTERS: witnessed kills, generic kills outside their zone, and
-    /// whether city zones are ignored.
-    ///
-    /// # THEY WERE PER WINDOW AND PER RUN, WHICH IS TWO DEFECTS IN ONE PLACE
-    ///
-    /// The three checkboxes on the Kills view wrote `TrackerState::settings`, which lives on the
-    /// `Ingest`, and there is one `Ingest` per window. So ticking one moved that window's
-    /// completion percentage and left the other window's alone: two headline percentages for one
-    /// roster, side by side on a stream, with nothing saying why. And nothing wrote them anywhere,
-    /// so all three were back at their defaults on the next launch and a reader who does not count
-    /// witnessed kills had to say so every time he opened the app.
-    ///
-    /// THE WHOLE STRUCT AND NOT A DIFFERENCE LIST, unlike `windows` and `hotkeys` above. Those
-    /// record deviations from a table in the code so a changed default reaches every machine; these
-    /// three are the counting rule the reader chose and there is no build-time table to defer to.
-    /// [`crate::ingest::TrackerSettings`] carries the serde discipline that makes an older file
-    /// load correctly, and it explains at length why `#[serde(default)]` is on that container and
-    /// must never be moved onto its fields.
-    ///
-    /// READ BY [`crate::ingest::Ingest::new`] AND [`crate::ingest::Ingest::reconfigure`], which is
-    /// what makes both windows agree from the first frame rather than from whenever the Kills view
-    /// is next drawn.
-    pub tracker: crate::ingest::TrackerSettings,
     /// WHETHER THIS BUILD LOOKS FOR A NEWER ONE, WHERE IT LOOKS, AND WHETHER IT FETCHES WITHOUT
     /// BEING ASKED.
     ///
@@ -485,15 +418,9 @@ impl Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            dashboard: None,
-            data_root: None,
-            log_dir: None,
             always_on_top: false,
             watch_on: Platform::Twitch,
             windows: BTreeMap::new(),
-            overlays: Vec::new(),
-            fight_notes: BTreeMap::new(),
-            tracker: crate::ingest::TrackerSettings::default(),
             updater: crate::updater::run::UpdaterSettings::default(),
             hotkeys: BTreeMap::new(),
             extra: serde_json::Map::new(),
@@ -508,10 +435,9 @@ impl Settings {
         dirs::config_dir().map(|d| d.join(APP_DIR).join(FILE))
     }
 
-    /// Load from the platform path. Never fails: see the module doc. Then fills a detected log
-    /// folder in when none was saved; a chosen folder always wins over a detected one.
+    /// Load from the platform path. Never fails: see the module doc.
     pub fn load() -> Settings {
-        let mut s = match Self::path() {
+        let s = match Self::path() {
             Some(p) => match Self::load_from(&p) {
                 Ok(s) => s,
                 Err(e) => {
@@ -532,7 +458,6 @@ impl Settings {
                 }
             }
         };
-        s.fill_detected_log_dir(detect_log_dir());
         s
     }
 
@@ -556,17 +481,9 @@ impl Settings {
         for k in LEGACY_KEYS {
             s.extra.remove(k);
         }
-        /* AND A PANEL LIST NOBODY EVER CHOSE IS HANDED BACK, which is the same kind of repair
-         * as the two retired keys above: a file carrying something an older build put there on
-         * the user's behalf. See `overlay::forget_unchosen` for what it recognises and what it
-         * refuses to touch. */
-        crate::overlay::forget_unchosen(&mut s.overlays);
-        /* AND A DASHBOARD THAT IS EXACTLY ONE OF THE SHIPPED ARRANGEMENTS, which is what a click
-         * that moved nothing used to write. See `screens::dashboards::forget_unchosen`. */
-        crate::screens::dashboards::forget_unchosen(&mut s.dashboard);
-        /* AND POPPED WINDOWS SAVED BEFORE THE NAMES, CALLED BY THEIR NAMES. See
-         * overlay::rename_popped. */
-        crate::overlay::rename_popped(&mut s.overlays);
+        /* Fields an EverQuest Legends build wrote (overlays, dashboard, log folder, fight notes,
+         * tracker) are no longer fields here. They load into `extra` and are saved back as they
+         * were, so nothing a reader set is lost, and an older build reading the file finds them. */
         Ok(s)
     }
 
@@ -701,22 +618,6 @@ impl Settings {
         std::fs::rename(&tmp, path)
             .map_err(|e| format!("{}: cannot replace settings: {e}", path.display()))?;
         Ok(kept)
-    }
-
-    /// If no log folder was ever chosen and the default install folder exists, use it, so a
-    /// default install works with no setup at all. A chosen folder is never overridden, even by
-    /// a detected one.
-    pub fn fill_detected_log_dir(&mut self, detected: Option<PathBuf>) {
-        if self.log_dir.is_none() {
-            self.log_dir = detected;
-        }
-    }
-
-    /// The data root the app should read: the override when set, else what `locate` finds.
-    pub fn effective_data_root(&self) -> Option<PathBuf> {
-        self.data_root
-            .clone()
-            .or_else(crate::data::Snapshot::locate)
     }
 }
 
@@ -862,100 +763,14 @@ pub(crate) fn keep_a_copy(path: &Path, bytes: &[u8], what: &str) -> Result<PathB
 
 /* ---------------------------------------------------------------- detection -- */
 
-/// Where the EQL client writes logs on a default install: the Public profile's `Daybreak Game
-/// Company\Installed Games\EverQuest Legends\Logs` on Windows, and on a Mac the same layout inside
-/// the osxEQL wineprefix. Linux has no default install to point at and gets none here.
-pub fn default_log_dir() -> Option<PathBuf> {
-    if cfg!(target_os = "macos") {
-        dirs::home_dir().map(|h| {
-            h.join("Library")
-                .join("Application Support")
-                .join("osxEQL")
-                .join("prefix")
-                .join("drive_c")
-                .join("users")
-                .join("Public")
-                .join("Daybreak Game Company")
-                .join("Installed Games")
-                .join("EverQuest Legends")
-                .join("Logs")
-        })
-    } else if cfg!(windows) {
-        Some(PathBuf::from(
-            r"C:\Users\Public\Daybreak Game Company\Installed Games\EverQuest Legends\Logs",
-        ))
-    } else {
-        None
-    }
-}
-
-/// The default log folder, only if it is actually there.
-pub fn detect_log_dir() -> Option<PathBuf> {
-    default_log_dir().filter(|p| p.is_dir())
-}
-
-/// The square and the words under the LOG FOLDER field: what this build knows about the folder
-/// that is set, in the four states it can be in.
-///
-/// A NUMBER NOBODY COMPUTED, AND WHAT IT COST. This line used to read
-/// `cx.ingest.sources().len()`, which is how many ROWS the ingest listed, not how many source
-/// FILES it found. The ingest lists a row for every folder it looked in and found nothing in, so
-/// on a fresh install with a valid Logs folder and no game files that call returns three
-/// placeholders and this line said "3 sources found; see Sources" beside a filled SETTLED square
-/// on a machine with no sources at all. Worse, it made the honest empty state below unreachable:
-/// `sources()` never returns an empty vector once a folder is set, so `n == 0` could not happen
-/// and the invented count always won. The rail's badge, which counted through
-/// [`crate::nav::source_files`], was right the whole time; this line counts through the same
-/// function, so the two surfaces could not answer one question two ways again.
-///
-/// THE RAIL NO LONGER CARRIES THAT BADGE, because the row it sat on is gone: the ledger it
-/// pointed at is the SOURCES section of this screen now, four lines below this one. The function
-/// stays and this line still counts through it, which is what makes the sentence below
-/// ("the SOURCES section below lists them") a count of the same files that section tabulates.
-///
-/// The `is_dir` probe is the same one the field above it makes, and it is kept here rather than at
-/// the call site so all four branches are one decision a test can drive.
-fn log_folder_mark(dir: Option<&Path>, listed: &[Source]) -> (State, String) {
-    match dir {
-        None => (
-            State::You,
-            "no log folder set; the parser, loot, kill tracker and Sky all read from it".to_owned(),
-        ),
-        Some(p) if !p.is_dir() => (State::Wrong, "that folder does not exist".to_owned()),
-        Some(_) => match crate::nav::source_files(listed) {
-            0 => (
-                State::Idle,
-                "folder exists, nothing found in it yet; the game only writes a log while logging \
-                 is on (/log on)"
-                    .to_owned(),
-            ),
-            n => (
-                State::Settled,
-                format!(
-                    "{n} source{} found; the SOURCES section below lists them",
-                    if n == 1 { "" } else { "s" }
-                ),
-            ),
-        },
-    }
-}
-
 /* ------------------------------------------------------------------ hotkeys -- */
 
 /// The D4 wording for what a chord opens.
 pub fn tool_label(t: &Tool) -> &'static str {
     match t {
         Tool::Companion => "the whole app, toggled",
-        Tool::Watch => "Watch: Broken Stoic live",
-        /* "Log Parser" AND NOT "Parser", WHICH THIS ROW WAS THE LAST COPY OF. `Tool::Parser::title`
-         * is "Log Parser" and so is `nav::label(ScreenId::Parser)`, so the window's own title
-         * strip, its taskbar entry and the rail row all say one name; this table is what the
-         * rebinding list on Settings prints, and it was still calling the same window something
-         * else. Cosmetic on its own and exactly the shape of thing that stays behind and rots. */
-        Tool::Parser => "Log Parser",
-        Tool::Sky => "Plane of Sky",
+        Tool::Watch => "Watch: the live stream, picture in picture",
         Tool::Chat => "Chat, over the game",
-        Tool::Overlays => "the combat overlays, all of them, toggled",
         Tool::Lfg(LfgMode::Generic) => "LFG, generic",
         Tool::Lfg(LfgMode::Raid) => "LFG, looking for raid",
         Tool::Lfg(LfgMode::Motes) => "LFG, looking for motes",
@@ -1001,17 +816,14 @@ pub fn bindings_text(b: &[Binding]) -> String {
 
 /* ------------------------------------------------------------------- screen -- */
 
-/// What changed since the integrator last asked, so it can reload the snapshot, rebuild the ingest
-/// or restart the watcher. The screen cannot do those itself: `Cx` lends the snapshot immutably and
-/// the ingest's `rescan` takes no new folder.
+/// What changed since the integrator last asked, so it can act on it: the screen cannot reinstall
+/// the hotkeys, drive the updater or restart the app itself.
 ///
 /// No flag for `always_on_top`: `Windows::show` reads that setting on every pass and pushes the
 /// window level whenever it differs from the one last applied, so the checkbox only has to mark
 /// the file dirty. A flag nothing read sat here through round one.
 #[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Changed {
-    pub data_root: bool,
-    pub log_dir: bool,
     /// A hotkey override was applied or reset; the integrator reinstalls the globals and hands
     /// the new bindings back through `set_bindings`.
     pub hotkeys: bool,
@@ -1076,20 +888,6 @@ pub struct SettingsScreen {
     /// and the section says so in words rather than offering a Sign in button nothing answers.
     pub account: Option<crate::account::AccountView>,
 
-    /* Text buffers for the two path fields. A path is edited as text and applied when the field
-     * loses focus, so a half typed path never lands in settings as a folder that does not exist.
-     * `*_seen` is the value the buffer was seeded from, so a change made elsewhere (another lane
-     * setting log_dir) reseeds the buffer instead of being overwritten by stale text. */
-    data_root_text: String,
-    data_root_seen: Option<Option<PathBuf>>,
-    log_dir_text: String,
-    log_dir_seen: Option<Option<PathBuf>>,
-
-    /* What detection found, memoised: locate() and detect_log_dir() touch the filesystem and this
-     * screen redraws every frame. Refreshed when the "use detected" button is pressed. */
-    detected_data: Option<Option<PathBuf>>,
-    detected_log: Option<Option<PathBuf>>,
-
     dirty_since: Option<Instant>,
     last_save: Option<(Instant, Result<PathBuf, String>)>,
     /// Where a save from THIS screen put the bytes of an unreadable settings file, once it has.
@@ -1105,11 +903,6 @@ pub struct SettingsScreen {
      * chord). A parse error stays beside the row until the text changes. */
     chord_text: BTreeMap<&'static str, String>,
     chord_problem: BTreeMap<&'static str, String>,
-
-    /// When the SOURCES section's `Re-read` button was last pressed, so the line beside it can say
-    /// how long ago. The ingest's own `scanned_at` is a different fact and is printed beside it:
-    /// a scan the folder watcher started on its own has no button press behind it.
-    last_reread: Option<Instant>,
 }
 
 impl SettingsScreen {
@@ -1196,12 +989,9 @@ impl SettingsScreen {
             }
 
             self.watch(ui, cx);
-            self.data(ui, cx);
-            self.log(ui, cx);
-            self.sources(ui, cx);
             self.window(ui, cx);
-            /* UPDATES SITS BETWEEN WINDOW AND FIGHT NOTES. The rule the comment below states is
-             * that everything above FIGHT NOTES is about where the app READS from; this one is
+            /* UPDATES SITS BETWEEN WINDOW AND ACCOUNT. The rule the comment below states is
+             * that everything above ACCOUNT is about where the app READS from; this one is
              * not, so it goes at the end of that group rather than inside it, next to WINDOW,
              * which is the other section about how the app itself behaves. */
             self.updates(ui, cx);
@@ -1209,11 +999,6 @@ impl SettingsScreen {
              * it is about the app itself (who it is signed in as), not about where it reads from
              * and not about what the owner has written into it. */
             self.account(ui);
-            /* FIGHT NOTES SITS HERE AND NOT AT THE TOP, because a person comes to this screen for
-             * it deliberately (a note he cannot find any more) rather than sweeping the page. The
-             * sections above are all about where the app READS from; this one and HOTKEYS are
-             * about what he has written into it. */
-            self.notes(ui, cx);
             self.hotkeys(ui, cx);
             self.file_line(ui);
         });
@@ -1265,539 +1050,6 @@ impl SettingsScreen {
         ui.add_space(6.0);
     }
 
-    fn data(&mut self, ui: &mut Ui, cx: &mut Cx) {
-        heading(ui, "DATA");
-        /* Reseed the buffer when the setting changed underneath us. */
-        if self.data_root_seen.as_ref() != Some(&cx.settings.data_root) {
-            self.data_root_text = path_text(&cx.settings.data_root);
-            self.data_root_seen = Some(cx.settings.data_root.clone());
-        }
-        ui.horizontal(|ui| {
-            field_label(ui, "Data root");
-            let r = ui.add(
-                egui::TextEdit::singleline(&mut self.data_root_text)
-                    .desired_width(420.0)
-                    .font(FontId::monospace(12.0))
-                    .hint_text("blank: use what is detected"),
-            );
-            if r.lost_focus() {
-                let v = text_path(&self.data_root_text);
-                if v != cx.settings.data_root {
-                    cx.settings.data_root = v.clone();
-                    self.data_root_seen = Some(v);
-                    self.changed.data_root = true;
-                    self.mark_dirty();
-                }
-            }
-            if ui.button("Use detected").clicked() {
-                self.detected_data = Some(crate::data::Snapshot::locate());
-                if let Some(Some(p)) = &self.detected_data {
-                    cx.settings.data_root = Some(p.clone());
-                    self.data_root_text = path_text(&cx.settings.data_root);
-                    self.data_root_seen = Some(cx.settings.data_root.clone());
-                    self.changed.data_root = true;
-                    self.mark_dirty();
-                }
-            }
-        });
-        let detected = self
-            .detected_data
-            .get_or_insert_with(crate::data::Snapshot::locate)
-            .clone();
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            match detected {
-                Some(p) => {
-                    ui.label(RichText::new("detected").color(TEXT_3));
-                    mono(ui, &p.display().to_string(), TEXT_2);
-                }
-                None => {
-                    /* The loader's own probe list, in its order, so this cannot drift from what
-                     * `Snapshot::locate` actually tried. */
-                    let tried: Vec<String> = crate::data::candidates()
-                        .iter()
-                        .map(|p| p.display().to_string())
-                        .collect();
-                    ui.label(
-                        RichText::new(format!(
-                            "nothing detected: put the data folder at one of {}",
-                            tried.join("; ")
-                        ))
-                        .color(TEXT_2),
-                    );
-                }
-            }
-        });
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            match (cx.data, cx.data_err) {
-                (Some(d), _) => {
-                    let r = d.report();
-                    mark(
-                        ui,
-                        State::Settled,
-                        &format!(
-                            "loaded: {} items, {} zones, {} drops, {} sky items, {} quests",
-                            r.items, r.zones, r.drops, r.sky_items, r.quests
-                        ),
-                    );
-                    mono(ui, &r.root.display().to_string(), TEXT_3);
-                }
-                (None, Some(e)) => {
-                    mark(ui, State::Wrong, e);
-                }
-                (None, None) => match &self.data_loading {
-                    /* WORKING: a thread of ours is parsing it right now */
-                    Some((root, for_)) => {
-                        mark(
-                            ui,
-                            State::Working,
-                            &format!("loading the snapshot, {:.1}s so far", for_.as_secs_f32()),
-                        );
-                        mono(ui, &root.display().to_string(), TEXT_3);
-                        ui.ctx().request_repaint_after(Duration::from_millis(100));
-                    }
-                    None => {
-                        mark(ui, State::Idle, "no snapshot loaded");
-                    }
-                },
-            }
-        });
-        ui.add_space(6.0);
-    }
-
-    fn log(&mut self, ui: &mut Ui, cx: &mut Cx) {
-        heading(ui, "LOG FOLDER");
-        if self.log_dir_seen.as_ref() != Some(&cx.settings.log_dir) {
-            self.log_dir_text = path_text(&cx.settings.log_dir);
-            self.log_dir_seen = Some(cx.settings.log_dir.clone());
-        }
-        ui.horizontal(|ui| {
-            field_label(ui, "Logs");
-            let r = ui.add(
-                egui::TextEdit::singleline(&mut self.log_dir_text)
-                    .desired_width(420.0)
-                    .font(FontId::monospace(12.0))
-                    .hint_text("the EverQuest Legends Logs folder"),
-            );
-            if r.lost_focus() {
-                let v = text_path(&self.log_dir_text);
-                if v != cx.settings.log_dir {
-                    cx.settings.log_dir = v.clone();
-                    self.log_dir_seen = Some(v);
-                    self.changed.log_dir = true;
-                    self.mark_dirty();
-                    cx.ingest.rescan();
-                }
-            }
-            if ui.button("Use detected").clicked() {
-                self.detected_log = Some(detect_log_dir());
-                if let Some(Some(p)) = &self.detected_log {
-                    cx.settings.log_dir = Some(p.clone());
-                    self.log_dir_text = path_text(&cx.settings.log_dir);
-                    self.log_dir_seen = Some(cx.settings.log_dir.clone());
-                    self.changed.log_dir = true;
-                    self.mark_dirty();
-                    cx.ingest.rescan();
-                }
-            }
-            if let Some(p) = &cx.settings.log_dir {
-                if ui.button("Open folder").clicked() {
-                    /* THE THIRD COPY OF THIS CALL STOOD HERE and said "cannot open" where the
-                     * other two said "could not open", so one failure had two sentences
-                     * depending on where you met it. */
-                    if let Err(e) = crate::shell::open_dir(p) {
-                        log::warn!("{e}");
-                    }
-                }
-            }
-        });
-        let detected = self.detected_log.get_or_insert_with(detect_log_dir).clone();
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            match (detected, default_log_dir()) {
-                (Some(p), _) => {
-                    ui.label(RichText::new("detected").color(TEXT_3));
-                    mono(ui, &p.display().to_string(), TEXT_2);
-                }
-                (None, Some(d)) => {
-                    ui.label(RichText::new("not at the default install path").color(TEXT_3));
-                    mono(ui, &d.display().to_string(), TEXT_3);
-                }
-                (None, None) => {
-                    ui.label(
-                        RichText::new("no default install path on this platform").color(TEXT_3),
-                    );
-                }
-            }
-        });
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            let (state, words) =
-                log_folder_mark(cx.settings.log_dir.as_deref(), &cx.ingest.sources());
-            mark(ui, state, &words);
-        });
-        ui.add_space(6.0);
-    }
-
-    /// The ingest's ledger, and what came out of it. Decision D7.
-    ///
-    /// One ingest reads the inventory dumps, the achievements dump, the hunting logs and the EQ
-    /// log tail, and this section is its account: what files, when each was last read, how many
-    /// records came out, and what went wrong. Nothing here is computed; every number is the
-    /// ingest's own count (and, for the snapshot, the data module's own load time), and a source
-    /// with a problem shows the problem in the WRONG colour on its own row rather than vanishing
-    /// from the table.
-    ///
-    /// IT WAS A RAIL ROW UNDER CRAFT AND THE OWNER WAS RIGHT THAT IT DOES NOT BELONG THERE. CRAFT
-    /// is Commission, Work orders, Workshop and Standing: making a thing to order. Which files on
-    /// this machine were read, and when, is not that work. It is the app's account of its own
-    /// plumbing, its one control is a maintenance button, and every question it answers is
-    /// answered about the folder the section above this one sets.
-    ///
-    /// THE AUTHORITY DOES NOT PUT IT THERE EITHER, WHICH IS WHAT THE ROW WAS LEANING ON. `web/app.html`
-    /// does carry a `Sources` row under Tradesman, and it is a DIFFERENT SCREEN: from line 2338,
-    /// "Where a component comes from", vendor, drop and forage rows keyed by a component name.
-    /// Not one word of it is about ingest files. So the rail row was a web row's NAME over a
-    /// desktop screen that shares nothing with it but the word, and the placement came with the
-    /// name.
-    ///
-    /// WHAT THE OLD SCREEN SAID TWICE IS NOW SAID ONCE. It opened with a log folder block of its
-    /// own: the folder's path, "no log folder set; point Settings at the EverQuest Legends Logs
-    /// folder", and "that folder does not exist; fix it in Settings". LOG FOLDER, immediately
-    /// above, says all three and carries the field that fixes them, so the block is gone rather
-    /// than repeated four lines under itself. The one thing only that block said, the ingest's
-    /// `log_dir_problem` naming every place it looked, is kept in the empty state below, which is
-    /// the state it explains.
-    fn sources(&mut self, ui: &mut Ui, cx: &mut Cx) {
-        heading(ui, "SOURCES");
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            ui.label(
-                RichText::new("Inventory and achievements dumps (/outputfile), hunting logs and the EQ log tail, read by one ingest.")
-                    .color(TEXT_2),
-            );
-        });
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            if ui.button("Re-read").clicked() {
-                cx.ingest.rescan();
-                self.last_reread = Some(Instant::now());
-            }
-            if cx.ingest.scanning() {
-                mark(ui, State::Working, "scanning");
-            }
-            if let Some(t) = self.last_reread {
-                ui.label(
-                    RichText::new(format!(
-                        "re-read asked {} ago",
-                        age_text(t.elapsed().as_secs() as i64)
-                    ))
-                    .color(TEXT_3),
-                );
-            }
-            /* The ingest's own stamp of its last bootstrap, not this section's button: a scan the
-             * folder watcher started on its own (a new log taking over) shows here too. */
-            let now = chrono::Utc::now();
-            match cx.ingest.scanned_at() {
-                Some(t) => ui.label(
-                    RichText::new(format!("folder scanned {}", last_read_text(Some(t), now)))
-                        .color(TEXT_3),
-                ),
-                None => ui.label(RichText::new("folder not scanned yet").color(TEXT_3)),
-            };
-            /* keep the ages ticking while the screen is up */
-            ui.ctx().request_repaint_after(Duration::from_secs(1));
-        });
-        ui.add_space(4.0);
-
-        let sources = cx.ingest.sources();
-        if sources.is_empty() {
-            ui.horizontal(|ui| {
-                ui.add_space(FIELD_W);
-                match &cx.settings.log_dir {
-                    Some(dir) => mark(
-                        ui,
-                        State::Idle,
-                        &format!("nothing found under {}", dir.display()),
-                    ),
-                    None => mark(ui, State::Idle, "nothing to read"),
-                };
-            });
-            /* WHY THE LEDGER IS EMPTY, in the ingest's own words: every place it looked, or the
-             * reader thread that would not start. The rows below are what it looks FOR; this is
-             * what happened when it went looking. */
-            if let Some(p) = cx.ingest.log_dir_problem() {
-                ui.horizontal(|ui| {
-                    ui.add_space(FIELD_W + 14.0);
-                    ui.label(RichText::new(p).color(TEXT_3));
-                });
-            }
-            for line in LOOKS_FOR {
-                ui.horizontal(|ui| {
-                    ui.add_space(FIELD_W + 14.0);
-                    ui.label(RichText::new(*line).color(TEXT_3));
-                });
-            }
-        } else {
-            let w = sources
-                .iter()
-                .map(|s| s.records.to_string().len())
-                .max()
-                .unwrap_or(1);
-            let now = chrono::Utc::now();
-            /* THE ONLY THING ON THIS SCREEN THAT SCROLLS SIDEWAYS, AND IT IS MEASURED RATHER THAN
-             * PREFERRED. Five columns, one of them a full path repeated on every row, inside a
-             * screen whose own ScrollArea is VERTICAL. A cell laid out past the right edge is not
-             * clipped, it is NOT DRAWN: `Label` asks `is_rect_visible` first. So on the owner's
-             * own machine, a 2240px window at 175% (1280 logical, about 1055 of it body), the
-             * RECORDS and PROBLEM columns simply were not there. A problem is the thing a person
-             * opens this ledger to read.
-             *
-             * IT IS NOT INDENTED TO THE LABEL COLUMN EITHER, which every other section is, and
-             * that is the same 92 pixels of the same argument. The retired Sources screen drew
-             * this table at its own margin and so does this.
-             *
-             * THE HOUSE ALREADY ANSWERS THIS QUESTION THIS WAY: `screens::inventory` puts its wide
-             * tables in `ScrollArea::both`. Sideways is the answer that drops nothing; eliding the
-             * path or reordering the columns both decide for the reader which half matters. */
-            egui::ScrollArea::horizontal()
-                .id_salt("sources-table-scroll")
-                .show(ui, |ui| {
-                    egui::Grid::new("sources-table")
-                        .num_columns(5)
-                        .spacing([18.0, 4.0])
-                        .show(ui, |ui| {
-                            ui.label(RichText::new("kind").color(TEXT_3));
-                            ui.label(RichText::new("path").color(TEXT_3));
-                            ui.label(RichText::new("last read").color(TEXT_3));
-                            ui.label(
-                                RichText::new(pad_left("records", w.max("records".len())))
-                                    .font(FontId::monospace(11.5))
-                                    .color(TEXT_3),
-                            );
-                            ui.label(RichText::new("problem").color(TEXT_3));
-                            ui.end_row();
-                            for s in &sources {
-                                /* The ingest's own label for its kind: it owns that enum and a hand
-                                 * written table of its variants here would drift from it. */
-                                ui.label(RichText::new(s.kind.label()).color(TEXT_2));
-                                mono(ui, &s.path.display().to_string(), TEXT);
-                                ui.label(
-                                    RichText::new(last_read_text(s.last_read, now)).color(TEXT_2),
-                                );
-                                /* Right aligned by padding in the monospace face, which is what tabular
-                                 * figures are for: the column lines up without a layout trick. */
-                                ui.label(
-                                    RichText::new(pad_left(
-                                        &s.records.to_string(),
-                                        w.max("records".len()),
-                                    ))
-                                    .font(FontId::monospace(11.5))
-                                    .color(TEXT),
-                                );
-                                match &s.problem {
-                                    /* The ingest tails only the newest log and annotates every other one
-                                     * with "not tailed: ...". That is an explanation, not a fault, and a
-                                     * red square on every other character's log would spend WRONG on
-                                     * decoration. It is printed in plain words; everything else the
-                                     * ingest calls a problem is drawn as one. */
-                                    Some(p) if p.starts_with(crate::nav::NOT_TAILED_PREFIX) => {
-                                        ui.label(RichText::new(p).color(TEXT_3));
-                                    }
-                                    Some(p) => {
-                                        mark(ui, State::Wrong, p);
-                                    }
-                                    None => {
-                                        ui.label("");
-                                    }
-                                }
-                                ui.end_row();
-                            }
-                        });
-                });
-        }
-
-        heading(ui, "WHAT CAME OUT");
-        let kills = cx.ingest.kills().len();
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            if kills == 0 {
-                mark(ui, State::Idle, "no kill events yet");
-            } else {
-                mark(
-                    ui,
-                    State::Settled,
-                    &format!("{kills} kill event{}", if kills == 1 { "" } else { "s" }),
-                );
-            }
-        });
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            match (cx.ingest.roster(), cx.ingest.roster_problem()) {
-                (Some(r), _) => mark(
-                    ui,
-                    State::Settled,
-                    &format!(
-                        "mob roster: {} zones from {}",
-                        r.zones.len(),
-                        r.path.display()
-                    ),
-                ),
-                (None, Some(p)) => mark(ui, State::Idle, &format!("mob roster: {p}")),
-                (None, None) => mark(ui, State::Idle, "mob roster not loaded yet"),
-            };
-        });
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            match cx.ingest.inventory() {
-                Some(d) => {
-                    /* The dump by section, the ingest's own reading of the location column, and
-                     * the worn count through the same per-slot lookup the gear screens use. Both
-                     * are the ingest's numbers, printed, not this section's. */
-                    let worn: usize = crate::ingest::WORN_SLOTS
-                        .iter()
-                        .map(|s| d.worn_in(s).len())
-                        .sum();
-                    let by_section: Vec<String> = d
-                        .section_counts()
-                        .iter()
-                        .map(|(s, n)| format!("{} {n}", s.label()))
-                        .collect();
-                    let whose = match (&d.character, &d.server) {
-                        (Some(c), Some(s)) => format!("{c} on {s}: "),
-                        (Some(c), None) => format!("{c}: "),
-                        _ => String::new(),
-                    };
-                    mark(
-                        ui,
-                        State::Settled,
-                        &format!(
-                            "inventory dump read: {whose}{} rows, {worn} worn ({})",
-                            d.rows().count(),
-                            by_section.join(", ")
-                        ),
-                    );
-                }
-                None => {
-                    mark(
-                        ui,
-                        State::Idle,
-                        cx.ingest
-                            .inventory_problem()
-                            .unwrap_or("no inventory dump read"),
-                    );
-                }
-            };
-        });
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            match cx.ingest.achievements() {
-                Some(d) => {
-                    let who = match (&d.character, &d.server) {
-                        (Some(c), Some(s)) => format!(", {c}'s on {s}"),
-                        (Some(c), None) => format!(", {c}'s"),
-                        _ => String::new(),
-                    };
-                    mark(
-                        ui,
-                        State::Settled,
-                        &format!(
-                            "achievements dump read: {} rows{who}; SKY / Keys reads it",
-                            d.lines
-                        ),
-                    );
-                }
-                None => {
-                    mark(
-                        ui,
-                        State::Idle,
-                        cx.ingest
-                            .achievements_problem()
-                            .unwrap_or("no achievements dump read"),
-                    );
-                }
-            };
-        });
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            match (cx.data, cx.data_err) {
-                (Some(s), _) => {
-                    let r = s.report();
-                    mark(
-                        ui,
-                        State::Settled,
-                        &format!(
-                            "snapshot: {} items, {} tooltips, {} zones, {} drops, {} sky items, {} quests, {} spells, {} factions, {} merchants from {} in {} ms",
-                            r.items,
-                            s.tooltips.len(),
-                            r.zones,
-                            r.drops,
-                            r.sky_items,
-                            r.quests,
-                            s.spells.len(),
-                            r.factions,
-                            r.merchants,
-                            r.root.display(),
-                            s.load_time.as_millis()
-                        ),
-                    );
-                }
-                (None, Some(e)) => {
-                    mark(ui, State::Wrong, e);
-                }
-                (None, None) => {
-                    mark(ui, State::Idle, "snapshot not loaded yet");
-                }
-            }
-        });
-        /* WHERE THE MERCHANTS THAT LAND NOWHERE ARE COUNTED, AND WHY IT IS HERE.
-         *
-         * Zone detail is the only home merchants.json got, so a merchant whose `zone` string
-         * matches no zone in this snapshot is a record the app holds and never draws. That is the
-         * exact defect this whole lane exists to remove, at a smaller scale, and it would be very
-         * easy to leave silent. It is not silent: the ledger says how many and names them, and
-         * fixing it means an alias table this build refuses to invent, or a corrected wiki page.
-         *
-         * Measured on the shipped file: nine, over seven zone spellings. */
-        if let Some(s) = cx.data {
-            if !s.merchants.is_empty() {
-                ui.horizontal(|ui| {
-                    ui.add_space(FIELD_W);
-                    mark(
-                        ui,
-                        State::Settled,
-                        &format!(
-                            "who sells it: {} item names over {} stock lines, indexed at load",
-                            s.sellers.items(),
-                            s.sellers.lines()
-                        ),
-                    );
-                });
-            }
-            let orphans = s.merchants_without_a_zone_page();
-            if !orphans.is_empty() {
-                ui.horizontal(|ui| {
-                    ui.add_space(FIELD_W);
-                    let mut zones: Vec<&str> = orphans.iter().map(|m| m.zone.as_str()).collect();
-                    zones.sort_unstable();
-                    zones.dedup();
-                    mark(
-                        ui,
-                        State::Idle,
-                        &format!(
-                            "{} merchant{} name a zone this snapshot has no page for, so they are on no zone screen: {}",
-                            orphans.len(),
-                            if orphans.len() == 1 { "" } else { "s" },
-                            zones.join(", ")
-                        ),
-                    );
-                });
-            }
-        }
-        ui.add_space(6.0);
-    }
-
     fn window(&mut self, ui: &mut Ui, cx: &mut Cx) {
         heading(ui, "WINDOW");
         ui.horizontal(|ui| {
@@ -1817,7 +1069,7 @@ impl SettingsScreen {
         ui.horizontal(|ui| {
             ui.add_space(FIELD_W);
             ui.label(
-                RichText::new("A tool window with a title bar has its own pin in it; a window with no title bar is in OVERLAYS below. This is only the main window's starting state.")
+                RichText::new("A tool window has its own pin in its title bar. This is only the main window's starting state.")
                     .color(TEXT_3),
             );
         });
@@ -1939,7 +1191,7 @@ impl SettingsScreen {
              * presses. */
             ui.label(
                 RichText::new(
-                    "A download waits for the encounter to close, and lands in a staging folder \
+                    "A download waits until no stream is playing, and lands in a staging folder \
                      with its signature checked. Nothing is installed and nothing restarts until \
                      you press for it.",
                 )
@@ -1997,7 +1249,7 @@ impl SettingsScreen {
             });
         }
 
-        let pulse = cx.ingest.pulse();
+        let pulse = cx.activity;
         ui.horizontal(|ui| {
             field_label(ui, "State");
             let (st, words) = phase_line(&view.phase);
@@ -2419,98 +1671,6 @@ impl SettingsScreen {
         ui.add_space(6.0);
     }
 
-    /// WHAT A PERSON WROTE ABOUT A FIGHT, AND THE ONLY PLACE HE CAN SEE ALL OF IT.
-    ///
-    /// # THE DEFECT THIS SECTION EXISTS FOR
-    ///
-    /// `Settings::fight_notes` is a map from a fight's own start stamp to a person's words about
-    /// it, and the stamp is the right key for the reason its own doc gives: the fights list is
-    /// rebuilt on every rescan, and an index would slide a note onto a different pull. What that
-    /// key costs is a way BACK to the note. The one surface that reads the map is the Analysis
-    /// page, and it reads exactly one entry, the one belonging to the fight it is currently
-    /// showing. Analysis can only show a fight the app is holding, and the app holds the last
-    /// 40MB of the log. So the day a noted fight falls off the back of that tail, the note is
-    /// still in `settings.json`, still saved and reloaded on every launch, and there is no screen
-    /// in the app that can print it or delete it. It is not lost, which would at least be honest.
-    /// It is invisible.
-    ///
-    /// THE HALF OF THAT FINDING THAT IS ALREADY GONE, recorded because a reader will otherwise
-    /// wonder why this is not larger. It used to be true that NOTHING in the main window could
-    /// open the Analysis page at all (see the note in `nav::SECTIONS`), so the map was a setting
-    /// no main-window reader could even produce. Analysis is a section of Log Parser now and is
-    /// routed. Writing a note is reachable. Finding one again was not, and that is what this fixes.
-    ///
-    /// # WHY IT IS A LIST AND A DELETE AND NOT AN EDITOR
-    ///
-    /// A note belongs to a fight and is written where the fight is, with the fight on screen next
-    /// to it. Editing one here, against a stamp and nothing else, would be typing about a pull
-    /// nobody can see. What a person needs from this screen is the two things Analysis cannot
-    /// give him: every note at once, and a way to throw one away.
-    ///
-    /// AND IT NEVER SAYS WHETHER A FIGHT IS STILL REACHABLE. It would take a store read per frame
-    /// to know, and the answer would be a claim about a fight this screen is not holding. The
-    /// stamp is printed as the log wrote it, which is a fact, and the reader can tell.
-    fn notes(&mut self, ui: &mut Ui, cx: &mut Cx) {
-        heading(ui, "FIGHT NOTES");
-        /* The delete is collected and applied after the rows are gone: the rows borrow the map
-         * that removing an entry mutates, and the count is taken while the borrow is still live. */
-        let mut drop_key: Option<String> = None;
-        let n = {
-            let rows = notes_newest_first(&cx.settings.fight_notes);
-            if rows.is_empty() {
-                ui.horizontal(|ui| {
-                    ui.add_space(FIELD_W);
-                    mark(
-                        ui,
-                        State::Idle,
-                        "none written. A note is written on a fight, on Log Parser's Analysis \
-                         page, and every one you write shows up here",
-                    );
-                });
-                ui.add_space(6.0);
-                return;
-            }
-            for (stamp, text) in &rows {
-                ui.horizontal_top(|ui| {
-                    ui.add_space(FIELD_W);
-                    /* THE STAMP AS THE LOG WROTE IT, in the mono face this screen gives every
-                     * other piece of text that came out of a file rather than out of this app. It
-                     * is the key, so it is also the only thing that identifies the fight. */
-                    mono(ui, stamp, TEXT_3);
-                    if ui
-                        .button("Delete")
-                        .on_hover_text(
-                            "Remove this note from settings.json. The fight it was written on is \
-                             not touched: a note is this app's, the fight is the log's.",
-                        )
-                        .clicked()
-                    {
-                        drop_key = Some((*stamp).to_owned());
-                    }
-                });
-                ui.horizontal_top(|ui| {
-                    ui.add_space(FIELD_W);
-                    /* WRAPPED AND NOT TRUNCATED. A note is a person's own sentence and the whole
-                     * point of this section is that it can be read; an ellipsis here would leave
-                     * a note as unreachable as it was, only visibly so. */
-                    ui.label(RichText::new(*text).color(TEXT_2));
-                });
-                ui.add_space(4.0);
-            }
-            rows.len()
-        };
-        if let Some(k) = drop_key {
-            cx.settings.fight_notes.remove(&k);
-            self.mark_dirty();
-        }
-        ui.horizontal(|ui| {
-            ui.add_space(FIELD_W);
-            let s = if n == 1 { "" } else { "s" };
-            ui.label(RichText::new(format!("{n} note{s} stored")).color(TEXT_3));
-        });
-        ui.add_space(6.0);
-    }
-
     fn file_line(&mut self, ui: &mut Ui) {
         heading(ui, "FILE");
         ui.horizontal(|ui| {
@@ -2543,14 +1703,6 @@ impl SettingsScreen {
 }
 
 /* ------------------------------------------------------------------ helpers -- */
-
-/// What the ingest looks for, in the words the SOURCES empty state prints. The file names are the
-/// EQ client's, not this app's invention.
-const LOOKS_FOR: &[&str] = &[
-    "eqlog_<character>_<server>.txt in the Logs folder; the game writes it only while logging is on (/log on)",
-    "<character>_<server>-Inventory.txt from /outputfile inventory, beside the game executable, one folder above Logs",
-    "<character>_<server>-Achievements.txt from /outputfile achievements, same place",
-];
 
 /// WHERE THE UPDATER IS, AS A SIGNAL COLOUR AND A SENTENCE.
 ///
@@ -2656,55 +1808,6 @@ fn last_read_text(
         Some(t) => format!("{} ago", age_text((now - t).num_seconds())),
         None => "never".to_owned(),
     }
-}
-
-/// Left pad to `w` so a column of numbers lines up on its right edge in a monospace face.
-fn pad_left(s: &str, w: usize) -> String {
-    format!("{s:>w$}")
-}
-
-/// WHEN A NOTE'S FIGHT STARTED, read off the key.
-///
-/// THE KEY IS A LOG STAMP AND NOT A SORTABLE STRING, which is the whole reason this exists.
-/// `Settings::fight_notes` is a `BTreeMap`, so its own order is the byte order of
-/// `Wed Jul 15 23:16:50 2026`, and that begins with the WEEKDAY: every Friday in a person's
-/// history sorts before every Monday, and July sorts before June. Printing the map in its own
-/// order would be printing a person's notes in an order that looks deliberate and is nonsense.
-///
-/// PARSED BY `screens::sky::log_ts` AND NOT BY A SECOND READER OF ITS OWN. That function already
-/// reads exactly this format, already drops the weekday before parsing (chrono checks a weekday
-/// against its date and a client that wrote a wrong one would otherwise make the whole stamp
-/// unreadable), and is tested where it lives. A stamp parser written here would be a second
-/// chance to disagree with it.
-///
-/// `None` IS A REAL ANSWER AND THE CALLER MUST NOT HIDE IT. A key can be anything a hand edit or
-/// an older build put in the file, and a note whose stamp cannot be read is exactly the note this
-/// section was written to make reachable.
-fn note_when(stamp: &str) -> Option<chrono::NaiveDateTime> {
-    crate::screens::sky::log_ts(stamp.trim().trim_start_matches('[').trim_end_matches(']'))
-}
-
-/// EVERY STORED NOTE, NEWEST FIRST, WITH THE UNREADABLE STAMPS KEPT AT THE END.
-///
-/// NEWEST FIRST BECAUSE THE NOTE A PERSON IS LOOKING FOR IS ALMOST ALWAYS THE ONE HE JUST WROTE.
-/// This is the same ordering the loot feed and the fights list use and for the same reason.
-///
-/// A STAMP THAT WILL NOT PARSE STILL GETS A ROW. It goes last, in key order, because there is no
-/// honest place to put it among the dated ones; dropping it would leave the one note this whole
-/// section exists for as invisible as it was before.
-pub fn notes_newest_first(notes: &BTreeMap<String, String>) -> Vec<(&str, &str)> {
-    let mut rows: Vec<(&str, &str)> = notes
-        .iter()
-        .map(|(k, v)| (k.as_str(), v.as_str()))
-        .collect();
-    /* `Option` orders `None` below every `Some`, so a descending sort on the parsed stamp puts
-     * the newest first and sweeps the unreadable ones to the bottom in one comparison. */
-    rows.sort_by(|a, b| {
-        note_when(b.0)
-            .cmp(&note_when(a.0))
-            .then_with(|| a.0.cmp(b.0))
-    });
-    rows
 }
 
 /// WHAT THE ACCOUNT SECTION SAYS AND OFFERS FOR ONE VIEW, lifted out of the paint so every state
@@ -2813,21 +1916,6 @@ fn mark(ui: &mut Ui, st: State, text: &str) -> egui::Response {
     .inner
 }
 
-fn path_text(p: &Option<PathBuf>) -> String {
-    p.as_ref()
-        .map(|p| p.display().to_string())
-        .unwrap_or_default()
-}
-
-fn text_path(s: &str) -> Option<PathBuf> {
-    let t = s.trim().trim_matches('"');
-    if t.is_empty() {
-        None
-    } else {
-        Some(PathBuf::from(t))
-    }
-}
-
 /// "12s", "3m", "2h", "5d": how long ago, in the coarsest unit that is not zero.
 pub fn age_text(secs: i64) -> String {
     let s = secs.max(0);
@@ -2845,7 +1933,6 @@ pub fn age_text(secs: i64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ingest::SourceKind;
     use serde_json::json;
 
     fn scratch(name: &str) -> PathBuf {
@@ -2858,8 +1945,6 @@ mod tests {
     #[test]
     fn defaults_carry_nothing_invented() {
         let s = Settings::default();
-        assert!(s.data_root.is_none());
-        assert!(s.log_dir.is_none());
         assert!(!s.always_on_top);
         assert!(s.extra.is_empty());
     }
@@ -2915,7 +2000,6 @@ mod tests {
         let mut screen = SettingsScreen::default();
         prepare(&mut screen);
         let mut settings = Settings::default();
-        let mut ingest = crate::ingest::Ingest::new(&settings);
         let live = crate::watcher::Status {
             twitch: crate::watcher::Channel::unchecked(TWITCH_HANDLE),
             youtube: crate::watcher::Channel::unchecked(YOUTUBE_HANDLE),
@@ -2928,17 +2012,15 @@ mod tests {
             events,
             ..Default::default()
         };
-        let mut pass = |events: Vec<egui::Event>,
-                        screen: &mut SettingsScreen,
-                        settings: &mut Settings|
+        let pass = |events: Vec<egui::Event>,
+                    screen: &mut SettingsScreen,
+                    settings: &mut Settings|
          -> Vec<String> {
             let mut cx = crate::screens::Cx {
-                data: None,
                 railed: false,
-                data_err: None,
+                activity: Default::default(),
                 live: &live,
                 settings,
-                ingest: &mut ingest,
                 player: Default::default(),
                 stage: None,
                 demand: None,
@@ -3017,9 +2099,8 @@ mod tests {
             "WATCH",
             "Preferred",
             "The live pill reports",
-            "DATA",
-            "LOG FOLDER",
             "WINDOW",
+            "UPDATES",
             "HOTKEYS",
         ] {
             assert!(
@@ -3102,8 +2183,9 @@ mod tests {
         .unwrap();
 
         let s = Settings::load_from(&p).expect("an old file must load, not wipe the real settings");
-        assert_eq!(s.data_root, Some(PathBuf::from("C:/eq/data")));
-        assert_eq!(s.log_dir, Some(PathBuf::from("C:/eq/Logs")));
+        /* EverQuest Legends keys are not fields any more: they ride along in `extra`. */
+        assert_eq!(s.extra["data_root"], "C:/eq/data");
+        assert_eq!(s.extra["log_dir"], "C:/eq/Logs");
         assert!(s.always_on_top);
         assert_eq!(
             s.hotkeys.get("companion").map(String::as_str),
@@ -3146,18 +2228,18 @@ mod tests {
         )
         .unwrap();
         let s = Settings::load_from(&real).expect("the file on the operator's machine must load");
-        assert_eq!(s.data_root, None);
+        assert_eq!(s.extra["data_root"], serde_json::Value::Null);
         assert_eq!(
-            s.log_dir,
-            Some(PathBuf::from(
-                r"C:\Users\Public\Daybreak Game Company\Installed Games\EverQuest Legends\Logs"
-            )),
-            "the log folder is the setting a failed load would cost"
+            s.extra["log_dir"],
+            r"C:\Users\Public\Daybreak Game Company\Installed Games\EverQuest Legends\Logs",
+            "an EverQuest Legends key rides along untouched, so a rollback still finds it"
         );
         assert!(!s.always_on_top);
-        assert!(
-            s.extra.is_empty(),
-            "the two retired keys were its only extras"
+        assert_eq!(
+            s.extra.len(),
+            2,
+            "the two retired handle keys are dropped and the two EverQuest Legends keys kept: {:?}",
+            s.extra
         );
 
         let _ = std::fs::remove_dir_all(p.parent().unwrap().parent().unwrap());
@@ -3168,7 +2250,6 @@ mod tests {
     fn round_trip_preserves_extra() {
         let mut s = Settings {
             always_on_top: true,
-            log_dir: Some(PathBuf::from("C:/eq/Logs")),
             ..Default::default()
         };
         s.extra.insert(
@@ -3207,111 +2288,7 @@ mod tests {
     fn partial_file_fills_defaults() {
         let s: Settings = serde_json::from_str(r#"{"always_on_top": true}"#).unwrap();
         assert!(s.always_on_top);
-        assert!(s.log_dir.is_none());
-    }
-
-    /// DEFECT: THE OWNER'S OWN SETTINGS FILE COULD NOT RECEIVE A NEW DEFAULT.
-    ///
-    /// # THE FILE THIS IS BUILT FROM IS REAL
-    ///
-    /// These are the bytes that were in `%APPDATA%`eql-grimoire`settings.json` on the owner's
-    /// machine on 2026-09-08, copied out while working out why the damage meter he had asked for
-    /// was built, tested, shipped, running, and not on his screen. He has never opened the
-    /// overlay builder. An older build wrote this list for him the first time he dragged an
-    /// overlay window: see the defect on `overlay::Overlay::widgets`.
-    ///
-    /// # WHY A FIXTURE OF REAL BYTES AND NOT A CONSTRUCTED ONE
-    ///
-    /// Everything else about this defect is covered by unit tests over `forget_unchosen` and
-    /// `apply_edits`, and all of them build their input by calling the same constructors the
-    /// production code calls. That is exactly the shape of test that stayed green while the
-    /// owner looked at the wrong widget: it can only prove the pieces agree with each other.
-    /// This one starts from JSON that a DIFFERENT BUILD wrote and asserts what a reader ends up
-    /// looking at, which is the only claim that was ever in doubt.
-    ///
-    /// READ ONLY, ON A SCRATCH PATH. Nothing here goes near the real file; see the module doc
-    /// for the day a test overwrote it.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: dropping the `forget_unchosen` call out of `load_from`,
-    /// or `Overlay::panels` preferring a stored list over the shipped one.
-    #[test]
-    fn a_real_settings_file_from_before_the_meter_still_gets_the_meter() {
-        let path = scratch("owner-fossil");
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(
-            &path,
-            r#"{"overlays":[{"id":"dps","name":"DPS","open":false,"pinned":true,
-               "chips":false,"w":460,"h":200,"widgets":[{"kind":"ranked",
-               "metric":"dealt","rate":true,"cols":{"rank":false,"value":true,
-               "share":true,"bar":true,"head":false},"cap":12,"headline":true}]}]}"#,
-        )
-        .expect("writes the fixture");
-
-        let s = Settings::load_from(&path).expect("the owner's file loads");
-        let list = crate::overlay::or_default(&s.overlays);
-        assert_eq!(list.len(), 1, "his one overlay did not survive the load");
-        assert_eq!(
-            list[0].id, "dps",
-            "the overlay he had was replaced rather than repaired"
-        );
-        /* HIS GEOMETRY IS UNTOUCHED. Only the list nobody chose is handed back. */
-        assert_eq!(list[0].w, 460.0, "the window size he had was thrown away");
-        assert!(list[0].pinned, "his pin was thrown away");
-
-        assert_eq!(
-            list[0].widgets, None,
-            "the panel list an older build wrote for him is still being read as his choice, so \
-             his overlay can never receive a new default"
-        );
-        assert_eq!(
-            list[0].panels(),
-            crate::overlay::Overlay::shipped_panels(),
-            "his overlay is not drawing what this build ships"
-        );
-        assert!(
-            matches!(
-                list[0].panels().first(),
-                Some(crate::overlay::Widget::Meter(_))
-            ),
-            "the overlay he opens is still not the damage meter he asked for: {:?}",
-            list[0].panels()
-        );
-        let _ = std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
-    }
-
-    /// THE OWNER'S OWN SETTINGS FILE, AS IT WAS ON THE NIGHT HIS QUARTER SCREEN DREW THE FULL PAGE.
-    ///
-    /// Thirteen placements, every one the shipped cell, copied byte for byte out of his file. The
-    /// window could not choose his layout while this was read as his choice.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: dropping the dashboard's `forget_unchosen` call out of
-    /// `load_from`.
-    #[test]
-    fn a_real_dashboard_nobody_arranged_follows_the_window_again() {
-        let path = scratch("owner-dashboard");
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        let fossil = r#"{"dashboard": [ { "tile": "live", "col": 8, "span": 5, "row": 31, "rows": 12 }, { "tile": "damage", "col": 1, "span": 7, "row": 31, "rows": 31 }, { "tile": "healing", "col": 5, "span": 4, "row": 62, "rows": 22 }, { "tile": "taken", "col": 1, "span": 4, "row": 62, "rows": 22 }, { "tile": "timeline", "col": 1, "span": 12, "row": 1, "rows": 30 }, { "tile": "progression", "col": 8, "span": 5, "row": 43, "rows": 19 }, { "tile": "yours", "col": 1, "span": 6, "row": 105, "rows": 22 }, { "tile": "fights", "col": 9, "span": 4, "row": 62, "rows": 22 }, { "tile": "night", "col": 12, "span": 1, "row": 94, "rows": 11 }, { "tile": "mobs", "col": 12, "span": 1, "row": 84, "rows": 10 }, { "tile": "kills", "col": 1, "span": 5, "row": 84, "rows": 21 }, { "tile": "loot", "col": 6, "span": 6, "row": 84, "rows": 21 }, { "tile": "overlays", "col": 7, "span": 6, "row": 105, "rows": 22 } ]}"#;
-        std::fs::write(&path, fossil).expect("writes the fixture");
-        let s = Settings::load_from(&path).expect("the owner's file loads");
-        assert_eq!(
-            s.dashboard, None,
-            "the shipped layout a click wrote for him is still read as his arrangement, so the \
-             window can never choose how much dashboard he gets"
-        );
-
-        /* AND ONE CARD HE REALLY MOVED KEEPS THE WHOLE LIST HIS. */
-        std::fs::write(
-            &path,
-            fossil.replace("\"row\": 31, \"rows\": 12", "\"row\": 31, \"rows\": 13"),
-        )
-        .expect("writes the moved fixture");
-        let s = Settings::load_from(&path).expect("loads");
-        assert_eq!(
-            s.dashboard.as_ref().map(Vec::len),
-            Some(13),
-            "a dashboard the reader changed was thrown away"
-        );
-        let _ = std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
+        assert!(s.extra.is_empty());
     }
 
     #[test]
@@ -3343,38 +2320,6 @@ mod tests {
         let _ = std::fs::remove_dir_all(p.parent().unwrap().parent().unwrap());
     }
 
-    #[test]
-    fn detected_log_dir_fills_only_when_unset() {
-        let mut s = Settings::default();
-        s.fill_detected_log_dir(None);
-        assert!(s.log_dir.is_none());
-        s.fill_detected_log_dir(Some(PathBuf::from("D:/detected")));
-        assert_eq!(s.log_dir.as_deref(), Some(Path::new("D:/detected")));
-        s.fill_detected_log_dir(Some(PathBuf::from("D:/other")));
-        assert_eq!(
-            s.log_dir.as_deref(),
-            Some(Path::new("D:/detected")),
-            "a chosen folder is never overridden"
-        );
-    }
-
-    #[test]
-    fn default_log_dir_is_the_client_install_path() {
-        if cfg!(windows) {
-            assert_eq!(
-                default_log_dir().unwrap(),
-                PathBuf::from(
-                    r"C:\Users\Public\Daybreak Game Company\Installed Games\EverQuest Legends\Logs"
-                )
-            );
-        } else if cfg!(target_os = "macos") {
-            let p = default_log_dir().unwrap();
-            assert!(p.ends_with("osxEQL/prefix/drive_c/users/Public/Daybreak Game Company/Installed Games/EverQuest Legends/Logs"));
-        } else {
-            assert!(default_log_dir().is_none());
-        }
-    }
-
     fn binding(
         id: &'static str,
         chord: &'static str,
@@ -3400,9 +2345,9 @@ mod tests {
         let b = vec![
             binding("watch", "Ctrl+Alt+W", Tool::Watch, false, true, None),
             binding(
-                "sky",
-                "Ctrl+Alt+S then K",
-                Tool::Sky,
+                "lfg-raid",
+                "Ctrl+Alt+L then R",
+                Tool::Lfg(LfgMode::Raid),
                 false,
                 false,
                 Some("owned by another app"),
@@ -3421,100 +2366,40 @@ mod tests {
         assert_eq!(lines.len(), 3);
         assert_eq!(
             lines[0],
-            "Ctrl+Alt+W         Watch: Broken Stoic live  registered"
+            "Ctrl+Alt+W         Watch: the live stream, picture in picture  registered"
         );
-        assert_eq!(
-            lines[1],
-            "Ctrl+Alt+S then K  Plane of Sky              not registered: owned by another app"
-        );
+        assert_eq!(lines[1], "Ctrl+Alt+L then R  LFG, looking for raid                       not registered: owned by another app");
         assert_eq!(
             lines[2],
-            "Ctrl+Alt+L then M  LFG, looking for motes    not registered"
+            "Ctrl+Alt+L then M  LFG, looking for motes                      not registered"
         );
     }
 
     #[test]
     fn alias_rows_say_so() {
-        /* Ctrl+Alt+K is the direct alias for the Sky chord; Ctrl+Alt+S then K is the D4 row. The
-         * table has to tell them apart or ten rows contradict a table of seven. */
-        let alias = binding("sky-direct", "Ctrl+Alt+K", Tool::Sky, true, true, None);
-        let d4 = binding("sky", "Ctrl+Alt+S then K", Tool::Sky, false, true, None);
-        assert_eq!(tool_text(&alias), "Plane of Sky, direct alias");
-        assert_eq!(tool_text(&d4), "Plane of Sky");
+        /* Ctrl+Alt+R is the direct alias for the LFG raid chord; Ctrl+Alt+L then R is the chord.
+         * The table has to tell them apart. */
+        let alias = binding(
+            "raid-direct",
+            "Ctrl+Alt+R",
+            Tool::Lfg(LfgMode::Raid),
+            true,
+            true,
+            None,
+        );
+        let d4 = binding(
+            "lfg-raid",
+            "Ctrl+Alt+L then R",
+            Tool::Lfg(LfgMode::Raid),
+            false,
+            true,
+            None,
+        );
+        assert_eq!(tool_text(&alias), "LFG, looking for raid, direct alias");
+        assert_eq!(tool_text(&d4), "LFG, looking for raid");
         let t = bindings_text(&[alias, d4]);
         assert!(t.lines().next().unwrap().contains("direct alias"), "{t}");
         assert!(!t.lines().nth(1).unwrap().contains("direct alias"), "{t}");
-    }
-
-    /// DEFECT: THE REBINDING LIST WAS THE LAST PLACE STILL CALLING THE LOG PARSER "Parser".
-    ///
-    /// `Tool::title` is what the window's own strip, its taskbar entry and the rail row print, and
-    /// it says "Log Parser"; this table is the "opens" column of the hotkeys list on Settings, and
-    /// it said something else about the same window. Nothing breaks, which is exactly why the copy
-    /// survived a rename that reached everywhere else.
-    ///
-    /// ASSERTED AGAINST `Tool::title` AND NOT AGAINST THE STRING, so the next rename cannot leave
-    /// this row behind either. The literal is spelled out too, because two functions that agree on
-    /// the wrong answer would satisfy the comparison on its own.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: `Tool::Parser => "Parser"` in `tool_label`.
-    #[test]
-    fn the_hotkey_rows_call_a_window_what_the_window_calls_itself() {
-        assert_eq!(tool_label(&Tool::Parser), Tool::Parser.title());
-        assert_eq!(tool_label(&Tool::Parser), "Log Parser");
-    }
-
-    /// DEFECT: A SHIPPED DEFAULT FLIPPED BY THE SPELLING OF ONE ATTRIBUTE.
-    ///
-    /// The kill tracker's counting filters moved onto `Settings` so they survive a restart and so
-    /// both windows read one value. `TrackerSettings::default` has `ignore_cities: TRUE`, which is
-    /// the behaviour every reader has had since the tracker was ported, and it is the one field of
-    /// the five whose default is not the zero value. `#[serde(default)]` on the CONTAINER fills an
-    /// absent key from that `Default`; the same attribute written on each FIELD fills it from
-    /// `bool::default()`, which is false. The two spellings are a line apart in a diff and the
-    /// second one silently starts counting every city kill for everybody who upgrades.
-    ///
-    /// THE FIXTURE IS A PARTIAL OBJECT ON PURPOSE. A file with no `tracker` key at all takes the
-    /// whole struct from `Settings::default()` and passes either way, so it proves nothing about
-    /// this; the interesting shape is the one a LATER build produces, where the key exists and one
-    /// of its fields does not.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: moving `#[serde(default)]` off the `TrackerSettings`
-    /// container and onto its fields, or removing it (the partial object then fails to parse and
-    /// takes the whole settings file down with it).
-    #[test]
-    fn an_absent_tracker_key_keeps_the_shipped_counting_rule() {
-        /* No `tracker` key at all: the file every reader has on disk today. */
-        let old: Settings = serde_json::from_str(
-            r#"{"data_root":null,"log_dir":null,"always_on_top":false,"watch_on":"twitch"}"#,
-        )
-        .expect("a file written before the tracker moved here still loads");
-        assert!(
-            old.tracker.ignore_cities,
-            "an upgrade started counting city kills for a reader who never asked for it"
-        );
-        assert!(!old.tracker.witnessed);
-        assert!(!old.tracker.generic_everywhere);
-
-        /* The key is there and one field of it is not: what a file written by a build with fewer
-         * fields looks like to a build with more. */
-        let partial: Settings = serde_json::from_str(r#"{"tracker":{"witnessed":true}}"#)
-            .expect("a partial tracker object must not fail the whole file");
-        assert!(partial.tracker.witnessed, "the one stated field was lost");
-        assert!(
-            partial.tracker.ignore_cities,
-            "an absent field took bool::default() instead of TrackerSettings::default()"
-        );
-        assert!(partial.tracker.ignored_zones.is_empty());
-
-        /* And it round trips, so what this build writes is what it reads back. */
-        let mut s = Settings::default();
-        s.tracker.witnessed = true;
-        s.tracker.ignore_cities = false;
-        s.tracker.ignored_zones.push("oggok".to_owned());
-        let text = serde_json::to_string(&s).expect("serialises");
-        let back: Settings = serde_json::from_str(&text).expect("round trips");
-        assert_eq!(back.tracker, s.tracker, "{text}");
     }
 
     /// The guard behind the module doc: under test, `save()` never reaches the operator's file.
@@ -3562,120 +2447,6 @@ mod tests {
             age_text(-5),
             "0s",
             "a clock that went backwards is not an age in the future"
-        );
-    }
-
-    #[test]
-    fn path_text_round_trips_and_strips_quotes() {
-        assert_eq!(text_path(""), None);
-        assert_eq!(text_path("   "), None);
-        assert_eq!(
-            text_path("\"C:/eq/Logs\""),
-            Some(PathBuf::from("C:/eq/Logs"))
-        );
-        assert_eq!(path_text(&Some(PathBuf::from("C:/eq/Logs"))), "C:/eq/Logs");
-        assert_eq!(path_text(&None), "");
-    }
-
-    /// THE NUMBER NOBODY COMPUTED, PINNED. This line printed `ingest.sources().len()`, the count
-    /// of ROWS the ingest listed, and the ingest lists a placeholder row for every folder it
-    /// looked in and found nothing in. A fresh install with a valid Logs folder and no game files
-    /// listed three placeholders and this line read "3 sources found" in the SETTLED green while
-    /// the rail's badge, which counts through `nav::source_files`, correctly said nothing.
-    ///
-    /// The fixture is exactly that machine: the three rows `Ingest::sources` pushes when nothing
-    /// has been read, whose paths are FOLDERS. It fails on the old code with "3 sources found" and
-    /// on any future rewrite that counts rows instead of files.
-    #[test]
-    fn the_log_folder_line_counts_files_found_not_folders_looked_in() {
-        let logs = std::env::temp_dir();
-        assert!(
-            logs.is_dir(),
-            "the temp dir is the stand in for a real Logs folder"
-        );
-        let game = logs.parent().unwrap_or(&logs).to_path_buf();
-        let placeholders = vec![
-            Source {
-                kind: SourceKind::Log,
-                path: logs.clone(),
-                last_read: None,
-                records: 0,
-                problem: Some("No eqlog_*.txt files".to_owned()),
-            },
-            Source {
-                kind: SourceKind::Inventory,
-                path: game.clone(),
-                last_read: None,
-                records: 0,
-                problem: None,
-            },
-            Source {
-                kind: SourceKind::Achievements,
-                path: game,
-                last_read: None,
-                records: 0,
-                problem: None,
-            },
-        ];
-        assert_eq!(
-            placeholders.len(),
-            3,
-            "the fixture is the three row listing"
-        );
-
-        let (state, words) = log_folder_mark(Some(&logs), &placeholders);
-        assert_eq!(
-            state,
-            State::Idle,
-            "three folders looked in and nothing found is not a settled folder: {words}"
-        );
-        assert!(
-            !words.contains('3'),
-            "the line claims a count of rows: {words}"
-        );
-        assert!(words.contains("nothing found in it yet"), "{words}");
-    }
-
-    /// The other three branches, and the SETTLED one with a count that was actually computed.
-    #[test]
-    fn the_log_folder_line_says_each_of_its_four_states() {
-        assert_eq!(log_folder_mark(None, &[]).0, State::You);
-
-        let missing = std::env::temp_dir().join("grimoire-no-such-folder-ever");
-        assert!(
-            !missing.is_dir(),
-            "the fixture must name a folder that is not there"
-        );
-        assert_eq!(log_folder_mark(Some(&missing), &[]).0, State::Wrong);
-
-        let logs = std::env::temp_dir();
-        let one_file = vec![Source {
-            kind: SourceKind::Log,
-            path: logs.join("eqlog_Grimtooth_server.txt"),
-            last_read: None,
-            records: 0,
-            problem: None,
-        }];
-        let (state, words) = log_folder_mark(Some(&logs), &one_file);
-        assert_eq!(state, State::Settled);
-        assert_eq!(
-            words, "1 source found; the SOURCES section below lists them",
-            "singular, not `1 sources`"
-        );
-
-        let two_files = vec![
-            one_file[0].clone(),
-            Source {
-                kind: SourceKind::Inventory,
-                path: logs.join("Grimtooth_server-Inventory.txt"),
-                last_read: None,
-                records: 0,
-                problem: None,
-            },
-        ];
-        assert_eq!(
-            log_folder_mark(Some(&logs), &two_files).1,
-            "2 sources found; the SOURCES section below lists them"
         );
     }
 
@@ -3891,7 +2662,7 @@ mod tests {
         std::fs::write(&p, HAND_EDITED).unwrap();
 
         let fresh = Settings {
-            log_dir: Some(PathBuf::from("D:/chosen/Logs")),
+            always_on_top: true,
             ..Settings::default()
         };
         let first = fresh
@@ -3904,7 +2675,7 @@ mod tests {
             "the kept copy is not the file that was there"
         );
         let now = Settings::load_from(&p).expect("the replacement file parses");
-        assert_eq!(now.log_dir, Some(PathBuf::from("D:/chosen/Logs")));
+        assert!(now.always_on_top, "the replacement carries what was chosen");
 
         const BROKEN_AGAIN: &str = "{ still not json, and different";
         std::fs::write(&p, BROKEN_AGAIN).unwrap();
@@ -3947,12 +2718,12 @@ mod tests {
             .expect("a first write has no file to lose");
 
         let mut after = Settings::load_from(&p).expect("it parses");
-        after.log_dir = Some(PathBuf::from("D:/chosen/Logs"));
+        after.watch_on = Platform::YouTube;
         after
             .save_to(&p)
             .expect("a readable file is replaced as before");
         let back = Settings::load_from(&p).unwrap();
-        assert_eq!(back.log_dir, Some(PathBuf::from("D:/chosen/Logs")));
+        assert_eq!(back.watch_on, Platform::YouTube);
         assert_eq!(back.extra["lfg_board"][0]["who"], "Stoic");
 
         std::fs::write(&p, "").unwrap();
@@ -3998,7 +2769,6 @@ mod tests {
             load_problem: Some("C:/x/settings.json: settings are not valid JSON".to_owned()),
             ..Settings::default()
         };
-        let mut ingest = crate::ingest::Ingest::new(&settings);
         let live = crate::watcher::Status {
             twitch: crate::watcher::Channel::unchecked(TWITCH_HANDLE),
             youtube: crate::watcher::Channel::unchecked(YOUTUBE_HANDLE),
@@ -4010,12 +2780,10 @@ mod tests {
             ..Default::default()
         };
         let mut cx = crate::screens::Cx {
-            data: None,
             railed: false,
-            data_err: None,
+            activity: Default::default(),
             live: &live,
             settings: &mut settings,
-            ingest: &mut ingest,
             player: Default::default(),
             stage: None,
             demand: None,
@@ -4117,8 +2885,8 @@ mod tests {
 
         let s = Settings::load_from(&p).expect("a file without the new key still loads");
         assert_eq!(s.watch_on, Platform::Twitch, "a missing key is the default");
-        assert_eq!(s.data_root, Some(PathBuf::from("C:/eq/data")));
-        assert_eq!(s.log_dir, Some(PathBuf::from("C:/eq/Logs")));
+        assert_eq!(s.extra["data_root"], "C:/eq/data");
+        assert_eq!(s.extra["log_dir"], "C:/eq/Logs");
         assert!(s.always_on_top);
         assert_eq!(
             s.hotkeys.get("companion").map(String::as_str),
@@ -4135,7 +2903,7 @@ mod tests {
         round.save_to(&p).expect("a readable file is replaced");
         let back = Settings::load_from(&p).expect("what we just wrote must load");
         assert_eq!(back.watch_on, Platform::YouTube, "the preference persists");
-        assert_eq!(back.log_dir, s.log_dir);
+        assert_eq!(back.extra.get("log_dir"), s.extra.get("log_dir"));
         assert!(back.extra.contains_key("lfg_board"));
         assert!(
             std::fs::read_to_string(&p)
@@ -4174,8 +2942,7 @@ mod tests {
                 .unwrap_or_else(|e| panic!("{name} wedged the whole file: {e}"));
             assert_eq!(s.watch_on, Platform::Twitch, "{name}");
             assert_eq!(
-                s.log_dir,
-                Some(PathBuf::from("C:/eq/Logs")),
+                s.extra["log_dir"], "C:/eq/Logs",
                 "{name} cost a setting that had nothing to do with it"
             );
             let _ = std::fs::remove_dir_all(p.parent().unwrap().parent().unwrap());
@@ -4400,7 +3167,6 @@ mod tests {
         crate::theme::install(&ctx);
         let mut screen = SettingsScreen::default();
         let mut settings = Settings::default();
-        let mut ingest = crate::ingest::Ingest::new(&settings);
         let live = crate::watcher::Status {
             twitch: crate::watcher::Channel::unchecked(TWITCH_HANDLE),
             youtube: crate::watcher::Channel::unchecked(YOUTUBE_HANDLE),
@@ -4415,17 +3181,15 @@ mod tests {
             ..Default::default()
         };
 
-        let mut frame = |events: Vec<egui::Event>,
-                         screen: &mut SettingsScreen,
-                         settings: &mut Settings|
+        let frame = |events: Vec<egui::Event>,
+                     screen: &mut SettingsScreen,
+                     settings: &mut Settings|
          -> Vec<(String, egui::Pos2)> {
             let mut cx = crate::screens::Cx {
-                data: None,
                 railed: false,
-                data_err: None,
+                activity: Default::default(),
                 live: &live,
                 settings,
-                ingest: &mut ingest,
                 player: Default::default(),
                 stage: None,
                 demand: None,
@@ -4514,335 +3278,6 @@ mod tests {
     }
 
     /* ------------------------------------------------------------ the SOURCES section -- */
-
-    /// A game folder with an empty `Logs` inside it, laid out the way a real install is, removed
-    /// on drop.
-    ///
-    /// IT CAME FROM `nav.rs` WITH THE TEST UNDER IT. The rail's Sources badge was the surface that
-    /// counted source files; that row is gone and this line is, so the fixture followed the
-    /// question. Hand rolled because this crate has no `tempfile` dev dependency and Cargo.toml is
-    /// deliberately not edited from a lane.
-    ///
-    /// NESTED ON PURPOSE. The ingest looks for the dumps in the log folder's PARENT, so a `Logs`
-    /// placed straight in the system temp folder would make the whole temp folder the game folder
-    /// and let any stray `*-Inventory.txt` another program left there change what this counts.
-    struct TempTree {
-        root: PathBuf,
-    }
-
-    impl TempTree {
-        fn new(tag: &str) -> TempTree {
-            let nanos = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_nanos())
-                .unwrap_or(0);
-            let root = std::env::temp_dir().join(format!("{tag}-{}-{nanos}", std::process::id()));
-            std::fs::create_dir_all(root.join("Logs")).expect("create the temp game folder");
-            TempTree { root }
-        }
-
-        fn logs(&self) -> PathBuf {
-            self.root.join("Logs")
-        }
-    }
-
-    impl Drop for TempTree {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.root);
-        }
-    }
-
-    /// Pump the ingest until it has adopted its scan, or give up. The scan runs on a worker and
-    /// lands on a `tail()`; `drain_scan` is the first thing `tail` does, ahead of its own poll
-    /// interval, so pumping faster than `TAIL_POLL` still adopts.
-    fn pump_until(
-        ingest: &mut crate::ingest::Ingest,
-        done: fn(&crate::ingest::Ingest) -> bool,
-    ) -> bool {
-        for _ in 0..600 {
-            ingest.tail();
-            if done(ingest) {
-                return true;
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        }
-        false
-    }
-
-    /// THE LEDGER'S TABLE, DRIVEN OVER A REAL SCAN, WHICH IS THE BRANCH NOTHING ELSE ENTERS.
-    ///
-    /// `settings_screen_frame` runs this screen with a default `Settings`, so the ingest resolves
-    /// no folder, `sources()` comes back empty and only the EMPTY state is ever painted. The grid
-    /// under the other arm is the half a person with a Logs folder actually looks at, which is
-    /// nearly everybody, and it had no coverage at all: it was drawn by a screen no test drove
-    /// with a scanned folder.
-    ///
-    /// AND IT CAUGHT A DEFECT THIS FOLD PUT THERE, WHICH IS WHY THE WIDTH IS A REAL ONE. The first
-    /// cut wrapped the grid in `ui.horizontal(|ui| { ui.add_space(FIELD_W); .. })` so the table
-    /// would line up with every other section's label column. That pushed five columns 92px right
-    /// in a screen whose own `ScrollArea` is VERTICAL, and a cell laid out past the right edge is
-    /// not clipped, it is NOT DRAWN: `Label` asks `is_rect_visible` first. The PROBLEM column,
-    /// which is the reason a person opens this ledger, silently stopped existing. Measured, not
-    /// guessed: this test failed on exactly that at 1100px and passed at 3000px.
-    ///
-    /// 1100 IS THEREFORE THE ASSERTION AND NOT AN ARBITRARY NUMBER. It is a real window's body
-    /// width, and it sits above the threshold at the margin (measured over the planted path, a 110
-    /// character one: readable at 1050, the last columns gone by 1000) and below it with the
-    /// indent. Put the horizontal wrapper back and this goes red.
-    ///
-    /// WHAT IT DOES NOT CLAIM, AND WHAT THE APP DOES ABOUT IT. That the table is readable at ANY
-    /// width. It is not: at 1000px the last columns are laid out past the edge whatever the indent
-    /// does, and that was not a hypothesis, it was the owner's own window (2240px at 175%, about
-    /// 1055 of body) with RECORDS and PROBLEM missing from a screenshot of this very fold. So the
-    /// grid sits in a `ScrollArea::horizontal` and the columns are REACHABLE at any width even
-    /// when they are not all visible at once. This test cannot assert that half: a cell scrolled
-    /// out of view is not painted, so there is nothing in the shape list to read. What holds it is
-    /// the screenshot in the report and `screens::inventory`, which answers the same question the
-    /// same way for the same reason.
-    ///
-    /// THE COLUMN HEADS ARE THE ASSERTION because they only exist on that arm: the empty state
-    /// paints none of them. `records` is padded to the width of the widest number, so it is
-    /// matched by trimming rather than by equality.
-    #[test]
-    fn the_ledger_paints_its_table_once_the_ingest_has_scanned() {
-        let tree = TempTree::new("grimoire-settings-table");
-        std::fs::write(
-            tree.logs().join("eqlog_Stoic_legends.txt"),
-            "[Sun Sep 01 23:58:00 2026] Welcome to EverQuest!\n",
-        )
-        .expect("plant a log");
-        let mut settings = Settings {
-            log_dir: Some(tree.logs()),
-            data_root: Some(tree.root.clone()),
-            ..Default::default()
-        };
-        let mut ingest = crate::ingest::Ingest::new(&settings);
-        assert!(
-            pump_until(&mut ingest, |ig| {
-                ig.sources()
-                    .iter()
-                    .any(|s| crate::nav::looks_like_eq_log(&s.path))
-            }),
-            "the ingest never listed the log planted in {}",
-            tree.logs().display()
-        );
-        let planted = ingest.sources().len();
-        assert!(planted > 0, "the ledger's table arm needs rows to draw");
-
-        let ctx = egui::Context::default();
-        crate::fonts::install(&ctx);
-        crate::theme::install(&ctx);
-        let live = crate::watcher::Status {
-            twitch: crate::watcher::Channel::unchecked(TWITCH_HANDLE),
-            youtube: crate::watcher::Channel::unchecked(YOUTUBE_HANDLE),
-        };
-        let mut screen = SettingsScreen::default();
-        let planted_path = tree.logs().join("eqlog_Stoic_legends.txt");
-        /* One real window width. See the note above for why it is this one and what it holds. */
-        for width in [1100.0_f32] {
-            let mut out = ctx.run_ui(
-                egui::RawInput {
-                    screen_rect: Some(egui::Rect::from_min_size(
-                        egui::Pos2::ZERO,
-                        Vec2::new(width, 3000.0),
-                    )),
-                    ..Default::default()
-                },
-                |ui| {
-                    let mut cx = crate::screens::Cx {
-                        data: None,
-                        railed: false,
-                        data_err: None,
-                        live: &live,
-                        settings: &mut settings,
-                        ingest: &mut ingest,
-                        player: Default::default(),
-                        stage: None,
-                        demand: None,
-                        ask: Default::default(),
-                        chat: crate::chat::ChatHandle::idle(),
-                        chat_wanted: false,
-                        auth: Default::default(),
-                        auth_begin: false,
-                        auth_cancel: false,
-                        yt: Default::default(),
-                        yt_wanted: false,
-                    };
-                    screen.ui(ui, &mut cx);
-                },
-            );
-            let shapes = std::mem::take(&mut out.shapes);
-            out.drop_without_applying_deltas();
-            let mut flat = Vec::new();
-            for cs in shapes {
-                flatten(cs.shape, &mut flat);
-            }
-            let words: Vec<String> = flat
-                .iter()
-                .filter_map(|sh| match sh {
-                    egui::Shape::Text(t) => Some(t.galley.text().trim().to_owned()),
-                    _ => None,
-                })
-                .collect();
-
-            for head in ["kind", "path", "last read", "records", "problem"] {
-                assert!(
-                    words.iter().any(|w| w == head),
-                    "at {width}px the ledger's table never painted its {head:?} column: {words:?}"
-                );
-            }
-            /* And the row itself, so this is the table and not five loose words: the planted log's
-             * own path is one of the cells. */
-            assert!(
-                words
-                    .iter()
-                    .any(|w| w == &planted_path.display().to_string()),
-                "at {width}px the table drew its heads and not the row under them: {words:?}"
-            );
-            /* The empty state must NOT be painted beside a table that has rows. */
-            assert!(
-                !words.iter().any(|w| w == "nothing to read"),
-                "at {width}px the ledger painted its empty state over a folder it had just scanned"
-            );
-        }
-    }
-
-    /// THE SAME CLAIM AS THE TEST ABOVE, OVER ROWS THE INGEST REALLY PRODUCED. That one plants
-    /// three placeholder rows by hand and asserts they are what a fresh install lists; this one
-    /// makes the ingest list them, which is what holds the two halves of that claim together.
-    ///
-    /// WHY THIS ONE TOUCHES THE DISK when every other test of this line plants its rows instead.
-    /// The two answers are identical until the ingest has scanned: a fresh `Ingest` lists nothing
-    /// at all, so `sources().len()` and `source_files()` are both 0 and agree. The case that tells
-    /// them apart only exists AFTER a scan has landed, which needs a real folder and the reader
-    /// thread, so no pure seam can reach it.
-    ///
-    /// IT USED TO ASK `nav::count_of` AND NOW IT ASKS THIS SCREEN, because this screen is the last
-    /// surface that asks the question. The rail's Sources badge was the other one and it went with
-    /// the row. The defect is unchanged and it is this line's own history: printing
-    /// `ingest.sources().len()` here read "3 sources found" on a machine holding one log and two
-    /// folders the ingest had merely looked in.
-    #[test]
-    fn the_log_folder_line_counts_files_found_over_a_real_scan() {
-        let tree = TempTree::new("grimoire-settings-sources");
-        std::fs::write(
-            tree.logs().join("eqlog_Stoic_legends.txt"),
-            "[Sun Sep 01 23:58:00 2026] Welcome to EverQuest!\n",
-        )
-        .expect("plant a log");
-        let settings = Settings {
-            log_dir: Some(tree.logs()),
-            /* Hermetic: an empty data root, so a question about counting files does not go and
-             * read the real snapshot to answer it. */
-            data_root: Some(tree.root.clone()),
-            ..Default::default()
-        };
-        let mut ingest = crate::ingest::Ingest::new(&settings);
-        let settled = pump_until(&mut ingest, |ig| {
-            ig.sources()
-                .iter()
-                .any(|s| crate::nav::looks_like_eq_log(&s.path))
-        });
-        /* A test that gives up quietly is a test that proves nothing. */
-        assert!(
-            settled,
-            "the ingest never listed the log planted in {}",
-            tree.logs().display()
-        );
-
-        let listed = ingest.sources();
-        /* THE VALIDITY CHECK, BEFORE THE RESULT. This case only discriminates while the ingest is
-         * listing at least one row that is not a file: the dump placeholders beside the game
-         * folder. If it ever stops listing those, the assertion below would hold against a plain
-         * row count too and would be proving nothing while still going green. Say so instead. */
-        assert!(
-            listed.len() > crate::nav::source_files(&listed),
-            "not a discriminating case: every row listed is a file, so this cannot tell a count of \
-             finds from a count of rows"
-        );
-
-        let (state, words) = log_folder_mark(settings.log_dir.as_deref(), &listed);
-        assert_eq!(state, State::Settled);
-        assert_eq!(
-            words, "1 source found; the SOURCES section below lists them",
-            "one log was planted; the rest of what the ingest listed is folders it looked in"
-        );
-    }
-
-    /// THE SOURCES LEDGER IS ON THE SETTINGS SCREEN, AND THIS DRIVES A REAL FRAME TO SAY SO.
-    ///
-    /// It was a rail row under CRAFT (`ScreenId::Sources`, `screens::sources`), which the owner
-    /// said had no reason to be there. The row and the screen are both gone, so "it moved" is a
-    /// claim about paint, and paint is what this reads: the two headings and the words that only
-    /// that screen ever carried have to come out of a frame this screen really drew.
-    ///
-    /// THE FENCE IS THE SECTION ABOVE IT. `LOG FOLDER` is asserted present first. Without that a
-    /// screen that painted nothing, or stopped halfway, would satisfy nothing below and this would
-    /// fail for the wrong reason or, worse, an absence test would pass for free.
-    ///
-    /// AND THE ORDER IS PART OF THE CLAIM. The ledger answers questions about the folder the
-    /// section above it sets, and the fold is only an improvement if the two are adjacent, so the
-    /// index of SOURCES is asserted to fall between LOG FOLDER's and WINDOW's.
-    #[test]
-    fn the_sources_ledger_is_painted_by_the_settings_screen() {
-        let (words, _) = settings_screen_frame();
-        let at = |want: &str| {
-            words
-                .iter()
-                .position(|w| w == want)
-                .unwrap_or_else(|| panic!("the settings screen never painted {want:?}: {words:?}"))
-        };
-        let log = at("LOG FOLDER");
-        let sources = at("SOURCES");
-        let came_out = at("WHAT CAME OUT");
-        let window = at("WINDOW");
-        assert!(
-            log < sources && sources < came_out && came_out < window,
-            "the ledger has to sit under the field it is about: LOG FOLDER at {log}, SOURCES at \
-             {sources}, WHAT CAME OUT at {came_out}, WINDOW at {window}"
-        );
-
-        /* The words that only the retired screen carried. Not headings: sentences, so a heading
-         * moved without its body would not satisfy this. */
-        for want in [
-            "Inventory and achievements dumps (/outputfile), hunting logs and the EQ log tail, read by one ingest.",
-            "Re-read",
-            "folder not scanned yet",
-            "no kill events yet",
-            "snapshot not loaded yet",
-        ] {
-            assert!(
-                words.iter().any(|w| w == want),
-                "the SOURCES section never painted {want:?}: {words:?}"
-            );
-        }
-
-        /* The empty state names every file the ingest looks for, which is the only thing on this
-         * screen that tells a reader what to go and make. */
-        for line in LOOKS_FOR {
-            assert!(
-                words.iter().any(|w| w == line),
-                "the empty state dropped {line:?}"
-            );
-        }
-    }
-
-    /// D7: the empty state names every source kind the ingest lists. Came from the retired screen
-    /// with the constant it asserts on.
-    #[test]
-    fn looks_for_names_every_source_kind_the_ingest_lists() {
-        for (kind, word) in [
-            (SourceKind::Log, "eqlog_"),
-            (SourceKind::Inventory, "-Inventory.txt"),
-            (SourceKind::Achievements, "-Achievements.txt"),
-        ] {
-            assert!(
-                LOOKS_FOR.iter().any(|l| l.contains(word)),
-                "{} ({word}) is not in the empty state",
-                kind.label()
-            );
-        }
-    }
 
     /// DEFECT THIS PREVENTS: THE UPDATES SECTION EXISTING AND NEVER BEING DRAWN.
     ///
@@ -4936,10 +3371,10 @@ mod tests {
                 .position(|w| w == want)
                 .unwrap_or_else(|| panic!("the settings screen never painted {want:?}: {words:?}"))
         };
-        let (updates, account, notes) = (at("UPDATES"), at("ACCOUNT"), at("FIGHT NOTES"));
+        let (updates, account, notes) = (at("UPDATES"), at("ACCOUNT"), at("HOTKEYS"));
         assert!(
             updates < account && account < notes,
-            "ACCOUNT belongs between UPDATES ({updates}) and FIGHT NOTES ({notes}), not at \
+            "ACCOUNT belongs between UPDATES ({updates}) and HOTKEYS ({notes}), not at \
              {account}"
         );
         let section = &words[account..notes];
@@ -5026,8 +3461,8 @@ mod tests {
                 .expect("the ACCOUNT heading");
             let to = words
                 .iter()
-                .position(|w| w == "FIGHT NOTES")
-                .expect("the FIGHT NOTES heading");
+                .position(|w| w == "HOTKEYS")
+                .expect("the HOTKEYS heading");
             let section = &words[from..to];
             for want in present {
                 assert!(
@@ -5349,271 +3784,5 @@ mod tests {
         assert_eq!(last_read_text(Some(t), now), "3h ago");
     }
 
-    #[test]
-    fn records_column_pads_on_the_left() {
-        assert_eq!(pad_left("7", 4), "   7");
-        assert_eq!(pad_left("1234", 4), "1234");
-        assert_eq!(pad_left("12345", 4), "12345", "never truncates");
-    }
-
     /* ------------------------------------------------------------- fight notes -- */
-
-    /// DEFECT: A NOTE PRINTED IN THE ORDER OF THE WEEKDAY'S ALPHABET.
-    ///
-    /// `Settings::fight_notes` is a `BTreeMap` keyed on a log stamp, `Wed Jul 15 23:16:50 2026`,
-    /// and the map's own order is the byte order of that text. The text opens with the WEEKDAY, so
-    /// every Friday in a person's history sorts ahead of every Monday and June sorts after July.
-    /// A list drawn straight out of the map would look deliberate and be nonsense.
-    ///
-    /// AND A STAMP THAT WILL NOT PARSE STILL GETS A ROW. That is not tidiness: the whole reason
-    /// this list exists is that a note can become unreachable, so a sort that quietly dropped the
-    /// one note with a hand edited key would rebuild the defect inside the fix.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: iterating the map in its own order, sorting ascending, or
-    /// filtering out the keys `note_when` cannot read.
-    #[test]
-    fn stored_notes_are_listed_newest_first_and_the_unreadable_one_is_kept() {
-        let mut notes: BTreeMap<String, String> = BTreeMap::new();
-        notes.insert(
-            "Wed Jul 15 23:16:50 2026".to_owned(),
-            "golem pull went long".to_owned(),
-        );
-        notes.insert(
-            "Mon Aug 24 21:04:11 2026".to_owned(),
-            "clean princess kill".to_owned(),
-        );
-        notes.insert(
-            "Fri Jun 12 08:00:00 2026".to_owned(),
-            "first night in sky".to_owned(),
-        );
-        /* A KEY NO STAMP READER CAN TAKE, and it is deliberately one the map sorts FIRST: '?' is
-         * 63 and 'F' is 70, so a test whose odd key sorted last would pass on a filter that
-         * dropped it. */
-        notes.insert("??? hand edited".to_owned(), "who knows".to_owned());
-
-        /* The map's own order, so the assertion below is against something and not against
-         * itself. */
-        let map_order: Vec<&str> = notes.keys().map(|k| k.as_str()).collect();
-        assert_eq!(
-            map_order,
-            vec![
-                "??? hand edited",
-                "Fri Jun 12 08:00:00 2026",
-                "Mon Aug 24 21:04:11 2026",
-                "Wed Jul 15 23:16:50 2026",
-            ],
-            "this fixture no longer tells the map's order apart from the right one"
-        );
-
-        let rows = notes_newest_first(&notes);
-        let got: Vec<&str> = rows.iter().map(|(k, _)| *k).collect();
-        assert_eq!(
-            got,
-            vec![
-                "Mon Aug 24 21:04:11 2026",
-                "Wed Jul 15 23:16:50 2026",
-                "Fri Jun 12 08:00:00 2026",
-                "??? hand edited",
-            ],
-            "the notes are not newest first, or the unreadable stamp was dropped"
-        );
-        assert_eq!(
-            rows.len(),
-            notes.len(),
-            "a note went missing on the way out"
-        );
-        /* And the words travel with the key they belong to. */
-        assert_eq!(rows[0].1, "clean princess kill");
-        assert_eq!(rows[3].1, "who knows");
-
-        /* THE STAMP READER IS THE ONE `screens::sky` ALREADY OWNS, so this pins the two ends
-         * rather than a second parser written here. */
-        assert!(note_when("Wed Jul 15 23:16:50 2026").is_some());
-        assert!(
-            note_when("[Wed Jul 15 23:16:50 2026]").is_some(),
-            "brackets"
-        );
-        assert!(note_when("??? hand edited").is_none());
-    }
-
-    /// DEFECT: A NOTE THAT IS SAVED, RELOADED FOR EVER, AND VISIBLE ON NO SCREEN.
-    ///
-    /// # HOW A PERSON HIT IT
-    ///
-    /// Write a note on a fight, on the Analysis page. Keep playing. That fight leaves the 40MB
-    /// tail the app holds, so Analysis can no longer show it, and Analysis reading exactly one
-    /// entry (the one for the fight in front of it) was the only reader `fight_notes` had. The
-    /// note is still in `settings.json` and there was no surface in the app that could print it
-    /// or delete it.
-    ///
-    /// # WHY THIS IS A FRAME AND NOT A CALL TO `notes`
-    ///
-    /// This tree's signature defect is a function that compiles, is tested, and has no production
-    /// caller, and a fix for an unreachable setting that was itself unreachable would be that
-    /// defect twice. So this drives `SettingsScreen::ui`, the method the app calls, and reads the
-    /// strings back out of the shapes egui produced. Calling `notes` directly would prove the
-    /// section renders and say nothing about whether anybody can get to it.
-    ///
-    /// The screen is NOT dirty, so no write is attempted and the owner's real settings.json is
-    /// never touched: `ui` writes only when the debounce is pending, and only `mark_dirty` sets
-    /// it, which only an edit on this screen calls.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: dropping `self.notes(ui, cx)` out of `ui`, printing a count
-    /// without the notes themselves, or truncating a note to a preview.
-    #[test]
-    fn the_settings_screen_lists_every_stored_fight_note() {
-        let ctx = egui::Context::default();
-        crate::fonts::install(&ctx);
-        crate::theme::install(&ctx);
-
-        let mut notes: BTreeMap<String, String> = BTreeMap::new();
-        notes.insert(
-            "Wed Jul 15 23:16:50 2026".to_owned(),
-            "golem pull went long".to_owned(),
-        );
-        notes.insert(
-            "Mon Aug 24 21:04:11 2026".to_owned(),
-            "clean princess kill".to_owned(),
-        );
-        let mut settings = Settings {
-            fight_notes: notes,
-            ..Settings::default()
-        };
-        let mut ingest = crate::ingest::Ingest::new(&settings);
-        let live = crate::watcher::Status {
-            twitch: crate::watcher::Channel::unchecked(TWITCH_HANDLE),
-            youtube: crate::watcher::Channel::unchecked(YOUTUBE_HANDLE),
-        };
-        let mut screen = SettingsScreen::default();
-        let mut cx = crate::screens::Cx {
-            data: None,
-            railed: false,
-            data_err: None,
-            live: &live,
-            settings: &mut settings,
-            ingest: &mut ingest,
-            player: Default::default(),
-            stage: None,
-            demand: None,
-            ask: Default::default(),
-            chat: crate::chat::ChatHandle::idle(),
-            chat_wanted: false,
-            auth: Default::default(),
-            auth_begin: false,
-            auth_cancel: false,
-            yt: Default::default(),
-            yt_wanted: false,
-        };
-        let input = egui::RawInput {
-            screen_rect: Some(egui::Rect::from_min_size(
-                egui::Pos2::ZERO,
-                Vec2::new(900.0, 6000.0),
-            )),
-            ..Default::default()
-        };
-        let mut out = ctx.run_ui(input, |ui| screen.ui(ui, &mut cx));
-        let shapes = std::mem::take(&mut out.shapes);
-        out.drop_without_applying_deltas();
-        let mut flat = Vec::new();
-        for cs in shapes {
-            flatten(cs.shape, &mut flat);
-        }
-        let words: Vec<String> = flat
-            .iter()
-            .filter_map(|sh| match sh {
-                egui::Shape::Text(t) => Some(t.galley.text().to_owned()),
-                _ => None,
-            })
-            .collect();
-        let joined = words.join("\u{1F}");
-
-        for want in [
-            "FIGHT NOTES",
-            "Wed Jul 15 23:16:50 2026",
-            "golem pull went long",
-            "Mon Aug 24 21:04:11 2026",
-            "clean princess kill",
-            "Delete",
-            "2 notes stored",
-        ] {
-            assert!(
-                joined.contains(want),
-                "the settings screen never painted {want:?}; it painted {words:?}"
-            );
-        }
-    }
-
-    /// AND WITH NO NOTES IT SAYS WHERE ONE COMES FROM RATHER THAN DRAWING AN EMPTY BOX.
-    ///
-    /// A blank rectangle cannot be told from a broken screen, which is the empty state rule this
-    /// tree holds everywhere. This one has a second job: a person who has never written a note is
-    /// exactly the person who does not know the Analysis page is where notes are written.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: an empty state that draws nothing, or one that names no way
-    /// to produce a note.
-    #[test]
-    fn with_no_notes_the_section_says_where_a_note_is_written() {
-        let ctx = egui::Context::default();
-        crate::fonts::install(&ctx);
-        crate::theme::install(&ctx);
-
-        let mut settings = Settings::default();
-        assert!(settings.fight_notes.is_empty());
-        let mut ingest = crate::ingest::Ingest::new(&settings);
-        let live = crate::watcher::Status {
-            twitch: crate::watcher::Channel::unchecked(TWITCH_HANDLE),
-            youtube: crate::watcher::Channel::unchecked(YOUTUBE_HANDLE),
-        };
-        let mut screen = SettingsScreen::default();
-        let mut cx = crate::screens::Cx {
-            data: None,
-            railed: false,
-            data_err: None,
-            live: &live,
-            settings: &mut settings,
-            ingest: &mut ingest,
-            player: Default::default(),
-            stage: None,
-            demand: None,
-            ask: Default::default(),
-            chat: crate::chat::ChatHandle::idle(),
-            chat_wanted: false,
-            auth: Default::default(),
-            auth_begin: false,
-            auth_cancel: false,
-            yt: Default::default(),
-            yt_wanted: false,
-        };
-        let input = egui::RawInput {
-            screen_rect: Some(egui::Rect::from_min_size(
-                egui::Pos2::ZERO,
-                Vec2::new(900.0, 6000.0),
-            )),
-            ..Default::default()
-        };
-        let mut out = ctx.run_ui(input, |ui| screen.ui(ui, &mut cx));
-        let shapes = std::mem::take(&mut out.shapes);
-        out.drop_without_applying_deltas();
-        let mut flat = Vec::new();
-        for cs in shapes {
-            flatten(cs.shape, &mut flat);
-        }
-        let joined: String = flat
-            .iter()
-            .filter_map(|sh| match sh {
-                egui::Shape::Text(t) => Some(t.galley.text().to_owned()),
-                _ => None,
-            })
-            .collect::<Vec<String>>()
-            .join("\u{1F}");
-        assert!(joined.contains("FIGHT NOTES"), "the heading is not drawn");
-        assert!(
-            joined.contains("Analysis"),
-            "the empty state does not say where a note is written: {joined:?}"
-        );
-        assert!(
-            !joined.contains("Delete"),
-            "a delete control was drawn with nothing to delete"
-        );
-    }
 }

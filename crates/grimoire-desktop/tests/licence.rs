@@ -30,7 +30,7 @@ use std::path::{Path, PathBuf};
 /// picked AGPL-3.0 and a future version of the licence is a decision nobody has taken.
 const SPDX: &str = "AGPL-3.0-only";
 
-/// `CARGO_MANIFEST_DIR` is `.../crates/grimoire-forge`; two levels up is the workspace root, so
+/// `CARGO_MANIFEST_DIR` is `.../crates/grimoire-desktop`; two levels up is the workspace root, so
 /// the answer does not depend on the directory `cargo test` was invoked from (EDGE-002).
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

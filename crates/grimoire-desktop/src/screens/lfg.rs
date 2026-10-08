@@ -14,21 +14,13 @@
 //! the top switch it by hand. The mode changes the prefix of the copied line and nothing else, so
 //! one board holds all three kinds of entry and each remembers which kind it was.
 //!
-//! WHO YOU ARE. Nothing asks: the busiest `eqlog_<Character>_<server>.txt` in the log folder IS
-//! the character being played, and the character's name is in that file name.
-//! Both rules already live in `crate::ingest`, which lists the folder,
-//! picks the newest file and tails it, and this screen does NOT carry a second copy of them: two
-//! implementations of "which log is active" is how the Parser and the LFG board end up naming two
-//! different characters on the same afternoon. The board reads the ingest's `sources()` report,
-//! takes the log it is actually reading, and applies the ingest's own `character_of_log` to its
-//! name. What this screen owns is the mapping from that report to a line a person can act on,
-//! which is `who_of` below, and that carries the tests.
+//! WHO YOU ARE is typed once in the compose row and remembered with the board. Monsters & Memories
+//! writes no log file to read a character name from, so nothing here guesses one.
 //!
 //! CLASS AND LEVEL are typed, not derived: sixteen class codes, a level clamped to 1..50. The log
 //! does not state either reliably, so the compose row asks and never guesses. An empty field is
 //! omitted from the copied line.
 
-use crate::ingest::{character_of_log, Source, SourceKind};
 use crate::screens::Cx;
 use crate::settings::Settings;
 use crate::theme::*;
@@ -62,6 +54,10 @@ pub struct Board {
     pub class: String,
     #[serde(default)]
     pub level: Option<u32>,
+    /// The character name the reader typed. Monsters & Memories writes no log to read it from,
+    /// so it is asked once and remembered with the board. Empty means not stated.
+    #[serde(default)]
+    pub character: String,
 }
 
 fn board_version() -> u32 {
@@ -72,8 +68,8 @@ fn board_version() -> u32 {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
     pub when: DateTime<Utc>,
-    /// Character name from the log the ingest was reading when the entry was posted. Empty when
-    /// no log was being read; the row then shows "(unknown)" rather than a made-up name.
+    /// The character name typed in the compose row when the entry was posted. Empty when none
+    /// was typed; the row then shows "(unknown)" rather than a made-up name.
     pub who: String,
     pub what: String,
     pub mode: Mode,
@@ -242,77 +238,6 @@ pub fn copy_line(mode: Mode, class: &str, level: Option<u32>, text: &str) -> Str
     parts.join(" ")
 }
 
-/// Where the character name came from, or why there is none. Shown next to the compose row.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Who {
-    /// A character name, and the file it was read from.
-    Named { who: String, file: String },
-    /// A log is being read, but its name does not carry a character (the client names logs
-    /// `eqlog_<Character>_<server>.txt`; a renamed file may not).
-    NoCharacter(String),
-    /// The ingest is still reading the log folder for the first time. Not a failure.
-    Scanning,
-    /// A log folder exists but nothing in it is being read; the ingest's own words say why.
-    NotTailed(String),
-    /// The ingest found no log folder at all.
-    NoLogDir,
-}
-
-impl Who {
-    pub fn name(&self) -> &str {
-        match self {
-            Who::Named { who, .. } => who.as_str(),
-            _ => "",
-        }
-    }
-    /// The line the compose row shows.
-    pub fn line(&self) -> String {
-        match self {
-            Who::Named { who, file } => format!("{who} (from {file})"),
-            Who::NoCharacter(f) => format!("character unknown: {f} does not name one (expected eqlog_<Character>_<server>.txt)"),
-            Who::Scanning => "character: reading the log folder".to_owned(),
-            Who::NotTailed(why) => format!("character unknown: {why}"),
-            Who::NoLogDir => "character unknown: set the log folder in Settings".to_owned(),
-        }
-    }
-}
-
-/// The character, from the ingest's report of what it is reading.
-///
-/// The tailed log is the one `Source` of kind `Log` with a `last_read`; the ingest marks every
-/// other log "not tailed". A `Log` source with no `last_read` and no active one carries the
-/// reason in `problem` (no files, unreadable folder). No `Log` source at all means the ingest had
-/// no folder to list, unless it is still on its first scan.
-pub fn who_of(sources: &[Source], scanning: bool) -> Who {
-    let logs: Vec<&Source> = sources
-        .iter()
-        .filter(|s| matches!(s.kind, SourceKind::Log))
-        .collect();
-    if let Some(active) = logs.iter().find(|s| s.last_read.is_some()) {
-        let file = active
-            .path
-            .file_name()
-            .map(|f| f.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        return match character_of_log(&file) {
-            Some(who) => Who::Named { who, file },
-            None => Who::NoCharacter(file),
-        };
-    }
-    if let Some(first) = logs.first() {
-        return Who::NotTailed(
-            first
-                .problem
-                .clone()
-                .unwrap_or_else(|| format!("{} is not being read", first.path.display())),
-        );
-    }
-    if scanning {
-        return Who::Scanning;
-    }
-    Who::NoLogDir
-}
-
 /* -------------------------------------------------------------------- the screen -- */
 
 pub struct LfgScreen {
@@ -325,6 +250,7 @@ pub struct LfgScreen {
     text: String,
     class_typed: String,
     level_typed: String,
+    character_typed: String,
     /// What the compose row last refused, if anything. Cleared on the next successful post.
     refused: Option<String>,
     /// The last save or load failure. Shown until a later save succeeds.
@@ -342,6 +268,7 @@ impl Default for LfgScreen {
             text: String::new(),
             class_typed: String::new(),
             level_typed: String::new(),
+            character_typed: String::new(),
             refused: None,
             problem: None,
             copied_at: None,
@@ -362,6 +289,7 @@ impl LfgScreen {
         match board_from(cx.settings) {
             Ok(b) => {
                 self.class_typed = b.class.clone();
+                self.character_typed = b.character.clone();
                 self.level_typed = b.level.map(|l| l.to_string()).unwrap_or_default();
                 self.board = b;
             }
@@ -377,6 +305,7 @@ impl LfgScreen {
     fn persist(&mut self, cx: &mut Cx) {
         self.board.class = self.class_typed.trim().to_ascii_uppercase();
         self.board.level = level_of(&self.level_typed).ok().flatten();
+        self.board.character = self.character_typed.trim().to_owned();
         let r = board_into(cx.settings, &self.board).and_then(|_| cx.settings.save());
         self.problem = r.err();
     }
@@ -390,13 +319,6 @@ impl LfgScreen {
 
     pub fn ui(&mut self, ui: &mut Ui, cx: &mut Cx) {
         self.load_once(cx);
-        /* Read each frame: `sources()` is a handful of clones, and the ingest re-lists the folder
-         * on its own clock, so there is nothing here worth a second timer. While the first scan
-         * runs, the line says so and repaints are kept coming so it clears without a click. */
-        let who = who_of(&cx.ingest.sources(), cx.ingest.scanning());
-        if who == Who::Scanning {
-            ui.ctx().request_repaint_after(Duration::from_millis(250));
-        }
         let mode = self.mode();
 
         /* The heading, a caps run, in Cinzel. */
@@ -444,16 +366,11 @@ impl LfgScreen {
                     .font(FontId::proportional(11.0))
                     .color(TEXT_3),
             );
-            let who_col = if matches!(who, Who::Named { .. }) {
-                TEXT
-            } else {
-                TEXT_3
-            };
-            /* a file name and a character name are compared character by character: monospace */
-            ui.label(
-                RichText::new(who.line())
-                    .font(FontId::monospace(11.5))
-                    .color(who_col),
+            /* Hint names the field, never a sample name. */
+            ui.add(
+                egui::TextEdit::singleline(&mut self.character_typed)
+                    .hint_text("character name")
+                    .desired_width(180.0),
             );
         });
         ui.add_space(4.0);
@@ -554,7 +471,7 @@ impl LfgScreen {
                 (Ok(class), Ok(level)) if !self.text.trim().is_empty() => {
                     self.board.entries.push(Entry {
                         when: Utc::now(),
-                        who: who.name().to_owned(),
+                        who: self.character_typed.trim().to_owned(),
                         what: self.text.split_whitespace().collect::<Vec<_>>().join(" "),
                         mode,
                         class,
@@ -658,7 +575,6 @@ impl LfgScreen {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     #[test]
     fn copy_line_generic_is_lfg_class_level_text() {
@@ -726,99 +642,6 @@ mod tests {
         assert!(level_of("fifty").is_err());
     }
 
-    fn log(path: &str, tailed: bool, problem: Option<&str>) -> Source {
-        Source {
-            kind: SourceKind::Log,
-            path: PathBuf::from(path),
-            last_read: tailed.then(Utc::now),
-            records: 0,
-            problem: problem.map(str::to_owned),
-        }
-    }
-
-    #[test]
-    fn who_is_the_character_of_the_log_being_tailed() {
-        /* two logs, only one tailed: the tailed one wins regardless of order */
-        let srcs = vec![
-            log("C:/EQ/Logs/eqlog_Alt_legends.txt", false, Some("not tailed: only the most recently written log is read, and that is eqlog_Stoic_legends.txt")),
-            log("C:/EQ/Logs/eqlog_Stoic_legends.txt", true, None),
-        ];
-        assert_eq!(
-            who_of(&srcs, false),
-            Who::Named {
-                who: "Stoic".into(),
-                file: "eqlog_Stoic_legends.txt".into()
-            }
-        );
-        assert_eq!(who_of(&srcs, false).name(), "Stoic");
-        assert_eq!(
-            who_of(&srcs, false).line(),
-            "Stoic (from eqlog_Stoic_legends.txt)"
-        );
-        /* a tailed log whose name carries no character is said so, not guessed */
-        let renamed = vec![log("C:/EQ/Logs/eqlog_backup.txt", true, None)];
-        assert_eq!(
-            who_of(&renamed, false),
-            Who::NoCharacter("eqlog_backup.txt".into())
-        );
-        assert_eq!(who_of(&renamed, false).name(), "");
-    }
-
-    #[test]
-    fn who_names_every_failure_in_the_ingests_words() {
-        assert_eq!(who_of(&[], false), Who::NoLogDir);
-        assert!(who_of(&[], false).line().contains("Settings"));
-        assert_eq!(
-            who_of(&[], true),
-            Who::Scanning,
-            "a first scan in flight is not a missing folder"
-        );
-        /* a folder with no logs: the ingest reports the folder as a Log source with the reason */
-        let empty = vec![log(
-            "C:/EQ/Logs",
-            false,
-            Some("No eqlog_*.txt files in C:/EQ/Logs. Is logging on? (/log)"),
-        )];
-        assert_eq!(
-            who_of(&empty, false),
-            Who::NotTailed("No eqlog_*.txt files in C:/EQ/Logs. Is logging on? (/log)".into())
-        );
-        assert!(who_of(&empty, false)
-            .line()
-            .starts_with("character unknown: "));
-        /* a log source with no reason still names the path rather than saying nothing */
-        let mute = vec![log("C:/EQ/Logs/eqlog_Stoic_legends.txt", false, None)];
-        assert!(who_of(&mute, false)
-            .line()
-            .contains("eqlog_Stoic_legends.txt"));
-        /* an inventory source is not a log and never names a character */
-        let inv = vec![Source {
-            kind: SourceKind::Inventory,
-            path: PathBuf::from("C:/EQ/Stoic-Inventory.txt"),
-            last_read: Some(Utc::now()),
-            records: 3,
-            problem: None,
-        }];
-        assert_eq!(who_of(&inv, false), Who::NoLogDir);
-    }
-
-    #[test]
-    fn who_lines_carry_no_dashes() {
-        for w in [
-            Who::Named {
-                who: "Stoic".into(),
-                file: "eqlog_Stoic_legends.txt".into(),
-            },
-            Who::NoCharacter("x.txt".into()),
-            Who::Scanning,
-            Who::NotTailed("why".into()),
-            Who::NoLogDir,
-        ] {
-            let l = w.line();
-            assert!(!l.contains('\u{2014}') && !l.contains('\u{2013}'), "{l}");
-        }
-    }
-
     #[test]
     fn board_round_trips_through_json_with_lowercase_modes() {
         let b = Board {
@@ -835,8 +658,13 @@ mod tests {
             }],
             class: "WAR".into(),
             level: Some(50),
+            character: "Grimtooth".into(),
         };
         let v = serde_json::to_value(&b).unwrap();
+        assert_eq!(
+            v["character"], "Grimtooth",
+            "the typed character is kept with the board"
+        );
         assert_eq!(v["entries"][0]["mode"], "motes");
         assert_eq!(v["version"], 1);
         let back: Board = serde_json::from_value(v).unwrap();
@@ -844,6 +672,10 @@ mod tests {
         /* an old board with no version field still loads */
         let bare: Board = serde_json::from_value(serde_json::json!({ "entries": [] })).unwrap();
         assert_eq!(bare.version, 1);
+        assert_eq!(
+            bare.character, "",
+            "a board saved before the character field loads with none"
+        );
     }
 
     /// The version stamp is read on load, not only written: a board from a newer build is
@@ -887,6 +719,7 @@ mod tests {
             entries: vec![],
             class: "CLR".into(),
             level: Some(12),
+            character: String::new(),
         };
         board_into(&mut s, &b).unwrap();
         assert!(s.extra.contains_key(BOARD_KEY));

@@ -36,7 +36,7 @@ use super::install::{self, Layout, Spawn};
 use super::manifest::{self, Artifact, Direction, Local, Outcome, KIND_APP, KIND_DATA};
 use super::verify;
 use super::Refusal;
-use crate::fights::Pulse;
+use crate::activity::Activity;
 
 /* ============================================================== the constants == */
 
@@ -381,7 +381,7 @@ pub fn check_is_due(
 /// [`super::install::stage`], which is where it actually bites. This adds the two scheduling
 /// questions on top of it: the owner has to have allowed it, and there has to be something to
 /// fetch that has not already been refused.
-pub fn may_fetch(pulse: Pulse, auto_download: bool, asked: bool, pending: bool) -> bool {
+pub fn may_fetch(pulse: Activity, auto_download: bool, asked: bool, pending: bool) -> bool {
     pending && (auto_download || asked) && super::may_start_download(pulse)
 }
 
@@ -786,19 +786,19 @@ impl Persisted {
 /// what is true NOW, at the instant it is about to start a download, and a queue of past pulses
 /// would answer a different question. Written once per heartbeat from [`Updater::pump`], read once
 /// per pass.
-fn pulse_byte(p: Pulse) -> u8 {
+fn pulse_byte(p: Activity) -> u8 {
     match p {
-        Pulse::Fighting => 0,
-        Pulse::Holding => 1,
-        Pulse::Closed => 2,
+        Activity::Busy => 0,
+        Activity::Settling => 1,
+        Activity::Idle => 2,
     }
 }
 
-fn byte_pulse(b: u8) -> Pulse {
+fn byte_pulse(b: u8) -> Activity {
     match b {
-        0 => Pulse::Fighting,
-        1 => Pulse::Holding,
-        _ => Pulse::Closed,
+        0 => Activity::Busy,
+        1 => Activity::Settling,
+        _ => Activity::Idle,
     }
 }
 
@@ -898,7 +898,7 @@ impl Updater {
         }));
         let live = Arc::new(Live {
             stop: AtomicBool::new(false),
-            pulse: AtomicU8::new(pulse_byte(Pulse::Fighting)),
+            pulse: AtomicU8::new(pulse_byte(Activity::Busy)),
             data_ready: AtomicBool::new(false),
             settings: Mutex::new(settings.clone()),
             asks: Mutex::new(Vec::new()),
@@ -972,7 +972,7 @@ impl Updater {
     ///
     /// Two atomic stores and one mutex that is never held across a network call or a draw. Nothing
     /// here blocks, because the heartbeat runs on the frame.
-    pub fn pump(&self, pulse: Pulse, data_ready: bool, settings: &UpdaterSettings) {
+    pub fn pump(&self, pulse: Activity, data_ready: bool, settings: &UpdaterSettings) {
         self.live.pulse.store(pulse_byte(pulse), Ordering::Relaxed);
         self.live.data_ready.store(data_ready, Ordering::Relaxed);
         /* COMPARED BEFORE IT IS WRITTEN, so the ordinary frame takes the lock and puts it down
@@ -1482,7 +1482,7 @@ impl Worker {
 
     /* -------------------------------------------------------------- downloading -- */
 
-    fn download(&mut self, pulse: Pulse) {
+    fn download(&mut self, pulse: Activity) {
         let Some(p) = self.pending.take() else {
             return;
         };
@@ -1623,7 +1623,7 @@ impl Worker {
         let (version, art, notes_url) = (p.version, p.app, p.notes_url);
         /* THE PREFLIGHT SPAWNS THE STAGED BINARY AND WAITS FOR IT, which is why this is on the
          * worker thread and behind a press. `install::Spawn` runs it with `GRIMOIRE_SMOKE_MS` set
-         * to `data::LOAD_BUDGET`, and `App::new` does not construct an `Updater` when that switch
+         * to `install::STARTUP_BUDGET`, and `App::new` does not construct an `Updater` when that switch
          * is set, so the preflight cannot race its own parent over `state.json`. */
         let pulse = byte_pulse(self.live.pulse.load(Ordering::Relaxed));
         match install::install_app(&self.layout, &version, &art, self.keys, &Spawn, pulse) {
@@ -1890,9 +1890,9 @@ pub fn entry_point() -> Option<PathBuf> {
 ///
 /// # THE SAME GATE AS A DOWNLOAD, AND IT IS THE SECOND OF THE ONLY TWO THINGS GATED
 ///
-/// [`super::may_start_download`] answers `true` only for [`Pulse::Closed`], and the reason it is
+/// [`super::may_start_download`] answers `true` only for [`Activity::Idle`], and the reason it is
 /// not `!Ingest::fight_is_live()` is written out there: `fight_is_live` is `pulse().fighting()`,
-/// which is already false during [`Pulse::Holding`], and Holding is the six seconds after a kill
+/// which is already false during [`Activity::Settling`], and Holding is the six seconds after a kill
 /// when the reader is standing in the camp with the next mob on its way (`fights.rs:84-88`).
 /// Closing the app there is as much an interruption as closing it mid-pull, and it is worse than
 /// an interrupted download because a download can be started again and a wipe cannot.
@@ -1907,7 +1907,7 @@ pub fn entry_point() -> Option<PathBuf> {
 ///
 /// Returns false unless something is actually installed, because a Restart now button with nothing
 /// to restart into says an update happened when none did.
-pub fn may_restart(pulse: Pulse, phase: &Phase) -> bool {
+pub fn may_restart(pulse: Activity, phase: &Phase) -> bool {
     matches!(phase, Phase::Installed { .. }) && super::may_start_download(pulse)
 }
 
@@ -2147,7 +2147,7 @@ mod tests {
         );
 
         let done = until(|| {
-            u.pump(Pulse::Closed, true, &UpdaterSettings::default());
+            u.pump(Activity::Idle, true, &UpdaterSettings::default());
             let _ = u.view();
             matches!(u.view().phase, Phase::UpToDate)
         });
@@ -2220,7 +2220,7 @@ mod tests {
         );
         let before = lock(&u.live.settings).clone();
         for _ in 0..64 {
-            u.pump(Pulse::Closed, false, &off);
+            u.pump(Activity::Idle, false, &off);
         }
         assert_eq!(
             lock(&u.live.settings).clone(),
@@ -2231,7 +2231,7 @@ mod tests {
             channel: CHANNELS[1].to_owned(),
             ..off.clone()
         };
-        u.pump(Pulse::Closed, false, &on);
+        u.pump(Activity::Idle, false, &on);
         assert_eq!(
             lock(&u.live.settings).channel,
             CHANNELS[1],
@@ -2359,7 +2359,7 @@ mod tests {
 
         assert!(
             until(|| {
-                u.pump(Pulse::Closed, true, &s);
+                u.pump(Activity::Idle, true, &s);
                 downloaded(&u, "0.2.0")
             }),
             "0.2.0 never reached the staging folder; the phase was {:?}",
@@ -2385,7 +2385,7 @@ mod tests {
 
         assert!(
             until(|| {
-                u.pump(Pulse::Closed, true, &s);
+                u.pump(Activity::Idle, true, &s);
                 downloaded(&u, "0.3.0")
             }),
             "0.3.0 never replaced 0.2.0; the phase was {:?}",
@@ -2409,86 +2409,57 @@ mod tests {
 
     /* ----------------------------------------------------------------- the gates -- */
 
-    /// DEFECT THIS PREVENTS: BEING ASKED TO CLOSE THE APP IN THE MIDDLE OF A PULL.
+    /// THE ACTIVITY IS PRODUCED BY THE REAL FOLD (`Activity::from_busy`) AND NEVER SET BY HAND.
     ///
-    /// `Restart now` closes the window. Offering it while the reader is swinging, or in the six
-    /// seconds after a kill with the next mob incoming, is worse than an interrupted download: a
-    /// download can be started again and a wipe cannot. The obvious gate is
-    /// `!ingest.fight_is_live()` and it is WRONG, because `fight_is_live` is `pulse().fighting()`
-    /// and is already false during `Pulse::Holding`.
-    ///
-    /// THE FIGHT STATE IS DRIVEN THROUGH THE REAL FOLD AND NEVER SET BY HAND. `still_going`
-    /// (`ingest.rs:1990`) has already shipped one false positive of exactly this kind
-    /// (`ingest.rs:1969-1988`, regression test `a_pull_that_ended_stops_saying_in_combat`), so a
-    /// test that assigned `live_open` would be proving something about the test and nothing about
-    /// the code that answers.
-    ///
-    /// WHAT MUTATION MAKES THIS RED: write `may_restart` as `!matches!(pulse, Pulse::Fighting)`,
-    /// which is `!fight_is_live()` spelled out and lets the prompt through during Holding; or drop
-    /// the `Phase::Installed` test, which offers a restart with nothing to restart into.
+    /// WHAT MUTATION MAKES THIS RED: write `may_restart` as `!matches!(activity, Activity::Busy)`,
+    /// which lets the prompt through while settling; or drop the `Phase::Installed` test, which
+    /// offers a restart with nothing to restart into.
     #[test]
-    fn a_live_fight_holds_back_the_restart_prompt() {
-        use crate::fights::{probe, COMBAT_SECONDS, HOLD_SECONDS};
-
-        let at = |s: i64| format!("[Wed Jul 15 23:{:02}:{:02} 2026]", 10 + s / 60, s % 60);
-        let blow = |s: i64| {
-            format!(
-                "{} You slash a dry bone skeleton for 20 points of damage.",
-                at(s)
-            )
-        };
-        let chat = |s: i64| format!("{} Losumyda says, 'oom'", at(s));
-        let log = |after: Option<i64>| {
-            let mut s = format!("{}\n{}\n", blow(0), blow(1));
-            if let Some(gap) = after {
-                s.push_str(&format!("{}\n", chat(1 + gap)));
-            }
-            s
-        };
+    fn a_busy_moment_holds_back_the_restart_prompt() {
+        use crate::activity::{Activity, SETTLE_SECONDS};
 
         let ready = Phase::Installed {
             version: "0.2.0".to_owned(),
         };
         let cases = [
-            ("restart-fighting", None, Pulse::Fighting, false),
+            ("restart-busy", true, Some(0), Activity::Busy, false),
             (
-                "restart-holding",
-                Some(COMBAT_SECONDS + 1),
-                Pulse::Holding,
+                "restart-settling",
+                false,
+                Some(SETTLE_SECONDS - 1),
+                Activity::Settling,
                 false,
             ),
             (
-                "restart-closed",
-                Some(COMBAT_SECONDS + HOLD_SECONDS + 2),
-                Pulse::Closed,
+                "restart-idle",
+                false,
+                Some(SETTLE_SECONDS + 1),
+                Activity::Idle,
                 true,
             ),
         ];
-        for (tag, after, want, may) in cases {
-            let dir = probe::planted(tag, &log(after));
-            let ing = probe::booted(&dir);
+        for (tag, busy, since, want, may) in cases {
+            let now = Activity::from_busy(busy, since);
             assert_eq!(
-                ing.pulse(),
-                want,
-                "{tag}: the real fold answered {:?}, so this case is not testing what it says",
-                ing.pulse()
+                now, want,
+                "{tag}: the real fold answered {now:?}, so this case is not testing what it says"
             );
             assert_eq!(
-                may_restart(ing.pulse(), &ready),
+                may_restart(now, &ready),
                 may,
                 "{tag}: the restart prompt disagrees with the encounter"
             );
             /* AND THE SAME ENCOUNTER GATES A DOWNLOAD THE SAME WAY, which is the other half of the
              * rule and the reason both read the one function. */
             assert_eq!(
-                may_fetch(ing.pulse(), true, false, true),
+                may_fetch(now, true, false, true),
                 may,
                 "{tag}: the download gate and the restart gate disagree about one encounter"
             );
         }
 
         /* NOTHING INSTALLED IS NOT A REASON TO OFFER A RESTART, whatever the encounter is doing. */
-        for p in [Pulse::Closed, Pulse::Holding, Pulse::Fighting] {
+        for p in [Activity::Idle, Activity::Settling, Activity::Busy] {
             assert!(
                 !may_restart(p, &Phase::UpToDate),
                 "a restart was offered with nothing installed to restart into"
@@ -2556,26 +2527,26 @@ mod tests {
     /// is started with nothing to fetch).
     #[test]
     fn the_download_switch_the_button_and_the_encounter_all_have_to_agree() {
-        assert!(may_fetch(Pulse::Closed, true, false, true));
+        assert!(may_fetch(Activity::Idle, true, false, true));
         assert!(
-            !may_fetch(Pulse::Closed, false, false, true),
+            !may_fetch(Activity::Idle, false, false, true),
             "a download started with automatic downloads switched off"
         );
         assert!(
-            may_fetch(Pulse::Closed, false, true, true),
+            may_fetch(Activity::Idle, false, true, true),
             "the Download button does nothing while automatic downloads are off, which makes the \
              button a lie"
         );
         assert!(
-            !may_fetch(Pulse::Fighting, true, true, true),
+            !may_fetch(Activity::Busy, true, true, true),
             "a pressed button started a download mid-pull"
         );
         assert!(
-            !may_fetch(Pulse::Holding, true, true, true),
+            !may_fetch(Activity::Settling, true, true, true),
             "a pressed button started a download in the camp with the next mob incoming"
         );
         assert!(
-            !may_fetch(Pulse::Closed, true, true, false),
+            !may_fetch(Activity::Idle, true, true, false),
             "a download was started with nothing on offer to fetch"
         );
     }
@@ -2624,7 +2595,7 @@ mod tests {
          * failure count of zero and is the behaviour a reader wants from the first try. */
         assert!(
             until(|| {
-                u.pump(Pulse::Closed, true, &s);
+                u.pump(Activity::Idle, true, &s);
                 asked.load(Ordering::Relaxed) >= 1
             }),
             "the artifact was never fetched at all, so this test is measuring nothing; the phase \
@@ -2642,7 +2613,7 @@ mod tests {
         );
         let began = Instant::now();
         while began.elapsed() < window {
-            u.pump(Pulse::Closed, true, &s);
+            u.pump(Activity::Idle, true, &s);
             std::thread::sleep(Duration::from_millis(10));
         }
         assert_eq!(
@@ -2841,7 +2812,7 @@ mod tests {
         let refused = |u: &Updater| matches!(u.view().phase, Phase::Refused { .. });
         assert!(
             until(|| {
-                u.pump(Pulse::Closed, true, &s);
+                u.pump(Activity::Idle, true, &s);
                 refused(&u)
             }),
             "the version this machine rolled back from was offered again; the phase was {:?}",
@@ -2872,7 +2843,7 @@ mod tests {
         u.ask(Ask::CheckNow);
         assert!(
             until(|| {
-                u.pump(Pulse::Closed, true, &s);
+                u.pump(Activity::Idle, true, &s);
                 matches!(u.view().phase, Phase::Downloaded { ref version } if version == "0.2.1")
             }),
             "a release published above the rolled-back one was not taken, so a machine that rolls \
@@ -3049,7 +3020,7 @@ mod tests {
         let u = Updater::spawn(l.clone(), Box::new(wire), keys, None, &s, CHECK_EVERY);
         assert!(
             until(|| {
-                u.pump(Pulse::Closed, true, &s);
+                u.pump(Activity::Idle, true, &s);
                 matches!(u.view().phase, Phase::Downloaded { .. })
             }),
             "0.2.0 never staged; the phase was {:?}",
@@ -3067,7 +3038,7 @@ mod tests {
         let u = Updater::spawn(l.clone(), Box::new(wire), keys, None, &s, CHECK_EVERY);
         assert!(
             until(|| {
-                u.pump(Pulse::Closed, true, &s);
+                u.pump(Activity::Idle, true, &s);
                 matches!(u.view().phase, Phase::Downloaded { ref version } if version == "0.2.0")
             }),
             "the staged payload was not recovered; the phase was {:?}",
@@ -3092,7 +3063,7 @@ mod tests {
         let u = Updater::spawn(l.clone(), Box::new(wire), keys, None, &s, CHECK_EVERY);
         assert!(
             until(|| {
-                u.pump(Pulse::Closed, true, &s);
+                u.pump(Activity::Idle, true, &s);
                 third.load(Ordering::Relaxed) >= 1
             }),
             "a staged file that no longer verifies was offered as if it were the download; the \
@@ -3147,7 +3118,7 @@ mod tests {
          * whether anybody had to press anything. */
         assert!(
             until(|| {
-                u.pump(Pulse::Closed, true, &s);
+                u.pump(Activity::Idle, true, &s);
                 matches!(
                     u.view().phase,
                     Phase::Installed { .. } | Phase::Refused { .. }
@@ -3207,7 +3178,7 @@ mod tests {
         let u = Updater::spawn(Layout::at(&d), Box::new(wire), keys, None, &s, CHECK_EVERY);
         assert!(
             until(|| {
-                u.pump(Pulse::Closed, true, &s);
+                u.pump(Activity::Idle, true, &s);
                 matches!(u.view().phase, Phase::Refused { .. })
             }),
             "a signed size above the ceiling was not refused; the phase was {:?}",

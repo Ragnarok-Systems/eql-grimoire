@@ -1383,7 +1383,6 @@ mod tests {
             watch_on: on,
             ..Default::default()
         };
-        let mut ingest = crate::ingest::Ingest::new(&settings);
         let mut screen = WatchScreen {
             stopped: !watching,
             sound,
@@ -1394,12 +1393,10 @@ mod tests {
         let seeded_auth = AUTH_SEED
             .with(|s| std::mem::replace(&mut *s.borrow_mut(), crate::twitch_auth::AuthView::Out));
         let mut cx = Cx {
-            data: None,
             railed: false,
-            data_err: None,
+            activity: Default::default(),
             live,
             settings: &mut settings,
-            ingest: &mut ingest,
             player,
             stage: None,
             demand: None,
@@ -2011,7 +2008,6 @@ mod tests {
         crate::fonts::install(&ctx);
         let live = live_status(Some(true));
         let mut settings = crate::settings::Settings::default();
-        let mut ingest = crate::ingest::Ingest::new(&settings);
 
         let mut screen = WatchScreen {
             stopped: true,
@@ -2019,12 +2015,10 @@ mod tests {
         };
         let mut pass = |screen: &mut WatchScreen| -> Option<crate::player::Stage> {
             let mut cx = Cx {
-                data: None,
                 railed: false,
-                data_err: None,
+                activity: Default::default(),
                 live: &live,
                 settings: &mut settings,
-                ingest: &mut ingest,
                 player: Default::default(),
                 stage: None,
                 demand: None,
