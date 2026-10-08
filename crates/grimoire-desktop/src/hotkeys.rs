@@ -93,23 +93,11 @@ pub const DEFAULTS: &[RowDef] = &[
         tool: Tool::Lfg(LfgMode::Raid),
         alias: false,
     },
-    RowDef {
-        id: "lfg-motes",
-        chord: "Ctrl+Alt+L then M",
-        tool: Tool::Lfg(LfgMode::Motes),
-        alias: false,
-    },
     /* Direct aliases: one press is better than two for every chord. */
     RowDef {
         id: "raid-direct",
         chord: "Ctrl+Alt+R",
         tool: Tool::Lfg(LfgMode::Raid),
-        alias: true,
-    },
-    RowDef {
-        id: "motes-direct",
-        chord: "Ctrl+Alt+M",
-        tool: Tool::Lfg(LfgMode::Motes),
         alias: true,
     },
 ];
@@ -313,7 +301,6 @@ fn hint_name(t: Tool) -> &'static str {
         Tool::Chat => "Chat",
         Tool::Lfg(LfgMode::Generic) => "LFG",
         Tool::Lfg(LfgMode::Raid) => "Raid",
-        Tool::Lfg(LfgMode::Motes) => "Motes",
     }
 }
 
@@ -1060,12 +1047,8 @@ mod tests {
             ("Ctrl+Alt+C", Tool::Chat),
             ("Ctrl+Alt+L", Tool::Lfg(LfgMode::Generic)),
             ("Ctrl+Alt+L then R", Tool::Lfg(LfgMode::Raid)),
-            ("Ctrl+Alt+L then M", Tool::Lfg(LfgMode::Motes)),
         ];
-        let aliases: Vec<(&str, Tool)> = vec![
-            ("Ctrl+Alt+R", Tool::Lfg(LfgMode::Raid)),
-            ("Ctrl+Alt+M", Tool::Lfg(LfgMode::Motes)),
-        ];
+        let aliases: Vec<(&str, Tool)> = vec![("Ctrl+Alt+R", Tool::Lfg(LfgMode::Raid))];
         let got: Vec<(&str, Tool)> = DEFAULTS.iter().map(|r| (r.chord, r.tool)).collect();
         assert_eq!(
             &got[..d4.len()],
@@ -1177,12 +1160,12 @@ mod tests {
     }
 
     #[test]
-    fn globals_are_six_distinct_keys_with_the_right_actions() {
+    fn globals_are_five_distinct_keys_with_the_right_actions() {
         let (g, clashes) = globals(&defaults());
-        /* G, W, C, L (a leader), R and M. The count is asserted rather than derived so that a row
+        /* G, W, C, L (a leader) and R. The count is asserted rather than derived so that a row
          * silently colliding with an existing key, which `globals` would fold into one entry,
          * fails here instead of quietly costing the app a chord. */
-        assert_eq!(g.len(), 6);
+        assert_eq!(g.len(), 5);
         assert!(clashes.is_empty());
         let action = |code: Code| {
             g.iter()
@@ -1199,10 +1182,9 @@ mod tests {
         );
         assert_eq!(action(Code::KeyC), Action::Open(Tool::Chat));
         assert_eq!(action(Code::KeyR), Action::Open(Tool::Lfg(LfgMode::Raid)));
-        assert_eq!(action(Code::KeyM), Action::Open(Tool::Lfg(LfgMode::Motes)));
         assert_eq!(
             seconds_of(&defaults(), ctrl_alt(Code::KeyL)),
-            vec![Code::KeyR, Code::KeyM]
+            vec![Code::KeyR]
         );
         assert!(seconds_of(&defaults(), ctrl_alt(Code::KeyW)).is_empty());
     }
@@ -1253,15 +1235,12 @@ mod tests {
     }
 
     #[test]
-    fn l_then_r_is_raid_and_l_then_m_is_motes() {
+    fn l_then_r_is_raid() {
         let t = defaults();
         let b = t0();
         let mut c = Chord::new();
         c.arm(ctrl_alt(Code::KeyL), b);
-        assert_eq!(
-            c.hint(&t).as_deref(),
-            Some("L: R = Raid, M = Motes, wait = LFG")
-        );
+        assert_eq!(c.hint(&t).as_deref(), Some("L: R = Raid, wait = LFG"));
         assert_eq!(
             c.key(Code::KeyR, at(b, 10), &t),
             Some(Tool::Lfg(LfgMode::Raid))
@@ -1269,7 +1248,8 @@ mod tests {
         c.arm(ctrl_alt(Code::KeyL), at(b, 2000));
         assert_eq!(
             c.key(Code::KeyM, at(b, 2010), &t),
-            Some(Tool::Lfg(LfgMode::Motes))
+            None,
+            "M opens nothing now"
         );
     }
 
@@ -1445,11 +1425,7 @@ mod tests {
             assert!(!row.overridden);
         }
         assert_eq!(hk.leader_hint(), None);
-        assert_eq!(
-            b.iter().filter(|r| r.alias).count(),
-            2,
-            "Ctrl+Alt+R and Ctrl+Alt+M"
-        );
+        assert_eq!(b.iter().filter(|r| r.alias).count(), 1, "Ctrl+Alt+R");
     }
 
     #[test]
@@ -1459,7 +1435,7 @@ mod tests {
         for (h, _) in g {
             hk.outcome.insert(h, None);
         }
-        for k in [Code::KeyK, Code::KeyR, Code::KeyM] {
+        for k in [Code::KeyK, Code::KeyR] {
             hk.second_outcome.insert(k, None);
         }
         hk.outcome.insert(
@@ -1476,12 +1452,7 @@ mod tests {
             .as_deref()
             .unwrap()
             .contains("another program"));
-        for chord in [
-            "Ctrl+Alt+L",
-            "Ctrl+Alt+L then R",
-            "Ctrl+Alt+L then M",
-            "Ctrl+Alt+G",
-        ] {
+        for chord in ["Ctrl+Alt+L", "Ctrl+Alt+L then R", "Ctrl+Alt+G"] {
             assert!(row(chord).registered, "{chord}");
             assert_eq!(row(chord).conflict, None);
         }

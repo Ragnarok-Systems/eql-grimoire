@@ -138,7 +138,6 @@ use std::time::{Duration, Instant};
 pub enum LfgMode {
     Generic,
     Raid,
-    Motes,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -183,7 +182,6 @@ impl Tool {
             Tool::Chat => "Chat",
             Tool::Lfg(LfgMode::Generic) => "Looking for group",
             Tool::Lfg(LfgMode::Raid) => "Looking for raid",
-            Tool::Lfg(LfgMode::Motes) => "Looking for motes",
         }
     }
 
@@ -2230,14 +2228,12 @@ mod tests {
         assert_eq!(Tool::Chat.title(), "Chat");
         assert_eq!(Tool::Lfg(LfgMode::Generic).title(), "Looking for group");
         assert_eq!(Tool::Lfg(LfgMode::Raid).title(), "Looking for raid");
-        assert_eq!(Tool::Lfg(LfgMode::Motes).title(), "Looking for motes");
     }
 
     #[test]
     fn the_three_lfg_modes_share_one_window_and_the_others_have_their_own() {
         assert_eq!(Tool::Lfg(LfgMode::Generic).slot(), Some(Slot::Lfg));
         assert_eq!(Tool::Lfg(LfgMode::Raid).slot(), Some(Slot::Lfg));
-        assert_eq!(Tool::Lfg(LfgMode::Motes).slot(), Some(Slot::Lfg));
         assert_eq!(Tool::Companion.slot(), None);
         let mut ids: Vec<ViewportId> = SLOTS.iter().map(|s| s.viewport_id()).collect();
         ids.sort_by_key(|id| id.0.value());
@@ -2277,21 +2273,21 @@ mod tests {
         w.open(Tool::Lfg(LfgMode::Raid));
         assert!(w.is_open(Tool::Lfg(LfgMode::Raid)));
         assert!(!w.is_open(Tool::Lfg(LfgMode::Generic)));
-        w.toggle(Tool::Lfg(LfgMode::Motes));
+        w.toggle(Tool::Lfg(LfgMode::Generic));
         assert!(
-            w.is_open(Tool::Lfg(LfgMode::Motes)),
+            w.is_open(Tool::Lfg(LfgMode::Generic)),
             "a different mode on an open window switches it"
         );
         assert!(!w.is_open(Tool::Lfg(LfgMode::Raid)));
-        w.toggle(Tool::Lfg(LfgMode::Motes));
+        w.toggle(Tool::Lfg(LfgMode::Generic));
         assert!(
-            !w.is_open(Tool::Lfg(LfgMode::Motes)),
+            !w.is_open(Tool::Lfg(LfgMode::Generic)),
             "the same mode on an open window closes it"
         );
         assert!(!w.is_open(Tool::Lfg(LfgMode::Generic)) && !w.is_open(Tool::Lfg(LfgMode::Raid)));
         w.pin(Tool::Lfg(LfgMode::Generic), true);
         assert!(
-            w.is_pinned(Tool::Lfg(LfgMode::Motes)),
+            w.is_pinned(Tool::Lfg(LfgMode::Raid)),
             "the pin belongs to the window, not the mode"
         );
     }
@@ -2333,9 +2329,9 @@ mod tests {
             "a second Ctrl+Alt+W brings the window forward, it does not close it"
         );
         w.summon(Tool::Lfg(LfgMode::Raid));
-        w.summon(Tool::Lfg(LfgMode::Motes));
+        w.summon(Tool::Lfg(LfgMode::Generic));
         assert!(
-            w.is_open(Tool::Lfg(LfgMode::Motes)),
+            w.is_open(Tool::Lfg(LfgMode::Generic)),
             "a different LFG mode switches the one LFG window"
         );
     }
@@ -2428,7 +2424,6 @@ mod tests {
             Tool::Chat,
             Tool::Lfg(LfgMode::Generic),
             Tool::Lfg(LfgMode::Raid),
-            Tool::Lfg(LfgMode::Motes),
         ] {
             words.push(t.title().to_owned());
         }

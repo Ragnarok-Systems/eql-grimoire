@@ -17,7 +17,7 @@
 //! WHO YOU ARE is typed once in the compose row and remembered with the board. Monsters & Memories
 //! writes no log file to read a character name from, so nothing here guesses one.
 //!
-//! CLASS AND LEVEL are typed, not derived: sixteen class codes, a level clamped to 1..50. The log
+//! CLASS AND LEVEL are typed, not derived: one of the eighteen classes, a level clamped to 1..50. The game
 //! does not state either reliably, so the compose row asks and never guesses. An empty field is
 //! omitted from the copied line.
 
@@ -81,14 +81,16 @@ pub struct Entry {
     pub level: Option<u32>,
 }
 
-/// The board's own copy of the three modes, so the persisted JSON does not depend on whatever
+/// The board's own copy of the two modes, so the persisted JSON does not depend on whatever
 /// derives `crate::windows::LfgMode` happens to carry. Converted at the one boundary below.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Mode {
-    Generic,
     Raid,
-    Motes,
+    /// Also what a board entry saved by the EverQuest Legends build as "motes" reads back as.
+    /// Last because serde's catch-all must be; the order the chips draw in is `Mode::ALL`.
+    #[serde(other)]
+    Generic,
 }
 
 impl Mode {
@@ -96,14 +98,12 @@ impl Mode {
         match m {
             LfgMode::Generic => Mode::Generic,
             LfgMode::Raid => Mode::Raid,
-            LfgMode::Motes => Mode::Motes,
         }
     }
     pub fn to_lfg(self) -> LfgMode {
         match self {
             Mode::Generic => LfgMode::Generic,
             Mode::Raid => LfgMode::Raid,
-            Mode::Motes => LfgMode::Motes,
         }
     }
     /// The heading, a caps run, so it is drawn in Cinzel.
@@ -111,7 +111,6 @@ impl Mode {
         match self {
             Mode::Generic => "LOOKING FOR GROUP",
             Mode::Raid => "LOOKING FOR RAID",
-            Mode::Motes => "LOOKING FOR MOTES",
         }
     }
     /// The chip label.
@@ -119,7 +118,6 @@ impl Mode {
         match self {
             Mode::Generic => "Group",
             Mode::Raid => "Raid",
-            Mode::Motes => "Motes",
         }
     }
     /// The prefix of the in-game line. Exactly the three strings the lane brief specifies.
@@ -127,10 +125,9 @@ impl Mode {
         match self {
             Mode::Generic => "LFG:",
             Mode::Raid => "LFR:",
-            Mode::Motes => "LF Motes (D4):",
         }
     }
-    pub const ALL: [Mode; 3] = [Mode::Generic, Mode::Raid, Mode::Motes];
+    pub const ALL: [Mode; 2] = [Mode::Generic, Mode::Raid];
 }
 
 /// Read the board out of settings. Absent gives an empty board; unreadable says so through `Err`
@@ -174,27 +171,59 @@ pub fn board_into(settings: &mut Settings, board: &Board) -> Result<(), String> 
 
 /* --------------------------------------------------------------- class and level -- */
 
-/// The sixteen class codes, in the game's class order. A typed class that is not one of these is
-/// refused, not shouted into `/ooc` as typed.
-pub const CLASSES: [&str; 16] = [
-    "WAR", "CLR", "PAL", "RNG", "SHD", "DRU", "MNK", "BRD", "ROG", "SHM", "NEC", "WIZ", "MAG",
-    "ENC", "BST", "BER",
+/// Monsters & Memories' eighteen classes, as the community wiki names them.
+pub const CLASSES: [&str; 18] = [
+    "Archer",
+    "Bard",
+    "Beastmaster",
+    "Cleric",
+    "Druid",
+    "Elementalist",
+    "Enchanter",
+    "Fighter",
+    "Inquisitor",
+    "Monk",
+    "Necromancer",
+    "Paladin",
+    "Ranger",
+    "Rogue",
+    "Shadow Knight",
+    "Shaman",
+    "Spellblade",
+    "Wizard",
 ];
 
-/// The game's level cap.
+/// The level cap. Monsters & Memories' zones top out at 50 on the community wiki.
 pub const MAX_LEVEL: u32 = 50;
 
-/// Normalise a typed class code: trimmed, upper cased, and one of the sixteen. `Ok("")` for an
-/// empty field (omitted from the line), `Err` naming the rejected text otherwise.
+/// A typed class, normalised to the game's own name for it: the whole name in any case, or a
+/// start of one that only one class has ("nec" is Necromancer; "sha" could be Shaman or Shadow
+/// Knight and is refused). No abbreviations are invented: the copied line carries the name.
+/// `Ok("")` for an empty field (omitted from the line), `Err` naming the rejected text otherwise.
 pub fn class_code(typed: &str) -> Result<String, String> {
-    let t = typed.trim().to_ascii_uppercase();
+    let t = typed.trim();
     if t.is_empty() {
         return Ok(String::new());
     }
-    if CLASSES.contains(&t.as_str()) {
-        Ok(t)
-    } else {
-        Err(format!("{} is not a class code (WAR, CLR, PAL, RNG, SHD, DRU, MNK, BRD, ROG, SHM, NEC, WIZ, MAG, ENC, BST, BER)", typed.trim()))
+    let low = t.to_lowercase();
+    if let Some(c) = CLASSES.iter().find(|c| c.to_lowercase() == low) {
+        return Ok((*c).to_owned());
+    }
+    let starts: Vec<&str> = CLASSES
+        .iter()
+        .copied()
+        .filter(|c| c.to_lowercase().starts_with(&low))
+        .collect();
+    match starts.as_slice() {
+        [one] if low.chars().count() >= 2 => Ok((*one).to_owned()),
+        [] => Err(format!(
+            "{t} is not a Monsters & Memories class ({})",
+            CLASSES.join(", ")
+        )),
+        many => Err(format!(
+            "{t} could be {}; type more of it",
+            many.join(" or ")
+        )),
     }
 }
 
@@ -303,7 +332,7 @@ impl LfgScreen {
     }
 
     fn persist(&mut self, cx: &mut Cx) {
-        self.board.class = self.class_typed.trim().to_ascii_uppercase();
+        self.board.class = self.class_typed.trim().to_owned();
         self.board.level = level_of(&self.level_typed).ok().flatten();
         self.board.character = self.character_typed.trim().to_owned();
         let r = board_into(cx.settings, &self.board).and_then(|_| cx.settings.save());
@@ -384,7 +413,7 @@ impl LfgScreen {
              * a class somebody chose. */
             ui.add(
                 egui::TextEdit::singleline(&mut self.class_typed)
-                    .hint_text("code")
+                    .hint_text("class")
                     .desired_width(46.0)
                     .font(FontId::monospace(12.0)),
             );
@@ -407,7 +436,6 @@ impl LfgScreen {
             let hint = match mode {
                 Mode::Generic => "what you are looking for",
                 Mode::Raid => "which raid, when",
-                Mode::Motes => "where you are farming, how many",
             };
             let te = egui::TextEdit::singleline(&mut self.text)
                 .hint_text(hint)
@@ -579,24 +607,21 @@ mod tests {
     #[test]
     fn copy_line_generic_is_lfg_class_level_text() {
         assert_eq!(
-            copy_line(Mode::Generic, "WAR", Some(50), "tank for Sky"),
-            "LFG: WAR 50 tank for Sky"
+            copy_line(
+                Mode::Generic,
+                "Fighter",
+                Some(50),
+                "tank for the Ancient Crypt"
+            ),
+            "LFG: Fighter 50 tank for the Ancient Crypt"
         );
     }
 
     #[test]
     fn copy_line_raid_is_lfr() {
         assert_eq!(
-            copy_line(Mode::Raid, "CLR", Some(48), "PoSky 8pm"),
-            "LFR: CLR 48 PoSky 8pm"
-        );
-    }
-
-    #[test]
-    fn copy_line_motes_is_lf_motes_d4() {
-        assert_eq!(
-            copy_line(Mode::Motes, "NEC", Some(50), "Dreadlands, 2 spots"),
-            "LF Motes (D4): NEC 50 Dreadlands, 2 spots"
+            copy_line(Mode::Raid, "Cleric", Some(48), "Fallen Watch 8pm"),
+            "LFR: Cleric 48 Fallen Watch 8pm"
         );
     }
 
@@ -606,7 +631,7 @@ mod tests {
             copy_line(Mode::Generic, "", None, "  any   role "),
             "LFG: any role"
         );
-        assert_eq!(copy_line(Mode::Generic, "WAR", None, "x"), "LFG: WAR x");
+        assert_eq!(copy_line(Mode::Generic, "Rogue", None, "x"), "LFG: Rogue x");
         assert_eq!(copy_line(Mode::Generic, "", Some(12), "x"), "LFG: 12 x");
         assert_eq!(copy_line(Mode::Raid, "", None, ""), "LFR:");
     }
@@ -614,19 +639,43 @@ mod tests {
     #[test]
     fn copy_line_has_no_dashes() {
         for m in Mode::ALL {
-            let l = copy_line(m, "WAR", Some(50), "x");
+            let l = copy_line(m, "Shadow Knight", Some(50), "x");
             assert!(!l.contains('\u{2014}') && !l.contains('\u{2013}'), "{l}");
         }
     }
 
     #[test]
-    fn class_code_accepts_the_sixteen_case_folded_and_refuses_the_rest() {
+    fn a_class_is_any_case_of_its_name_or_a_start_only_one_class_has() {
         for c in CLASSES {
-            assert_eq!(class_code(&c.to_ascii_lowercase()).unwrap(), c);
+            assert_eq!(
+                class_code(&c.to_lowercase()).unwrap(),
+                c,
+                "the whole name, any case"
+            );
+            assert_eq!(class_code(&c.to_uppercase()).unwrap(), c);
         }
-        assert_eq!(class_code("  ").unwrap(), "");
-        assert!(class_code("Warrior").is_err(), "full names are not codes");
-        assert!(class_code("XYZ").is_err());
+        assert_eq!(
+            class_code("  ").unwrap(),
+            "",
+            "an empty field is not stated"
+        );
+        assert_eq!(class_code("nec").unwrap(), "Necromancer");
+        assert_eq!(class_code(" Spellb ").unwrap(), "Spellblade");
+        let both = class_code("sha").unwrap_err();
+        assert!(
+            both.contains("Shadow Knight") && both.contains("Shaman"),
+            "{both}"
+        );
+        assert!(
+            class_code("a").is_err(),
+            "one letter is too little to pick a class"
+        );
+        assert!(
+            class_code("WAR").is_err(),
+            "an EverQuest code is not a Monsters & Memories class"
+        );
+        assert!(class_code("Warrior").is_err());
+        assert_eq!(CLASSES.len(), 18);
     }
 
     #[test]
@@ -652,11 +701,11 @@ mod tests {
                     .with_timezone(&Utc),
                 who: "Stoic".into(),
                 what: "tank".into(),
-                mode: Mode::Motes,
-                class: "WAR".into(),
+                mode: Mode::Raid,
+                class: "Fighter".into(),
                 level: Some(50),
             }],
-            class: "WAR".into(),
+            class: "Fighter".into(),
             level: Some(50),
             character: "Grimtooth".into(),
         };
@@ -665,7 +714,7 @@ mod tests {
             v["character"], "Grimtooth",
             "the typed character is kept with the board"
         );
-        assert_eq!(v["entries"][0]["mode"], "motes");
+        assert_eq!(v["entries"][0]["mode"], "raid");
         assert_eq!(v["version"], 1);
         let back: Board = serde_json::from_value(v).unwrap();
         assert_eq!(back, b);
@@ -717,7 +766,7 @@ mod tests {
         let b = Board {
             version: 1,
             entries: vec![],
-            class: "CLR".into(),
+            class: "Cleric".into(),
             level: Some(12),
             character: String::new(),
         };
@@ -733,6 +782,14 @@ mod tests {
             .insert(BOARD_KEY.to_owned(), serde_json::json!("not a board"));
         let e = board_from(&s).unwrap_err();
         assert!(e.contains(BOARD_KEY), "{e}");
+    }
+
+    #[test]
+    fn a_motes_entry_from_the_everquest_build_loads_as_a_group_post() {
+        let m: Mode = serde_json::from_value(serde_json::json!("motes")).unwrap();
+        assert_eq!(m, Mode::Generic, "an old board must load, not refuse");
+        let m: Mode = serde_json::from_value(serde_json::json!("raid")).unwrap();
+        assert_eq!(m, Mode::Raid);
     }
 
     #[test]

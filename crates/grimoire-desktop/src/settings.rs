@@ -773,7 +773,6 @@ pub fn tool_label(t: &Tool) -> &'static str {
         Tool::Chat => "Chat, over the game",
         Tool::Lfg(LfgMode::Generic) => "LFG, generic",
         Tool::Lfg(LfgMode::Raid) => "LFG, looking for raid",
-        Tool::Lfg(LfgMode::Motes) => "LFG, looking for motes",
     }
 }
 
@@ -2352,14 +2351,7 @@ mod tests {
                 false,
                 Some("owned by another app"),
             ),
-            binding(
-                "lfg-motes",
-                "Ctrl+Alt+L then M",
-                Tool::Lfg(LfgMode::Motes),
-                false,
-                false,
-                None,
-            ),
+            binding("chat", "Ctrl+Alt+C", Tool::Chat, false, false, None),
         ];
         let t = bindings_text(&b);
         let lines: Vec<&str> = t.lines().collect();
@@ -2374,7 +2366,7 @@ mod tests {
         );
         assert_eq!(
             lines[2],
-            "Ctrl+Alt+L then M  LFG, looking for motes    not registered"
+            "Ctrl+Alt+C         Chat, over the game       not registered"
         );
     }
 
