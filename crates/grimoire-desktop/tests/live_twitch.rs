@@ -156,6 +156,7 @@ fn the_screen_drawn_against_a_live_socket() {
     let mut cx = grimoire_desktop::screens::Cx {
         railed: false,
         activity: Default::default(),
+        lore: Default::default(),
         live: &live,
         settings: &mut settings,
         chat: reader.handle(),

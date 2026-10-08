@@ -327,6 +327,7 @@ enum Body {
 #[derive(Default)]
 struct Screens {
     chat: screens::chat::ChatScreen,
+    compendium: screens::compendium::CompendiumScreen,
     lfg: LfgScreen,
     watch: WatchScreen,
 }
@@ -416,6 +417,8 @@ struct App {
     auth: twitch_auth::Auth,
     /// Whether the saved sign-in has been looked for yet. Once per process; see `heartbeat`.
     restored: bool,
+    /// The wiki bundle: loading on a thread from launch, then held for every screen to read.
+    lore: grimoire_desktop::lore::Status,
     /// The Ragnarok account sign-in. Idle until Settings asks or a saved sign-in is found; holds
     /// the app token and hands the screen only a view. See `account::session`.
     account: grimoire_desktop::account::Account,
@@ -566,6 +569,7 @@ impl App {
             ytchat: ytchat::surface::YtChat::idle(),
             auth: twitch_auth::Auth::default(),
             restored: false,
+            lore: grimoire_desktop::lore::Status::start(),
             account: grimoire_desktop::account::Account::production(),
             screens,
             /* NOT `PersonaFooter::default()`: on a unit struct that is
@@ -703,6 +707,14 @@ impl App {
              * `CompanionReq::Show`, so the main window comes forward with Settings already
              * showing; see `Ask::OpenSettings` for why the alternative (a control in the pop-out
              * that SET the folder) would have opened a worse defect than it closed. */
+            /* A LINK FROM ONE RECORD TO ANOTHER. The Compendium selects it (or keeps it until the
+             * data is loaded), and the rail moves to the kind it belongs to. */
+            Ask::ShowRecord(kind, name) => {
+                self.screens
+                    .compendium
+                    .jump(kind, &name, self.lore.lore().map(|l| &**l));
+                self.reveal(nav::screen_of(kind));
+            }
             Ask::OpenSettings => enter(
                 Body::Settings,
                 &mut self.body,
@@ -1164,9 +1176,11 @@ fn draw_screen(
         | ScreenId::Npcs
         | ScreenId::Items
         | ScreenId::Quests
-        | ScreenId::Spells
-        | ScreenId::Herald
-        | ScreenId::Oracle => unbuilt(
+        | ScreenId::Spells => {
+            let kind = nav::kind_of(id).expect("a Compendium row has a kind");
+            s.compendium.ui(ui, cx, kind)
+        }
+        ScreenId::Herald | ScreenId::Oracle => unbuilt(
             ui,
             id,
             nav::sections_of(id).get(section).map(|(name, _, _)| *name),
@@ -1499,6 +1513,7 @@ impl eframe::App for App {
          * `Feed`, so "which window is playing" stays a question answered in one place. */
         self.windows
             .tell_player(self.player.root_hwnd(), self.player.view().hosted_elsewhere);
+        self.lore.poll();
         {
             let App {
                 open,
@@ -1515,6 +1530,7 @@ impl eframe::App for App {
                 chat,
                 auth,
                 ytchat,
+                lore: lore_status,
                 ..
             } = self;
             let mut cx = Cx {
@@ -1522,6 +1538,11 @@ impl eframe::App for App {
                 live: &*live,
                 settings,
                 activity: Activity::default(),
+                lore: screens::LoreView {
+                    lore: lore_status.lore().map(|l| &**l),
+                    why: lore_status.why_not(),
+                    loading: lore_status.loading(),
+                },
                 /* THE LOG TRAVELS AND THE THREAD DOES NOT. See `chat::ChatHandle`. */
                 chat: chat.handle(),
                 /* THE LOG TRAVELS, THE PANE DOES NOT. See `ytchat::surface::YtHandle`. */
@@ -2679,6 +2700,7 @@ mod tests {
             let mut cx = Cx {
                 railed: false,
                 activity: Default::default(),
+                lore: Default::default(),
                 live: &live,
                 settings: &mut settings,
                 chat: grimoire_desktop::chat::ChatHandle::idle(),

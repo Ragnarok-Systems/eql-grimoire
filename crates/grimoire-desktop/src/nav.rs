@@ -195,6 +195,8 @@ pub struct Facts {
     pub twitch_error: bool,
     pub youtube_known: bool,
     pub youtube_error: bool,
+    pub lore_loaded: bool,
+    pub lore_wrong: bool,
 }
 
 pub fn facts(cx: &Cx) -> Facts {
@@ -211,6 +213,8 @@ pub fn facts(cx: &Cx) -> Facts {
         twitch_error: cx.live.twitch.error.is_some(),
         youtube_known: cx.live.youtube.live.is_some(),
         youtube_error: cx.live.youtube.error.is_some(),
+        lore_loaded: cx.lore.lore.is_some(),
+        lore_wrong: cx.lore.why.is_some(),
     }
 }
 
@@ -226,14 +230,15 @@ pub fn square(id: ScreenId, f: &Facts) -> State {
         }
     };
     match id {
-        /* Not written yet: there is nothing to have or lack. See `UNBUILT`. */
+        /* The Compendium follows the wiki bundle: settled once loaded, wrong when it is missing
+         * or would not load, idle while it loads. */
         ScreenId::Zones
         | ScreenId::Npcs
         | ScreenId::Items
         | ScreenId::Quests
-        | ScreenId::Spells
-        | ScreenId::Herald
-        | ScreenId::Oracle => State::Idle,
+        | ScreenId::Spells => from_channel(f.lore_loaded, f.lore_wrong),
+        /* Not written yet: there is nothing to have or lack. See `UNBUILT`. */
+        ScreenId::Herald | ScreenId::Oracle => State::Idle,
         /* The board is local: settled once it holds an entry. */
         ScreenId::Lfg => {
             if f.lfg_entries {
@@ -251,45 +256,8 @@ pub fn square(id: ScreenId, f: &Facts) -> State {
 
 /* ----------------------------------------------------------------- the unbuilt -- */
 
-const WIKI_WAIT: &str = "It waits on the wiki bundle reaching this app: the data is pulled from the community wiki and built already; loading it here is the next step of the rebuild.";
-
 /// Rows that are planned and not written yet: what each will be, and what it waits on.
 pub const UNBUILT: &[(ScreenId, &[&str])] = &[
-    (
-        ScreenId::Zones,
-        &[
-            "Every zone in Monsters & Memories, with its level range, the zones it borders, the NPCs who live there and the quests that start there, from the Monsters & Memories community wiki (CC BY-SA 4.0).",
-            WIKI_WAIT,
-        ],
-    ),
-    (
-        ScreenId::Npcs,
-        &[
-            "Every NPC the wiki knows: where they stand, what they are, what they drop and which quests they are part of.",
-            WIKI_WAIT,
-        ],
-    ),
-    (
-        ScreenId::Items,
-        &[
-            "Every item, with its stats, who drops it and where, who sells it and for how much, and the recipes it goes into.",
-            WIKI_WAIT,
-        ],
-    ),
-    (
-        ScreenId::Quests,
-        &[
-            "Every quest: who gives it, where it starts, the level it needs, the NPCs and items involved and what it rewards.",
-            WIKI_WAIT,
-        ],
-    ),
-    (
-        ScreenId::Spells,
-        &[
-            "Every spell and ability, with the classes that get it and the level they get it at.",
-            WIKI_WAIT,
-        ],
-    ),
     (
         ScreenId::Herald,
         &[
@@ -305,6 +273,25 @@ pub const UNBUILT: &[(ScreenId, &[&str])] = &[
         ],
     ),
 ];
+
+/// The Compendium row that shows a kind.
+pub fn screen_of(kind: crate::lore::Kind) -> ScreenId {
+    use crate::lore::Kind;
+    match kind {
+        Kind::Zone => ScreenId::Zones,
+        Kind::Npc => ScreenId::Npcs,
+        Kind::Item => ScreenId::Items,
+        Kind::Quest => ScreenId::Quests,
+        Kind::Spell => ScreenId::Spells,
+    }
+}
+
+/// The kind a Compendium row shows, or None for any other row.
+pub fn kind_of(id: ScreenId) -> Option<crate::lore::Kind> {
+    crate::lore::Kind::ALL
+        .into_iter()
+        .find(|k| screen_of(*k) == id)
+}
 
 /// Why a row is not written yet, or None when it is.
 pub fn unbuilt_why(id: ScreenId) -> Option<&'static [&'static str]> {
@@ -351,6 +338,11 @@ mod tests {
             ScreenId::Watch,
             ScreenId::Videos,
             ScreenId::Chat,
+            ScreenId::Zones,
+            ScreenId::Npcs,
+            ScreenId::Items,
+            ScreenId::Quests,
+            ScreenId::Spells,
         ] {
             assert!(unbuilt_why(id).is_none(), "{id:?} is built");
         }

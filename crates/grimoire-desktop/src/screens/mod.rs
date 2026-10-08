@@ -5,6 +5,7 @@
 //! screen sees them for exactly one frame. That is what keeps a screen from squirrelling away a
 //! stale copy of the data and drawing last week's record count over this week's file.
 pub mod chat;
+pub mod compendium;
 pub mod lfg;
 pub mod videos;
 pub mod watch;
@@ -23,6 +24,8 @@ pub enum Ask {
     /// Poll the live status now rather than at the next tick. The watcher belongs to the App;
     /// `Cx` lends its status and nothing else.
     CheckLive,
+    /// Open the Compendium on this record (a link from one record to another).
+    ShowRecord(crate::lore::Kind, String),
     /// Show Broken Stoic in the main window's BODY and start the stream there.
     ///
     /// THE PILL RAISES THIS, from four places: the main window's title strip, the footer, the
@@ -221,6 +224,14 @@ pub fn centred_words(
 }
 
 /// The shared context every screen draws with. See the module note for why it borrows.
+/// What the screens may know about the wiki bundle this frame.
+#[derive(Default, Clone, Copy)]
+pub struct LoreView<'a> {
+    pub lore: Option<&'a crate::lore::Lore>,
+    pub why: Option<&'a str>,
+    pub loading: bool,
+}
+
 pub struct Cx<'a> {
     /// IS THE SHELL ALREADY OFFERING THIS SCREEN'S SECTIONS? Tier 3, asked of the frame rather
     /// than of the screen.
@@ -240,6 +251,8 @@ pub struct Cx<'a> {
     /// Whether this is a quiet moment for the updater (no stream playing). The App derives it each
     /// frame; the Settings screen reads it to say why an update is waiting.
     pub activity: crate::activity::Activity,
+    /// The wiki bundle, to READ, and why it is missing when it is.
+    pub lore: LoreView<'a>,
     /// Last known live status of the channels, cheap clone from the watcher.
     pub live: &'a crate::watcher::Status,
     pub settings: &'a mut crate::settings::Settings,

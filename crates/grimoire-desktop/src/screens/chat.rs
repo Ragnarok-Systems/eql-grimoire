@@ -660,6 +660,7 @@ mod tests {
         let mut cx = Cx {
             railed: false,
             activity: Default::default(),
+            lore: Default::default(),
             live: &live,
             settings: &mut settings,
             chat: reader.handle(),

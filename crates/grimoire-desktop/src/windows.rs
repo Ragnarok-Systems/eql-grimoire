@@ -1600,6 +1600,7 @@ fn draw_child(inner: &Arc<Mutex<Inner>>, slot: Slot, ui: &mut Ui, class: Viewpor
                 railed: false,
                 /* A tool window never gates the updater: the root derives that. */
                 activity: crate::activity::Activity::default(),
+                lore: Default::default(),
                 live: &cc.live,
                 settings: &mut cc.settings,
                 player: Default::default(),
@@ -3525,6 +3526,7 @@ mod tests {
             Cx {
                 railed: false,
                 activity: Default::default(),
+                lore: Default::default(),
                 live,
                 settings,
                 chat: crate::chat::ChatHandle::idle(),
@@ -3583,6 +3585,7 @@ mod tests {
             let cx = Cx {
                 railed: false,
                 activity: Default::default(),
+                lore: Default::default(),
                 live: &live,
                 settings: &mut settings,
                 player: Default::default(),
@@ -3669,6 +3672,7 @@ mod tests {
             let mut cx = Cx {
                 railed: false,
                 activity: Default::default(),
+                lore: Default::default(),
                 live,
                 settings,
                 player: Default::default(),

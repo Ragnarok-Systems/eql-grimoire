@@ -356,6 +356,7 @@ mod tests {
         let mut cx = Cx {
             railed: false,
             activity: Default::default(),
+            lore: Default::default(),
             live,
             settings: &mut settings,
             player,

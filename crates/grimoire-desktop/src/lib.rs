@@ -38,6 +38,7 @@ pub mod chrome;
 pub mod fonts;
 pub mod hotkeys;
 pub mod irc;
+pub mod lore;
 pub mod nav;
 pub mod persona;
 pub mod pin;

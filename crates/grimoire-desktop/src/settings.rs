@@ -2018,6 +2018,7 @@ mod tests {
             let mut cx = crate::screens::Cx {
                 railed: false,
                 activity: Default::default(),
+                lore: Default::default(),
                 live: &live,
                 settings,
                 player: Default::default(),
@@ -2777,6 +2778,7 @@ mod tests {
         let mut cx = crate::screens::Cx {
             railed: false,
             activity: Default::default(),
+            lore: Default::default(),
             live: &live,
             settings: &mut settings,
             player: Default::default(),
@@ -3183,6 +3185,7 @@ mod tests {
             let mut cx = crate::screens::Cx {
                 railed: false,
                 activity: Default::default(),
+                lore: Default::default(),
                 live: &live,
                 settings,
                 player: Default::default(),

@@ -24,7 +24,7 @@ The menu on the left:
 
 | Section | What it is |
 |---|---|
-| **Compendium** | Zones, NPCs, items, quests, spells and abilities from the Monsters & Memories community wiki. **Coming:** the data is built; loading it into the app is next. |
+| **Compendium** | Zones, NPCs, items, quests and spells from the Monsters & Memories community wiki, offline: search a list, open a record, and follow its links (an item to the NPC that drops it, a zone to its neighbours). Every record credits the wiki and links to its page. |
 | **Herald** | Everything the developers say in the game's Discord, kept and searchable. **Coming.** |
 | **Oracle** | Ask a question in plain words and get an answer from the wiki and the developers' posts, with a link to every source. It runs on your PC and costs nothing to use. **Coming.** |
 | **The Tavern** | **Groups**: write the lines you mean to say in game and copy each one ready to paste, as a group or a raid post. |
