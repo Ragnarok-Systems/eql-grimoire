@@ -391,12 +391,7 @@ mod tests {
                 "Broken Stoic",
                 (220, 220, 1060, 693),
             ),
-            c(
-                0x1762E9C,
-                WINIT_CLASS,
-                "EQL Grimoire",
-                (100, 100, 1209, 899),
-            ),
+            c(0x1762E9C, WINIT_CLASS, "Grimoire", (100, 100, 1209, 899)),
             c(0x54214A6, "Winit Thread Event Target", "", (0, 0, 24, 24)),
             c(0x1881550, "global_hotkey_app", "", (0, 0, 0, 0)),
             c(0x9610BE, "MSCTFIME UI", "MSCTFIME UI", (0, 0, 0, 0)),
@@ -474,12 +469,7 @@ mod tests {
         let twins = vec![
             c(0x111, WINIT_CLASS, "Broken Stoic", PIP_PX),
             c(0x222, WINIT_CLASS, "Broken Stoic", PIP_PX),
-            c(
-                0x1762E9C,
-                WINIT_CLASS,
-                "EQL Grimoire",
-                (100, 100, 1209, 899),
-            ),
+            c(0x1762E9C, WINIT_CLASS, "Grimoire", (100, 100, 1209, 899)),
         ];
         assert_eq!(
             pick(&twins, "Broken Stoic", PIP_PX, ROOT),

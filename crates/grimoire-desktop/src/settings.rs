@@ -769,7 +769,7 @@ pub(crate) fn keep_a_copy(path: &Path, bytes: &[u8], what: &str) -> Result<PathB
 pub fn tool_label(t: &Tool) -> &'static str {
     match t {
         Tool::Companion => "the whole app, toggled",
-        Tool::Watch => "Watch: the live stream, picture in picture",
+        Tool::Watch => "Watch: Broken Stoic live",
         Tool::Chat => "Chat, over the game",
         Tool::Lfg(LfgMode::Generic) => "LFG, generic",
         Tool::Lfg(LfgMode::Raid) => "LFG, looking for raid",
@@ -2366,12 +2366,15 @@ mod tests {
         assert_eq!(lines.len(), 3);
         assert_eq!(
             lines[0],
-            "Ctrl+Alt+W         Watch: the live stream, picture in picture  registered"
+            "Ctrl+Alt+W         Watch: Broken Stoic live  registered"
         );
-        assert_eq!(lines[1], "Ctrl+Alt+L then R  LFG, looking for raid                       not registered: owned by another app");
+        assert_eq!(
+            lines[1],
+            "Ctrl+Alt+L then R  LFG, looking for raid     not registered: owned by another app"
+        );
         assert_eq!(
             lines[2],
-            "Ctrl+Alt+L then M  LFG, looking for motes                      not registered"
+            "Ctrl+Alt+L then M  LFG, looking for motes    not registered"
         );
     }
 

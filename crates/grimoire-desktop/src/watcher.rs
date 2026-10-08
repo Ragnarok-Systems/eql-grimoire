@@ -42,7 +42,7 @@ pub const POLL_EVERY: Duration = Duration::from_secs(90);
 /// Every request, connect plus read. A live pill that hangs the poll thread for a minute is a pill
 /// that lies about its age for a minute.
 pub const HTTP_TIMEOUT: Duration = Duration::from_secs(10);
-pub const USER_AGENT: &str = "EQL-Grimoire/0.1";
+pub const USER_AGENT: &str = "Grimoire/0.2";
 
 /// The endpoint Twitch's web client uses. D2, measured.
 pub const TWITCH_GQL_URL: &str = "https://gql.twitch.tv/gql";
@@ -1246,7 +1246,7 @@ mod tests {
 
     #[test]
     fn request_constants_are_what_d2_measured() {
-        assert_eq!(USER_AGENT, "EQL-Grimoire/0.1");
+        assert_eq!(USER_AGENT, "Grimoire/0.2");
         assert_eq!(HTTP_TIMEOUT, Duration::from_secs(10));
         assert_eq!(POLL_EVERY, Duration::from_secs(90));
         assert_eq!(TWITCH_GQL_URL, "https://gql.twitch.tv/gql");

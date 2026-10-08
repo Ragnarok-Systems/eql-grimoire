@@ -120,7 +120,7 @@ fn main() -> eframe::Result<()> {
              * which is not known until a frame has run: `App::fit_to_quadrant` asks for it. */
             .with_inner_size(chrome::FALLBACK)
             .with_min_inner_size(chrome::HARD_FLOOR)
-            .with_title("EQL Grimoire")
+            .with_title("Grimoire")
             /* D3 and D8: the app draws its own title strip (`titlebar::strip`) with the live pill
              * and the pin glyph, so the OS frame is off. The strip supplies drag, double click to
              * maximise, minimise and close; the grip in the bottom right corner supplies resize. */
@@ -128,7 +128,7 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
     eframe::run_native(
-        "EQL Grimoire",
+        "Grimoire",
         opts,
         Box::new(move |cc| {
             fonts::install(&cc.egui_ctx);

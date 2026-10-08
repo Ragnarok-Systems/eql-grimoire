@@ -58,40 +58,6 @@ pub const YOU: Color32 = Color32::from_rgb(0xD4, 0xA3, 0x3C);
 pub const WRONG: Color32 = Color32::from_rgb(0xEF, 0x47, 0x6F);
 pub const SETTLED: Color32 = Color32::from_rgb(0x3D, 0xD5, 0x98);
 
-/* --------------------------------------------------------- the regard ladder --
- * The seven rungs of the EverQuest faction ladder, in the colours the WEB BUILD gives them:
- * `.g-ally` through `.g-dub` at web/app.html:923 and :924, which is the authority for anything
- * visual. Taken verbatim, one per rung, so the seal on the desktop rail and the badge on the web
- * page cannot drift apart. The rungs and their floors are `grimoire_core::Regard`, and the two
- * ladders already agree floor for floor and word for word.
- *
- * THESE ARE NOT STATE COLOURS AND A STATE COLOUR IS NOT A RUNG. The five above are semantic:
- * borrowing `WRONG` red for the bottom rung would make a poor reputation read as a refusal, and
- * lending a rung colour to a status mark would do the same in reverse. The ladder already runs
- * green through neutral to red on its own and needs nothing from that set.
- * `no_rung_borrows_a_state_colour` holds the two apart. */
-
-/// Ally, the top rung, floor 4.85. From `.g-ally{color:#63d36e}`, web/app.html:923.
-pub const REGARD_ALLY: Color32 = Color32::from_rgb(0x63, 0xD3, 0x6E);
-/// Warmly, floor 4.55. From `.g-warm{color:#8fce6a}`, web/app.html:923.
-pub const REGARD_WARMLY: Color32 = Color32::from_rgb(0x8F, 0xCE, 0x6A);
-/// Kindly, floor 4.15. From `.g-kind{color:#cbb96a}`, web/app.html:923.
-pub const REGARD_KINDLY: Color32 = Color32::from_rgb(0xCB, 0xB9, 0x6A);
-/// Amiably, floor 3.70. From `.g-ami{color:#c39a5e}`, web/app.html:924.
-pub const REGARD_AMIABLY: Color32 = Color32::from_rgb(0xC3, 0x9A, 0x5E);
-/// Indifferently, floor 2.60. From `.g-ind{color:#8c8c8c}`, web/app.html:924.
-///
-/// THIS IS ALSO `grimoire_core::Regard::UNPROVEN`, WHERE EVERY NEW HAND STARTS, AND IT IS THE ONE
-/// RUNG ON THE LADDER WITH NO COLOUR AT ALL. That is convenient rather than accidental, and worth
-/// saying because the persona footer leans on it: the seal a machine draws before anybody has been
-/// rated is already a true neutral, so nothing has to be suppressed to keep an unproven standing
-/// from looking like an earned one.
-pub const REGARD_INDIFFERENTLY: Color32 = Color32::from_rgb(0x8C, 0x8C, 0x8C);
-/// Apprehensively, floor 1.60. From `.g-app{color:#c98a5e}`, web/app.html:924.
-pub const REGARD_APPREHENSIVELY: Color32 = Color32::from_rgb(0xC9, 0x8A, 0x5E);
-/// Dubiously, the bottom rung, floor 0.00. From `.g-dub{color:#c4726a}`, web/app.html:924.
-pub const REGARD_DUBIOUSLY: Color32 = Color32::from_rgb(0xC4, 0x72, 0x6A);
-
 /* ----------------------------------------------------------------- the metal --
  * A vertical gold ramp, sampled. `t` runs 0.0 at the top edge of a glyph to 1.0 at its foot.
  *
@@ -301,46 +267,6 @@ mod tests {
             "popups take the palette's hairline"
         );
         assert_eq!(v.widgets.open.bg_fill, PANEL_2);
-    }
-
-    /// THE LADDER AND THE FIVE STATES ARE TWO VOCABULARIES AND MAY NOT SHARE A COLOUR.
-    ///
-    /// The rule is stated beside the states and beside the ladder, and a comment cannot enforce it.
-    /// The failure it stops is quiet: a rung that borrowed `WRONG` would make a low reputation read
-    /// as a refusal on a rail where red already means one, and nothing would go red in CI.
-    #[test]
-    fn no_rung_borrows_a_state_colour() {
-        const RUNGS: [(&str, Color32); 7] = [
-            ("REGARD_ALLY", REGARD_ALLY),
-            ("REGARD_WARMLY", REGARD_WARMLY),
-            ("REGARD_KINDLY", REGARD_KINDLY),
-            ("REGARD_AMIABLY", REGARD_AMIABLY),
-            ("REGARD_INDIFFERENTLY", REGARD_INDIFFERENTLY),
-            ("REGARD_APPREHENSIVELY", REGARD_APPREHENSIVELY),
-            ("REGARD_DUBIOUSLY", REGARD_DUBIOUSLY),
-        ];
-        const STATES: [(&str, Color32); 5] = [
-            ("IDLE", IDLE),
-            ("WORKING", WORKING),
-            ("YOU", YOU),
-            ("WRONG", WRONG),
-            ("SETTLED", SETTLED),
-        ];
-        for (rn, rc) in RUNGS {
-            for (sn, sc) in STATES {
-                assert_ne!(
-                    rc, sc,
-                    "{rn} is {sn}, and the two vocabularies must not overlap"
-                );
-            }
-        }
-        let mut seen = std::collections::BTreeSet::new();
-        for (rn, rc) in RUNGS {
-            assert!(
-                seen.insert(rc.to_array()),
-                "{rn} repeats a rung colour already on the ladder, so two rungs read alike"
-            );
-        }
     }
 
     #[test]

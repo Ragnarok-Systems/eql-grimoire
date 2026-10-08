@@ -225,13 +225,13 @@ impl State {
 /// tracked caps immediately below the wordmark. It now follows the window's name on
 /// `titlebar::strip`, where it sits beside the live pill: the dedication and the channel's state
 /// are the same subject, and a strip that is always on screen at any rail width is a better home
-/// for the link than a block a collapsed rail cuts down to `EQL`.
+/// for the link than a block a collapsed rail cuts down to `G`.
 ///
 /// WHAT IT DOES NOT SAY, since this note twice claimed otherwise. The strip's run is `BROKEN
 /// STOIC`, not `BUILT FOR BROKEN STOIC`: `titlebar::maker_block` cut the connective tissue and
 /// kept the full phrase on the hover, and it records why. And moving the line did not stop the
 /// strip repeating the product's name, because the strip never stopped: `titlebar::strip` draws
-/// `EQL Grimoire` first and has to, or the taskbar entry and the bar disagree. The wordmark below
+/// `Grimoire` first and has to, or the taskbar entry and the bar disagree. The wordmark below
 /// and the strip above say the same words on purpose, at different sizes, for different reasons.
 ///
 /// The rule stays. It was measured to the wordmark so it would read as an underline belonging to
@@ -248,7 +248,7 @@ pub fn brand(ui: &mut Ui, narrow: bool) -> Response {
 
     if narrow {
         /* Collapsed: the mark alone, centred, and STILL CUT FROM THE SAME METAL: the ramp runs
-         * down "EQL" through the same bands as the wordmark, not one flat stop of it (the first
+         * down "G" through the same bands as the wordmark, not one flat stop of it (the first
          * cut painted it in GOLD_HI alone, which is the top edge of the metal and reads as a
          * different, yellower brand).
          *
@@ -258,13 +258,13 @@ pub fn brand(ui: &mut Ui, narrow: bool) -> Response {
          * so a glyph here would be the second link to one channel on one screen. The rule is
          * dropped too: at this width it would be as wide as the mark and read as a divider. */
         let f = crate::fonts::display(17.0);
-        let galley = p.layout_no_wrap("EQL".to_owned(), f.clone(), GOLD);
+        let galley = p.layout_no_wrap("G".to_owned(), f.clone(), GOLD);
         let ink_h = galley.rect.height();
         let at = Pos2::new(
             rect.center().x - galley.rect.width() * 0.5,
             rect.top() + 6.0,
         );
-        ramp_text(p, rect, at, "EQL", &f, ink_h);
+        ramp_text(p, rect, at, "G", &f, ink_h);
         return resp;
     }
 
@@ -280,7 +280,7 @@ pub fn brand(ui: &mut Ui, narrow: bool) -> Response {
      * margins are of a size. The rule below is measured to this word, so it follows on its own.
      * `every_word_the_rail_paints_fits_inside_it` is what holds this to the rail width. */
     let size = 20.0;
-    let word = "EQL GRIMOIRE";
+    let word = "GRIMOIRE";
     let f = crate::fonts::display(size);
     let galley = p.layout_no_wrap(word.to_owned(), f.clone(), GOLD);
     let ink_h = galley.rect.height();
@@ -1239,7 +1239,7 @@ mod brand_doc_tests {
         );
         assert!(
             !doc.contains("stop repeating a name"),
-            "the strip never stopped: titlebar::strip draws EQL Grimoire first, by necessity"
+            "the strip never stopped: titlebar::strip draws Grimoire first, by necessity"
         );
         assert!(
             doc.contains("titlebar::maker_block") && doc.contains("titlebar::strip"),
@@ -1249,7 +1249,7 @@ mod brand_doc_tests {
         /* The claim is about another file, so it is checked against that file and not restated. */
         let strip = include_str!("titlebar.rs");
         assert!(
-            strip.contains("const TITLE: &str = \"EQL Grimoire\";"),
+            strip.contains("const TITLE: &str = \"Grimoire\";"),
             "if the strip ever does drop the window's name, this doc becomes true and must change"
         );
         /* THE MAKER RUN IS NOW DERIVED, so this checks the derivation and not a literal. It used

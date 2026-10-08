@@ -179,7 +179,7 @@ impl Tool {
     pub fn title(self) -> &'static str {
         match self {
             Tool::Companion => "Grimoire",
-            Tool::Watch => "Watch",
+            Tool::Watch => "Broken Stoic",
             Tool::Chat => "Chat",
             Tool::Lfg(LfgMode::Generic) => "Looking for group",
             Tool::Lfg(LfgMode::Raid) => "Looking for raid",
@@ -2226,7 +2226,7 @@ mod tests {
     #[test]
     fn titles_are_the_windows_names() {
         assert_eq!(Tool::Companion.title(), "Grimoire");
-        assert_eq!(Tool::Watch.title(), "Watch");
+        assert_eq!(Tool::Watch.title(), "Broken Stoic");
         assert_eq!(Tool::Chat.title(), "Chat");
         assert_eq!(Tool::Lfg(LfgMode::Generic).title(), "Looking for group");
         assert_eq!(Tool::Lfg(LfgMode::Raid).title(), "Looking for raid");

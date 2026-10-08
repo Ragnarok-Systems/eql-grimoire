@@ -1216,7 +1216,7 @@ pub fn strip(
              * title's size and the maker's name size both under that one name in this scope and it
              * failed to compile, which was the lucky outcome: in different scopes it would have
              * built and one of them would have silently been the wrong type size. */
-            const TITLE: &str = "EQL Grimoire";
+            const TITLE: &str = "Grimoire";
             const TITLE_SIZE: f32 = 13.0;
             const MAKER_NAME_SIZE: f32 = 9.5;
 
@@ -1516,7 +1516,7 @@ mod tests {
     fn the_strip_names_the_window_and_the_maker_run_is_the_short_one() {
         let src = include_str!("titlebar.rs");
         assert!(
-            src.contains("const TITLE: &str = \"EQL Grimoire\";"),
+            src.contains("const TITLE: &str = \"Grimoire\";"),
             "the taskbar entry and the strip have to agree"
         );
         /* THE MAKER RUN IS DERIVED, NOT DECLARED, AND THAT IS THE POINT OF THIS PAIR.
