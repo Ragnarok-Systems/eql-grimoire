@@ -129,6 +129,52 @@ const KEY_SHAPE: &[&str] = &[
     "spots",
     "area",
     "areas",
+    /* Greetings, filler and asking words: how people talk, never what they ask about. Measured
+     * 2026-10-13: "Hey guys were is thug camp is at in sgs?" had the right answer drafted and was
+     * blocked because "hey" and "guys" are on no page. */
+    "hey",
+    "hi",
+    "hello",
+    "yo",
+    "sup",
+    "guys",
+    "guy",
+    "all",
+    "everyone",
+    "anyone",
+    "anybody",
+    "someone",
+    "somebody",
+    "folks",
+    "yall",
+    "ya",
+    "you",
+    "u",
+    "show",
+    "tell",
+    "help",
+    "see",
+    "point",
+    "please",
+    "pls",
+    "plz",
+    "quick",
+    "question",
+    "lol",
+    "lmao",
+    "ok",
+    "okay",
+    "so",
+    "um",
+    "umm",
+    "ummm",
+    "uh",
+    "just",
+    "really",
+    "actually",
+    "again",
+    "also",
+    "still",
 ];
 /// The wiki's words for what a player asks: "buy" is answered by a page that says "sold".
 const KEY_SYNONYMS: &[(&str, &[&str])] = &[
@@ -661,6 +707,41 @@ mod tests {
     /// DEFECTS THESE PREVENT, both measured 2026-10-08: "which zones border Ail'Vorith?" retrieved
     /// the article "Zones" ahead of the zone, and questions naming only the game ("phone number for
     /// Monsters & Memories support") went to the model, which invented an answer.
+    #[test]
+    fn greetings_and_chat_filler_are_never_required() {
+        let idx = Index::build(
+            vec![kp(
+                "Community note: Thug camp",
+                "community-note",
+                "Thug camp (Sungreet Strand): on the west bank of the river.",
+            )],
+            vec![],
+        );
+        let note = vec![&idx.passages[0]];
+        assert!(idx
+            .unsupported_terms(
+                "Hey guys were is thug camp is at in Sungreet Strand?",
+                &note,
+                &[1]
+            )
+            .is_empty());
+        assert!(idx
+            .unsupported_terms(
+                "Can you show me were the thug camp is in Sungreet Strand?",
+                &note,
+                &[1]
+            )
+            .is_empty());
+        assert_eq!(
+            idx.unsupported_terms(
+                "hey guys where is the dragon camp in Sungreet Strand?",
+                &note,
+                &[1]
+            ),
+            vec!["dragon"]
+        );
+    }
+
     #[test]
     fn opinion_words_are_never_required_and_farming_means_drops() {
         let idx = Index::build(
