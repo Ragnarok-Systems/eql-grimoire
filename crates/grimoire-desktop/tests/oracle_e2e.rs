@@ -46,6 +46,8 @@ fn download_start_and_answer() {
         "how do I tame a dragon in Ail'Vorith?",
         "what is the phone number for Monsters & Memories customer support?",
         "how does a necromancer get their first zombie pet?",
+        "does Mother Gummer drop a legendary sword?",
+        "is Fallen Pass a PvP zone?",
     ];
     for (n, q) in qs.iter().enumerate() {
         o.send(Cmd::Ask((*q).to_owned()));
