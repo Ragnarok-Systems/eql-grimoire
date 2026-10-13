@@ -36,4 +36,23 @@ fn a_real_bundle_loads_and_its_links_resolve() {
         "only {found}/{seen} drop links resolve"
     );
     assert!(lore.find("Ail'Vorith").is_some());
+    // Zone maps ship in the bundle, and each record's map points at a file that is there.
+    let with_maps: Vec<_> = lore
+        .records(Kind::Zone)
+        .iter()
+        .filter_map(|z| {
+            z.fields
+                .get("map")
+                .and_then(|m| m.get("path"))
+                .and_then(|p| p.as_str())
+        })
+        .collect();
+    eprintln!("zones with a map: {}", with_maps.len());
+    assert!(!with_maps.is_empty(), "no zone carries a map");
+    for p in with_maps {
+        assert!(
+            std::path::Path::new(&root).join(p).is_file(),
+            "{p} is missing"
+        );
+    }
 }

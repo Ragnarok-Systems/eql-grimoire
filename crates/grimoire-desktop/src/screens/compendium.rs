@@ -140,6 +140,91 @@ pub struct CompendiumScreen {
     state: HashMap<Kind, KindState>,
     /// A jump asked for before the data was loaded, applied once it is.
     pending: Option<(Kind, String)>,
+    /// Zone maps, decoded once on first view: the texture, or why there is none.
+    maps: HashMap<String, Result<egui::TextureHandle, String>>,
+}
+
+/// The widest a map is decoded at: the bundle's copies are 2048, and a pane is never wider.
+const MAP_MAX_W: u32 = 2048;
+
+/// A map file from the bundle as pixels, scaled down to `MAP_MAX_W` if it is wider.
+fn decode_map(bytes: &[u8]) -> Result<egui::ColorImage, String> {
+    let img =
+        image::load_from_memory(bytes).map_err(|e| format!("the map could not be read: {e}"))?;
+    let img = if img.width() > MAP_MAX_W {
+        img.resize(MAP_MAX_W, u32::MAX, image::imageops::FilterType::Triangle)
+    } else {
+        img
+    };
+    let rgba = img.to_rgba8();
+    Ok(egui::ColorImage::from_rgba_unmultiplied(
+        [rgba.width() as usize, rgba.height() as usize],
+        rgba.as_raw(),
+    ))
+}
+
+/// A zone's map under its record: the picture, sized to the pane, with its maker and a way to the
+/// full-size original on the wiki. Nothing is drawn for a zone the wiki has no map of.
+fn zone_map(
+    ui: &mut Ui,
+    maps: &mut HashMap<String, Result<egui::TextureHandle, String>>,
+    lore: &Lore,
+    r: &Record,
+) {
+    let Some(map) = r.fields.get("map") else {
+        return;
+    };
+    let Some(path) = map.get("path").and_then(|p| p.as_str()) else {
+        return;
+    };
+    let tex = maps.entry(r.name.clone()).or_insert_with(|| {
+        std::fs::read(lore.root.join(path))
+            .map_err(|e| format!("the map file is missing: {e}"))
+            .and_then(|b| decode_map(&b))
+            .map(|img| {
+                ui.ctx()
+                    .load_texture(format!("map:{}", r.name), img, egui::TextureOptions::LINEAR)
+            })
+    });
+    ui.add_space(14.0);
+    ui.label(
+        RichText::new("MAP")
+            .font(FontId::proportional(12.0))
+            .color(TEXT_3),
+    );
+    match tex {
+        Ok(t) => {
+            let size = t.size_vec2();
+            let w = ui.available_width().min(size.x);
+            ui.add(egui::Image::new(&*t).fit_to_exact_size(Vec2::new(w, w * size.y / size.x)));
+        }
+        Err(why) => {
+            ui.label(RichText::new(why.as_str()).color(TEXT_2));
+        }
+    }
+    ui.horizontal_wrapped(|ui| {
+        let by = map
+            .get("uploader")
+            .and_then(|u| u.as_str())
+            .unwrap_or("a wiki contributor");
+        ui.label(
+            RichText::new(format!("Map by {by}, from the wiki."))
+                .font(FontId::proportional(11.0))
+                .color(TEXT_3),
+        );
+        if let Some(src) = map.get("source").and_then(|s| s.as_str()) {
+            if ui
+                .link(
+                    RichText::new("Full size on the wiki")
+                        .font(FontId::proportional(11.0))
+                        .color(GOLD),
+                )
+                .clicked()
+            {
+                crate::shell::open_url_quietly(src);
+            }
+        }
+    });
 }
 
 impl CompendiumScreen {
@@ -163,6 +248,7 @@ impl CompendiumScreen {
         if let Some((k, name)) = self.pending.take() {
             self.jump(k, &name, Some(lore));
         }
+        let maps = &mut self.maps;
         let st = self.state.entry(kind).or_default();
         let records = lore.records(kind);
 
@@ -224,7 +310,12 @@ impl CompendiumScreen {
                     egui::ScrollArea::vertical()
                         .id_salt(("compendium-record", kind))
                         .auto_shrink([false, false])
-                        .show(ui, |ui| record(ui, cx, lore, kind, r));
+                        .show(ui, |ui| {
+                            record(ui, cx, lore, kind, r);
+                            if kind == Kind::Zone {
+                                zone_map(ui, maps, lore, r);
+                            }
+                        });
                 }
                 None => {
                     ui.add_space(8.0);
@@ -370,6 +461,24 @@ fn not_here(ui: &mut Ui, cx: &Cx, kind: Kind) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A map wider than the cap comes back at the cap, aspect kept; a narrow one is left alone;
+    /// bytes that are not an image are a reason, not a panic.
+    #[test]
+    fn maps_decode_at_most_the_cap_wide() {
+        let png = |w: u32, h: u32| {
+            let mut out = std::io::Cursor::new(Vec::new());
+            image::RgbaImage::new(w, h)
+                .write_to(&mut out, image::ImageFormat::Png)
+                .expect("png");
+            out.into_inner()
+        };
+        let big = decode_map(&png(4096, 1024)).expect("decodes");
+        assert_eq!(big.size, [2048, 512]);
+        let small = decode_map(&png(300, 200)).expect("decodes");
+        assert_eq!(small.size, [300, 200]);
+        assert!(decode_map(b"not an image").is_err());
+    }
 
     #[test]
     fn every_link_field_points_at_a_kind_and_spell_classes_read_as_levels() {
