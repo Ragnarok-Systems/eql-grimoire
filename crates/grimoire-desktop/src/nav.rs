@@ -20,6 +20,8 @@ use crate::screens::Cx;
 pub enum ScreenId {
     /* COMPENDIUM: what the game contains, from the community wiki bundle. */
     Zones,
+    /* The zone maps with every camp and spot, after the Eth-ur Atlas. */
+    Atlas,
     Npcs,
     Items,
     Quests,
@@ -39,8 +41,9 @@ pub enum ScreenId {
 impl ScreenId {
     /// Every variant, in declaration order. Kept honest by `ordinal`'s exhaustive match and the
     /// test that compares the two.
-    pub const ALL: [ScreenId; 11] = [
+    pub const ALL: [ScreenId; 12] = [
         ScreenId::Zones,
+        ScreenId::Atlas,
         ScreenId::Npcs,
         ScreenId::Items,
         ScreenId::Quests,
@@ -57,16 +60,17 @@ impl ScreenId {
     pub fn ordinal(self) -> usize {
         match self {
             ScreenId::Zones => 0,
-            ScreenId::Npcs => 1,
-            ScreenId::Items => 2,
-            ScreenId::Quests => 3,
-            ScreenId::Spells => 4,
-            ScreenId::Herald => 5,
-            ScreenId::Oracle => 6,
-            ScreenId::Lfg => 7,
-            ScreenId::Watch => 8,
-            ScreenId::Videos => 9,
-            ScreenId::Chat => 10,
+            ScreenId::Atlas => 1,
+            ScreenId::Npcs => 2,
+            ScreenId::Items => 3,
+            ScreenId::Quests => 4,
+            ScreenId::Spells => 5,
+            ScreenId::Herald => 6,
+            ScreenId::Oracle => 7,
+            ScreenId::Lfg => 8,
+            ScreenId::Watch => 9,
+            ScreenId::Videos => 10,
+            ScreenId::Chat => 11,
         }
     }
 }
@@ -77,6 +81,7 @@ pub const NAV: &[(&str, &[(&str, ScreenId)])] = &[
         "COMPENDIUM",
         &[
             ("Zones", ScreenId::Zones),
+            ("Atlas", ScreenId::Atlas),
             ("NPCs", ScreenId::Npcs),
             ("Items", ScreenId::Items),
             ("Quests", ScreenId::Quests),
@@ -229,7 +234,8 @@ pub fn square(id: ScreenId, f: &Facts) -> State {
         | ScreenId::Npcs
         | ScreenId::Items
         | ScreenId::Quests
-        | ScreenId::Spells => from_channel(f.lore_loaded, f.lore_wrong),
+        | ScreenId::Spells
+        | ScreenId::Atlas => from_channel(f.lore_loaded, f.lore_wrong),
         /* Herald reads the recorder's file; whether it has posts is the screen's to say. */
         ScreenId::Herald => State::Idle,
         /* Oracle answers from the bundle: it can do nothing without one. */

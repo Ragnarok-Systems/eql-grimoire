@@ -4,6 +4,7 @@
 //! than an owner: the App owns the snapshot, the watcher, the settings and the ingest, and a
 //! screen sees them for exactly one frame. That is what keeps a screen from squirrelling away a
 //! stale copy of the data and drawing last week's record count over this week's file.
+pub mod atlas;
 pub mod chat;
 pub mod compendium;
 pub mod herald;

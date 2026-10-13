@@ -80,7 +80,7 @@ pub struct Record {
 }
 
 impl Record {
-    fn from_value(v: Value) -> Option<Record> {
+    pub(crate) fn from_value(v: Value) -> Option<Record> {
         let Value::Object(fields) = v else {
             return None;
         };

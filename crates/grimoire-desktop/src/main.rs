@@ -330,6 +330,7 @@ struct Screens {
     compendium: screens::compendium::CompendiumScreen,
     oracle: screens::oracle::OracleScreen,
     herald: screens::herald::HeraldScreen,
+    atlas: screens::atlas::AtlasScreen,
     lfg: LfgScreen,
     watch: WatchScreen,
 }
@@ -338,6 +339,32 @@ struct Smoke {
     after: Duration,
     since: Instant,
     fired: bool,
+}
+
+/// DEBUG BUILDS ONLY: `GRIMOIRE_SHOT=<rail row>:<file.png>` opens that screen, saves a picture of
+/// the window once it has settled, and closes. For checking a screen without driving a desktop.
+/// Run it with `GRIMOIRE_SMOKE_MS` set too, so the dev build leaves the updater's pointer alone.
+#[cfg(debug_assertions)]
+struct Shot {
+    screen: ScreenId,
+    path: std::path::PathBuf,
+    frames: u32,
+    asked: bool,
+}
+
+#[cfg(debug_assertions)]
+fn shot_from_env() -> Option<Shot> {
+    let raw = std::env::var("GRIMOIRE_SHOT").ok()?;
+    let (name, path) = raw.split_once(':')?;
+    let screen = ScreenId::ALL
+        .into_iter()
+        .find(|id| nav::name_of(*id).is_some_and(|n| n.eq_ignore_ascii_case(name.trim())))?;
+    Some(Shot {
+        screen,
+        path: path.trim().into(),
+        frames: 0,
+        asked: false,
+    })
 }
 
 /* THERE IS NO CAP ON HOW MANY SECTIONS MAY STAND OPEN, AND THERE USED TO BE.
@@ -474,6 +501,8 @@ struct App {
     /// first drawn frame, and clearing before it would call a crash a success.
     passes: u64,
     smoke: Option<Smoke>,
+    #[cfg(debug_assertions)]
+    shot: Option<Shot>,
     /// When a stream was last seen playing, for the updater's quiet moment (`activity`).
     busy_at: Option<Instant>,
 }
@@ -585,8 +614,14 @@ impl App {
                 since: Instant::now(),
                 fired: false,
             }),
+            #[cfg(debug_assertions)]
+            shot: shot_from_env(),
             busy_at: None,
         };
+        #[cfg(debug_assertions)]
+        if let Some(id) = me.shot.as_ref().map(|s| s.screen) {
+            me.reveal(id);
+        }
 
         /* THE FIRST SCREEN ARRIVES THE SAME WAY EVERY LATER ONE DOES.
          *
@@ -619,6 +654,8 @@ impl App {
     }
 
     fn smoke(&mut self, ctx: &egui::Context) {
+        #[cfg(debug_assertions)]
+        self.shot(ctx);
         let Some(s) = &mut self.smoke else { return };
         if s.fired {
             return;
@@ -630,6 +667,33 @@ impl App {
             ctx.send_viewport_cmd(ViewportCommand::Close);
         } else {
             ctx.request_repaint_after(left);
+        }
+    }
+
+    /// The debug picture (see `Shot`): ask for it once the screen has settled, save it when it comes.
+    #[cfg(debug_assertions)]
+    fn shot(&mut self, ctx: &egui::Context) {
+        let Some(s) = &mut self.shot else { return };
+        s.frames += 1;
+        ctx.request_repaint();
+        if !s.asked && s.frames > 90 {
+            s.asked = true;
+            ctx.send_viewport_cmd(ViewportCommand::Screenshot(Default::default()));
+        }
+        let got = ctx.input(|i| {
+            i.raw.events.iter().find_map(|e| match e {
+                egui::Event::Screenshot { image, .. } => Some(image.clone()),
+                _ => None,
+            })
+        });
+        if let Some(img) = got {
+            let [w, h] = img.size;
+            let raw: Vec<u8> = img.pixels.iter().flat_map(|c| c.to_array()).collect();
+            match image::RgbaImage::from_raw(w as u32, h as u32, raw).map(|p| p.save(&s.path)) {
+                Some(Ok(())) => println!("shot: {}", s.path.display()),
+                other => eprintln!("shot failed: {other:?}"),
+            }
+            ctx.send_viewport_cmd(ViewportCommand::Close);
         }
     }
 
@@ -1176,6 +1240,7 @@ fn draw_screen(ui: &mut egui::Ui, id: ScreenId, section: usize, s: &mut Screens,
         }
         ScreenId::Oracle => s.oracle.ui(ui, cx),
         ScreenId::Herald => s.herald.ui(ui, cx),
+        ScreenId::Atlas => s.atlas.ui(ui, cx),
     }
 }
 
