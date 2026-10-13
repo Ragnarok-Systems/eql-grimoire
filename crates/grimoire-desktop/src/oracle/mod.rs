@@ -581,7 +581,19 @@ fn worker(dirs: Dirs, rx: mpsc::Receiver<Cmd>, shared: Arc<Mutex<Shared>>, stop:
                     Ok(answer) => with(&shared, |s| {
                         if let Some(x) = s.history.last_mut() {
                             x.answer = tidy_answer(&answer);
-                            x.check = Some(check_citations(&x.answer, sources.len()));
+                            let check = check_citations(&x.answer, sources.len());
+                            /* THE SOURCES MUST CONTAIN WHAT WAS ASKED, or the wiki doesn't say it,
+                             * whatever the model wrote. See `Index::unsupported_terms`. */
+                            if !check.declined
+                                && !idx
+                                    .unsupported_terms(&question, &passages, &check.cited)
+                                    .is_empty()
+                            {
+                                x.answer = NOT_FOUND.to_owned();
+                                x.check = Some(check_citations(NOT_FOUND, sources.len()));
+                            } else {
+                                x.check = Some(check);
+                            }
                             x.done = true;
                             x.seconds = t0.elapsed().as_secs_f32();
                         }

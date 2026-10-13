@@ -47,6 +47,40 @@ const SHAPE: &[&str] = &[
 ];
 /// Below this share of its own words found in any source, a question naming no page is not answered.
 const MIN_COVERAGE: f64 = 0.5;
+/// Question words that shape the ask rather than name its subject ("where can I find", "what level").
+const KEY_SHAPE: &[&str] = &[
+    "level", "levels", "range", "find", "found", "where", "gives", "give", "quest", "quests",
+    "drops", "drop", "dropped", "zones", "zone", "border", "borders", "class", "classes", "gets",
+    "get", "spell", "spells", "their", "my", "there", "monsters", "memories", "mnm", "can",
+    "could", "does", "do", "did", "is", "are", "was", "were", "what", "which", "who", "whom",
+    "whose", "how", "when", "why", "much", "many", "tell", "me", "about", "anyone", "know", "good",
+    "use",
+];
+/// The wiki's words for what a player asks: "buy" is answered by a page that says "sold".
+const KEY_SYNONYMS: &[(&str, &[&str])] = &[
+    (
+        "buy",
+        &["sell", "sold", "merchant", "vendor", "cost", "price"],
+    ),
+    ("purchase", &["sell", "sold", "merchant", "vendor"]),
+    ("sell", &["buy", "merchant", "vendor", "sold"]),
+    ("sells", &["merchant", "vendor", "sold", "sell"]),
+    ("located", &["found", "location", "zone"]),
+    ("location", &["found", "zone", "located"]),
+    ("obtain", &["drop", "dropped", "reward", "sold", "quest"]),
+    ("earn", &["reward", "quest"]),
+    ("first", &["1", "tier"]),
+    ("pet", &["minion", "servant", "summon"]),
+];
+
+/// A crude stem, the same as `keyStem` in `mnm-lore/src/retrieve.js`: one suffix off, six letters.
+fn key_stem(t: &str) -> String {
+    let t = ["ing", "ed", "es", "s", "e"]
+        .iter()
+        .find_map(|s| t.strip_suffix(s))
+        .unwrap_or(t);
+    t.chars().take(6).collect()
+}
 
 fn word_char(c: char) -> bool {
     c.is_alphanumeric() || c == '\''
@@ -325,6 +359,66 @@ impl Index {
     /// eval: every answerable question named a page or scored 1.00; the unanswerable ones naming no
     /// page scored 0.40 or less. Word overlap misses synonyms ("buy" against "sold"), which is why a
     /// named page bypasses it. The same rule is `answerable` in `mnm-lore/src/retrieve.js`.
+    /// The question's key terms that the answer's cited sources never mention. Non-empty means the
+    /// wiki does not say what was asked, whatever the model wrote.
+    ///
+    /// Measured 2026-10-09 on 83 answered questions: it blocked 5 of 6 invented answers ("tame a
+    /// dragon", "best guild", "legendary sword", "PvP zone", "raid loot drop rate", where the model
+    /// answered with true but unrelated facts) and 1 of 77 real ones, which was itself a non-answer.
+    /// With it, 14 of 14 unanswerable questions were declined. Same as `unsupportedTerms` in
+    /// `mnm-lore/src/retrieve.js`.
+    pub fn unsupported_terms(
+        &self,
+        question: &str,
+        passages: &[&Passage],
+        cited: &[usize],
+    ) -> Vec<String> {
+        let name_tok: HashSet<String> = self
+            .named_pages(question)
+            .iter()
+            .flat_map(|n| tokens(n))
+            .map(|t| key_stem(&t))
+            .collect();
+        let mut key: Vec<String> = Vec::new();
+        for t in tokens(question) {
+            if !KEY_SHAPE.contains(&t.as_str())
+                && !name_tok.contains(&key_stem(&t))
+                && !key.contains(&t)
+            {
+                key.push(t);
+            }
+        }
+        let used: Vec<&Passage> = if cited.is_empty() {
+            passages.to_vec()
+        } else {
+            cited
+                .iter()
+                .filter_map(|n| passages.get(n.wrapping_sub(1)).copied())
+                .collect()
+        };
+        let text: String = used
+            .iter()
+            .map(|p| {
+                format!(
+                    "{} {} {} ",
+                    p.page,
+                    p.section.as_deref().unwrap_or(""),
+                    p.text
+                )
+            })
+            .collect();
+        let have: HashSet<String> = tokens(&text).iter().map(|t| key_stem(t)).collect();
+        key.into_iter()
+            .filter(|t| {
+                !have.contains(&key_stem(t))
+                    && !KEY_SYNONYMS
+                        .iter()
+                        .find(|(k, _)| k == t)
+                        .is_some_and(|(_, syn)| syn.iter().any(|s| have.contains(&key_stem(s))))
+            })
+            .collect()
+    }
+
     pub fn answerable(&self, question: &str, passages: &[&Passage]) -> bool {
         if !self.named_pages(question).is_empty() {
             return true;
@@ -488,6 +582,41 @@ mod tests {
     /// DEFECTS THESE PREVENT, both measured 2026-10-08: "which zones border Ail'Vorith?" retrieved
     /// the article "Zones" ahead of the zone, and questions naming only the game ("phone number for
     /// Monsters & Memories support") went to the model, which invented an answer.
+    #[test]
+    fn an_answer_whose_sources_never_mention_what_was_asked_is_not_an_answer() {
+        let idx = Index::build(
+            vec![
+                kp(
+                    "Mother Gummer",
+                    "npc",
+                    "Mother Gummer is a Slime, level 12, found in Blind Midden.",
+                ),
+                kp(
+                    "Fishing Pole",
+                    "item",
+                    "Sold by Old Brannoc, a merchant in Night Harbor.",
+                ),
+                kp("Fallen Pass", "zone", "Fallen Pass is for levels 19 to 44."),
+            ],
+            vec![],
+        );
+        let gummer = vec![&idx.passages[0]];
+        assert_eq!(
+            idx.unsupported_terms("Does Mother Gummer drop a legendary sword?", &gummer, &[1]),
+            vec!["legendary", "sword"]
+        );
+        let pole = vec![&idx.passages[1]];
+        assert!(
+            idx.unsupported_terms("Where can I buy a Fishing Pole?", &pole, &[1])
+                .is_empty(),
+            "\"buy\" is answered by \"sold\""
+        );
+        let zone = vec![&idx.passages[2]];
+        assert!(idx
+            .unsupported_terms("What level range is Fallen Pass?", &zone, &[1])
+            .is_empty());
+    }
+
     #[test]
     fn a_named_record_beats_a_general_page_and_an_unrelated_question_is_not_answered() {
         let idx = Index::build(
