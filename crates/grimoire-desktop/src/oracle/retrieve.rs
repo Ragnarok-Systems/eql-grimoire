@@ -49,12 +49,86 @@ const SHAPE: &[&str] = &[
 const MIN_COVERAGE: f64 = 0.5;
 /// Question words that shape the ask rather than name its subject ("where can I find", "what level").
 const KEY_SHAPE: &[&str] = &[
-    "level", "levels", "range", "find", "found", "where", "gives", "give", "quest", "quests",
-    "drops", "drop", "dropped", "zones", "zone", "border", "borders", "class", "classes", "gets",
-    "get", "spell", "spells", "their", "my", "there", "monsters", "memories", "mnm", "can",
-    "could", "does", "do", "did", "is", "are", "was", "were", "what", "which", "who", "whom",
-    "whose", "how", "when", "why", "much", "many", "tell", "me", "about", "anyone", "know", "good",
+    "level",
+    "levels",
+    "range",
+    "find",
+    "found",
+    "where",
+    "gives",
+    "give",
+    "quest",
+    "quests",
+    "drops",
+    "drop",
+    "dropped",
+    "zones",
+    "zone",
+    "border",
+    "borders",
+    "class",
+    "classes",
+    "gets",
+    "get",
+    "spell",
+    "spells",
+    "their",
+    "my",
+    "there",
+    "monsters",
+    "memories",
+    "mnm",
+    "can",
+    "could",
+    "does",
+    "do",
+    "did",
+    "is",
+    "are",
+    "was",
+    "were",
+    "what",
+    "which",
+    "who",
+    "whom",
+    "whose",
+    "how",
+    "when",
+    "why",
+    "much",
+    "many",
+    "tell",
+    "me",
+    "about",
+    "anyone",
+    "know",
+    "good",
     "use",
+    /* Opinion and place words: a wiki states facts, never rankings, and never says "spot". Measured
+     * 2026-10-13: "what zones are the best for farming tin?" had the right source (Tin Ore drops in
+     * Sungreet Strand) and was blocked because "best" is on no page. */
+    "best",
+    "better",
+    "great",
+    "top",
+    "fastest",
+    "quickest",
+    "easiest",
+    "easy",
+    "ideal",
+    "recommended",
+    "recommend",
+    "optimal",
+    "worth",
+    "most",
+    "least",
+    "should",
+    "place",
+    "places",
+    "spot",
+    "spots",
+    "area",
+    "areas",
 ];
 /// The wiki's words for what a player asks: "buy" is answered by a page that says "sold".
 const KEY_SYNONYMS: &[(&str, &[&str])] = &[
@@ -65,6 +139,11 @@ const KEY_SYNONYMS: &[(&str, &[&str])] = &[
     ("purchase", &["sell", "sold", "merchant", "vendor"]),
     ("sell", &["buy", "merchant", "vendor", "sold"]),
     ("sells", &["merchant", "vendor", "sold", "sell"]),
+    /* Farming or grinding something is asking where it drops. */
+    ("farm", &["drop", "dropped", "drops"]),
+    ("farming", &["drop", "dropped", "drops"]),
+    ("grind", &["drop", "dropped"]),
+    ("grinding", &["drop", "dropped"]),
     ("located", &["found", "location", "zone"]),
     ("location", &["found", "zone", "located"]),
     ("obtain", &["drop", "dropped", "reward", "sold", "quest"]),
@@ -582,6 +661,29 @@ mod tests {
     /// DEFECTS THESE PREVENT, both measured 2026-10-08: "which zones border Ail'Vorith?" retrieved
     /// the article "Zones" ahead of the zone, and questions naming only the game ("phone number for
     /// Monsters & Memories support") went to the model, which invented an answer.
+    #[test]
+    fn opinion_words_are_never_required_and_farming_means_drops() {
+        let idx = Index::build(
+            vec![kp(
+                "Tin Ore",
+                "item",
+                "Tin Ore is dropped by Tin Vein and Rich Tin Vein in Sungreet Strand.",
+            )],
+            vec![],
+        );
+        let tin = vec![&idx.passages[0]];
+        assert!(idx
+            .unsupported_terms("what zones are the best for farming tin?", &tin, &[1])
+            .is_empty());
+        assert!(idx
+            .unsupported_terms("fastest place to grind tin ore", &tin, &[1])
+            .is_empty());
+        assert_eq!(
+            idx.unsupported_terms("best zone for farming mithril?", &tin, &[1]),
+            vec!["mithril"]
+        );
+    }
+
     #[test]
     fn an_answer_whose_sources_never_mention_what_was_asked_is_not_an_answer() {
         let idx = Index::build(
